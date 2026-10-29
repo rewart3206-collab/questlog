@@ -1,8 +1,8 @@
 // Questlog service worker: keeps the app available offline.
 // Firestore handles offline saving itself, so its network traffic is left alone.
-const CACHE = "questlog-v5";
+const CACHE = "questlog-v6";
 const SHELL = [
-  "./", "./index.html", "./app.js", "./firebase-config.js", "./manifest.webmanifest",
+  "./", "./index.html", "./app.js", "./art.js", "./firebase-config.js", "./manifest.webmanifest",
   "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png",
 ];
 const FIREBASE_SDK = "https://www.gstatic.com/firebasejs/";
