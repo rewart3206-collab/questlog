@@ -7,11 +7,7 @@ const STATS = {
   INT: { name: "Intelligence", hint: "Reading, learning" },
   HLT: { name: "Health", hint: "Sleep, food, water, mind" },
 };
-const CLASSES = {
-  warrior: { name: "Warrior", stat: "STR", tunic: "#b8423a" },
-  scholar: { name: "Scholar", stat: "INT", tunic: "#3a6fc4" },
-  druid: { name: "Druid", stat: "HLT", tunic: "#2f8f5a" },
-};
+const TUNIC = "#b8423a";
 const DIFF = {
   easy: { name: "Easy", xp: 10, gold: 5 },
   medium: { name: "Medium", xp: 25, gold: 12 },
@@ -42,7 +38,7 @@ const uid = () => Math.random().toString(36).slice(2, 9);
 
 function freshState(name) {
   return {
-    v: 1, at: Date.now(), name: name || "Adventurer", cls: "warrior", xp: 0, gold: 0,
+    v: 1, at: Date.now(), name: name || "Adventurer", xp: 0, gold: 0,
     statXp: { STR: 0, INT: 0, HLT: 0 },
     quests: [
       { id: uid(), name: "Walk for 20 minutes", stat: "STR", diff: "medium" },
@@ -69,7 +65,7 @@ function migrate(st) {
   (st.quests || []).forEach((q) => { if (old[q.stat]) q.stat = old[q.stat]; if (!STATS[q.stat]) q.stat = "HLT"; });
   const sx = st.statXp || {};
   if (!("HLT" in sx)) st.statXp = { STR: sx.STR || 0, INT: sx.INT || 0, HLT: (sx.VIT || 0) + (sx.SPI || 0) };
-  if (!CLASSES[st.cls]) st.cls = "druid";
+  delete st.cls;
   return st;
 }
 
@@ -100,7 +96,7 @@ function drawSprite(canvas, cls, equip) {
   ctx.clearRect(0, 0, 16, 20);
   equip = equip || {};
   const dye = equip.dye ? GEAR.find((g) => g.id === equip.dye) : null;
-  const pal = { o: "#0b0d1f", H: "#5a3a22", S: "#f1c9a0", e: "#0b0d1f", T: dye ? dye.color : (CLASSES[cls] || CLASSES.warrior).tunic, b: "#6b4a2a", P: "#3a3f63", B: "#4a2f1e" };
+  const pal = { o: "#0b0d1f", H: "#5a3a22", S: "#f1c9a0", e: "#0b0d1f", T: dye ? dye.color : TUNIC, b: "#6b4a2a", P: "#3a3f63", B: "#4a2f1e" };
   const layers = SLOTS.filter((s) => s !== "dye").map((s) => OVER[equip[s]]).filter(Boolean);
   const paint = (rows, p) => { for (const y in rows) { const r = rows[y]; for (let x = 0; x < 16; x++) { const c = r[x]; if (c && c !== "." && p[c]) { ctx.fillStyle = p[c]; ctx.fillRect(x, +y, 1, 1); } } } };
   layers.filter((l) => l.z === 0).forEach((l) => paint(l.rows, l.pal));
@@ -170,7 +166,7 @@ async function pushToCloud() {
     await Promise.all([
       fb.setDoc(userRef, { save: JSON.stringify(S), at: S.at }),
       fb.setDoc(profileRef, {
-        name: S.name.slice(0, 24), xp: S.xp, level: L.level, cls: S.cls, title: S.title,
+        name: S.name.slice(0, 24), xp: S.xp, level: L.level, title: S.title,
         streak: dayStreak(), equip, updatedAt: fb.serverTimestamp(),
       }),
     ]);
@@ -194,8 +190,8 @@ function toggleQuest(q, ev) {
     if (S.clears[k]) { S.gold = Math.max(0, S.gold - S.clears[k]); delete S.clears[k]; }
     toast("Quest undone");
   } else {
-    const d = DIFF[q.diff], bonus = CLASSES[S.cls].stat === q.stat ? 1.2 : 1;
-    const xp = Math.round(d.xp * bonus), gold = d.gold;
+    const d = DIFF[q.diff];
+    const xp = d.xp, gold = d.gold;
     S.days[k][q.id] = { xp, gold }; S.xp += xp; S.gold += gold; S.statXp[q.stat] = (S.statXp[q.stat] || 0) + xp;
     logEvent("Completed “" + q.name + "” (+" + xp + " XP, +" + gold + " gold)");
     if (ev) floatText(ev, "+" + xp + " XP");
@@ -326,7 +322,6 @@ function render() {
   $("#xpbar i").style.width = (L.into / L.need) * 100 + "%";
   $("#xpbar").setAttribute("aria-valuenow", L.into); $("#xpbar").setAttribute("aria-valuemax", L.need);
   $("#xptext").textContent = L.into + " / " + L.need + " XP to LV " + (L.level + 1);
-  $("#classname").textContent = CLASSES[S.cls].name;
   $("#gold").textContent = S.gold; document.querySelectorAll(".goldmirror").forEach((e) => (e.textContent = S.gold));
   $("#streak").textContent = dayStreak() + "-day streak";
   drawSprite($("#sprite"), S.cls, S.equip);
@@ -337,8 +332,8 @@ function render() {
   if (!S.quests.length) ql.innerHTML = '<li class="muted" style="padding:10px 2px">No quests yet. Add a daily habit to start earning XP.</li>';
   S.quests.forEach((q) => {
     const li = document.createElement("li"); li.className = "q" + (done[q.id] ? " done" : "");
-    const d = DIFF[q.diff], bonus = CLASSES[S.cls].stat === q.stat, st = questStreak(q.id);
-    li.innerHTML = '<button class="check"></button><div class="qmain"><div class="qname"></div><div class="qmeta"><span class="chip ' + q.stat + '">' + q.stat + '</span><span class="num">' + Math.round(d.xp * (bonus ? 1.2 : 1)) + " XP · " + d.gold + "g</span>" + (st > 1 ? '<span class="flame num">' + st + "d streak</span>" : "") + '</div></div><button class="iconbtn">Edit</button>';
+    const d = DIFF[q.diff], st = questStreak(q.id);
+    li.innerHTML = '<button class="check"></button><div class="qmain"><div class="qname"></div><div class="qmeta"><span class="chip ' + q.stat + '">' + q.stat + '</span><span class="num">' + d.xp + " XP · " + d.gold + "g</span>" + (st > 1 ? '<span class="flame num">' + st + "d streak</span>" : "") + '</div></div><button class="iconbtn">Edit</button>';
     li.querySelector(".qname").textContent = q.name;
     const chk = li.querySelector(".check");
     chk.textContent = done[q.id] ? "✓" : "";
@@ -373,7 +368,6 @@ function render() {
     el.append(h, p, b); tg.appendChild(el);
   });
   if (document.activeElement !== $("#nameIn")) $("#nameIn").value = S.name;
-  segment($("#classSeg"), Object.fromEntries(Object.entries(CLASSES).map(([k, c]) => [k, { label: c.name, cls: c.stat }])), S.cls, (k) => { S.cls = k; save(); render(); });
   $("#acct").textContent = me ? "Signed in as " + (me.email || me.displayName || "Google user") + ". Your progress syncs to every device you sign in on." : "";
 
   // gear
@@ -433,7 +427,7 @@ function renderGuild(profiles) {
     const c = document.createElement("canvas"); c.width = 16; c.height = 20; drawSprite(c, p.cls, p.equip);
     const who = document.createElement("div"); who.className = "who";
     const b = document.createElement("b"); b.textContent = (p.name || "Adventurer") + (me && p.id === me.uid ? " (you)" : "");
-    const s = document.createElement("span"); s.textContent = (p.title || "Novice") + " · " + ((CLASSES[p.cls] || {}).name || "Hero");
+    const s = document.createElement("span"); s.textContent = p.title || "Novice";
     who.append(b, s);
     const lv = document.createElement("div"); lv.className = "lv num"; lv.textContent = "LV " + (p.level || 1);
     if (p.streak) { const sm = document.createElement("small"); sm.textContent = p.streak + "-day streak"; lv.appendChild(sm); }

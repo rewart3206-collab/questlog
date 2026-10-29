@@ -206,7 +206,7 @@ input{font:inherit;font-size:16px;color:var(--ink);background:var(--deep);border
       <div class="row" style="flex-wrap:wrap;gap:8px"><span class="lvl num" id="lvl">LV 1</span><span class="title-tag" id="htitle">Novice</span></div>
       <h1 class="hero-name" id="hname">Adventurer</h1>
       <div class="bar" role="progressbar" aria-label="Experience" id="xpbar"><i style="width:0"></i></div>
-      <div class="row muted num" style="justify-content:space-between;font-size:12px"><span id="xptext">0 / 100 XP</span><span id="classname">Warrior</span></div>
+      <div class="row muted num" style="justify-content:space-between;font-size:12px"><span id="xptext">0 / 100 XP</span></div>
       <div class="purse num"><span><i class="coin"></i><span id="gold">0</span> gold</span><span class="flame" id="streak">0-day streak</span></div>
       <span class="sync" id="sync">Saved</span>
     </div>
@@ -227,7 +227,7 @@ input{font:inherit;font-size:16px;color:var(--ink);background:var(--deep);border
     <div class="win">
       <h2>Attributes</h2>
       <div class="stats" id="stats"></div>
-      <p class="note" style="margin-top:10px">Each quest trains Strength, Intelligence or Health. Your class earns +20% XP on its favoured attribute.</p>
+      <p class="note" style="margin-top:10px">Each quest trains Strength, Intelligence or Health.</p>
     </div>
     <div class="win">
       <h2>Titles</h2>
@@ -236,7 +236,6 @@ input{font:inherit;font-size:16px;color:var(--ink);background:var(--deep);border
     <div class="win stack" style="gap:10px">
       <h2>Character</h2>
       <label for="nameIn">Hero name (your guild sees this)<input id="nameIn" maxlength="24" autocomplete="off"></label>
-      <div><div class="note" style="margin-bottom:4px">Class</div><div class="seg three" id="classSeg"></div></div>
       <div class="actions"><button class="btn ghost" id="resetBtn">Start a new save</button></div>
     </div>
     <div class="win stack" style="gap:10px">
