@@ -76,7 +76,8 @@ function hairFront(style, c) {
 /* ---------------- outfits ---------------- */
 function knight(p) {
   const t = p.tunic;
-  const legs = limb("M44 96 L42 128", "#4b5163", 11) + limb("M56 96 L58 128", "#4b5163", 11) +
+  const pc = p.pants || "#4b5163";
+  const legs = limb("M44 96 L42 128", pc, 11) + limb("M56 96 L58 128", pc, 11) +
     part("M34 124 L48 124 L48 146 L31 146 Q30 140 34 137 Z", STEEL, "M34 124 L39 124 L39 146 L31 146 Q30 140 34 137 Z", "M44 126 L47 126 L47 140 L44 140 Z") +
     part("M52 124 L66 124 L66 137 Q70 140 69 146 L52 146 Z", STEEL, "M52 124 L56 124 L56 146 L52 146 Z", "M62 126 L65 126 L65 140 L62 140 Z") +
     `<path d="M34 130 L48 130 M52 130 L66 130" stroke="${GOLD}" stroke-width="2.4"/>`;
@@ -97,7 +98,8 @@ function knight(p) {
 }
 function ranger(p) {
   const t = p.tunic, green = "#3f6b45";
-  const legs = limb("M44 96 L42 126", "#3b3d2e", 11) + limb("M56 96 L58 126", "#3b3d2e", 11) +
+  const pc = p.pants || "#3b3d2e";
+  const legs = limb("M44 96 L42 126", pc, 11) + limb("M56 96 L58 126", pc, 11) +
     part("M35 116 L48 116 L48 146 L31 146 Q30 140 35 137 Z", LEATHER, "M35 116 L39 116 L39 146 L31 146 Q30 140 35 137 Z", null) +
     part("M52 116 L65 116 L65 137 Q70 140 69 146 L52 146 Z", LEATHER, "M52 116 L56 116 L56 146 L52 146 Z", null) +
     `<path d="M35 122 L48 124 M35 130 L48 132 M52 124 L65 122 M52 132 L65 130" stroke="${DLEATHER}" stroke-width="2.2"/>
@@ -119,7 +121,8 @@ function ranger(p) {
 }
 function adventurer(p) {
   const t = p.tunic, shirt = "#eee6d6", shd = "#c9bba0";
-  const legs = limb("M44 96 L41 126", "#3a2c2c", 12) + limb("M56 96 L59 126", "#3a2c2c", 12) +
+  const pc = p.pants || "#3a2c2c";
+  const legs = limb("M44 96 L41 126", pc, 12) + limb("M56 96 L59 126", pc, 12) +
     `<rect x="36" y="106" width="9" height="8" rx="2" transform="rotate(8 40 110)" ${st(LEATHER)}/><rect x="55" y="106" width="9" height="8" rx="2" transform="rotate(-8 60 110)" ${st(LEATHER)}/>` +
     part("M33 120 L48 120 L48 146 L29 146 Q28 139 33 136 Z", LEATHER, "M33 120 L38 120 L38 146 L29 146 Q28 139 33 136 Z", null) +
     part("M52 120 L67 120 L67 136 Q72 139 71 146 L52 146 Z", LEATHER, "M52 120 L56 120 L56 146 L52 146 Z", null) +
@@ -153,6 +156,13 @@ const ITEMS = {
     <path d="M24 84 L24 114 M15 96 L33 96" stroke="${GOLD}" stroke-width="3"/>`,
   cape: () => part(CAPE_D, "#c8362f", "M33 56 L40 56 L32 138 Q25 136 20 132 Z", null) + `<path d="M22 128 Q50 136 78 128" fill="none" stroke="${GOLD}" stroke-width="2.4"/>`,
   goldcape: () => part(CAPE_D, "#6a34b0", "M33 56 L40 56 L32 138 Q25 136 20 132 Z", null) + `<path d="M21 128 Q50 136 79 128 L80 132 Q50 140 20 132 Z" ${st(GOLD)}/>`,
+  cape_forest: () => part(CAPE_D, "#2f6b3c", "M33 56 L40 56 L32 138 Q25 136 20 132 Z", null) + `<path d="M24 120 L30 132 M40 124 L42 136 M60 124 L58 136 M76 120 L70 132" stroke="${shade("#2f6b3c", -0.35)}" stroke-width="2.4" stroke-linecap="round"/>`,
+  sword_gold: () => `<path d="M74 40 L79 48 L79 92 L69 92 L69 48 Z" ${st("#ffe27a")}/><path d="M74 48 L74 90" stroke="#d99a1a" stroke-width="2"/>
+    <path d="M62 90 Q74 96 86 90 L86 96 Q74 100 62 96 Z" ${st("#7a4bd6")}/><rect x="71.5" y="96" width="5" height="10" ${st("#3a1f5e")}/><circle cx="74" cy="108" r="3" ${st("#ffe27a")}/>`,
+  shield_steel: () => `<circle cx="24" cy="98" r="15" ${st(STEEL)}/><path d="M12 92 Q16 84 24 83" fill="none" stroke="#fff" stroke-width="2.4" opacity=".7" stroke-linecap="round"/>
+    <circle cx="24" cy="98" r="10" fill="none" stroke="${shade(STEEL, -0.3)}" stroke-width="2.4"/><circle cx="24" cy="98" r="4" ${st(GOLD)}/>`,
+  shield_royal: () => `<path d="${SHIELD_D}" ${ff("#2f56c8")}/><path d="M12 80 L18 80 L18 116 Q13 110 12 100 Z" ${ff(shade("#2f56c8", -0.3))}/>${ol(SHIELD_D)}
+    <path d="M14 80 L34 80" stroke="${GOLD}" stroke-width="3"/><path d="M17 92 L17 104 L31 104 L31 92 L27.5 97 L24 90 L20.5 97 Z" ${st(GOLD)}/>`,
   hat: () => `<ellipse cx="50" cy="12" rx="30" ry="6.5" ${st("#3f3596")}/>` +
     part("M34 10 Q42 -10 58 -24 Q53 -12 57 -2 Q62 5 66 10 Z", "#4a3fb0", "M34 10 Q42 -10 58 -24 Q47 -8 42 10 Z", null) +
     `<path d="M35 7 Q50 12 65 7" fill="none" stroke="${GOLD}" stroke-width="3" stroke-linecap="round"/>`,
@@ -164,6 +174,7 @@ const ITEMS = {
 };
 // how each item is framed when shown on its own: [x, y, w, h]
 const ITEM_BOX = {
+  cape_forest: [14, 52, 72, 92], sword_gold: [58, 36, 32, 76], shield_steel: [6, 80, 36, 36], shield_royal: [8, 76, 32, 48],
   sword: [60, 40, 28, 68], staff: [58, 6, 30, 70], shield: [8, 76, 32, 48], cape: [14, 52, 72, 92],
   goldcape: [14, 52, 72, 92], hat: [16, -28, 68, 44], helm: [22, -18, 56, 66], crown: [28, -14, 44, 28],
 };
@@ -187,6 +198,21 @@ export function heroSVG(p, opts = {}) {
   </svg>`;
 }
 export function itemSVG(id, colour) {
+  if (id.startsWith("dye") || id.startsWith("shirt")) {
+    return `<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M20 8 L40 8 L52 16 L48 28 L42 26 L42 54 L18 54 L18 26 L12 28 L8 16 Z" ${st(colour)}/>
+      <path d="M18 26 L18 54 L24 54 L24 22 Z" ${ff(shade(colour, -0.3))}/>
+      <path d="M24 8 L30 18 L36 8" ${st(shade(colour, -0.3))}/>
+      <path d="M30 26 L34 32 L30 40 L26 32 Z" ${st(GOLD)}/>
+    </svg>`;
+  }
+  if (id.startsWith("pants")) {
+    return `<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M16 8 L44 8 L48 54 L34 54 L30 26 L26 54 L12 54 Z" ${st(colour)}/>
+      <path d="M16 8 L22 8 L19 54 L12 54 Z" ${ff(shade(colour, -0.3))}/>
+      <rect x="15" y="6" width="30" height="7" rx="1.5" ${st(DLEATHER)}/><rect x="27" y="5" width="6" height="9" rx="1.5" ${st(GOLD)}/>
+    </svg>`;
+  }
   if (id.startsWith("dye")) {
     return `<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <rect x="23" y="6" width="14" height="10" rx="3" ${st("#c9a06a")}/>

@@ -185,6 +185,15 @@ h2{display:inline-block;align-self:flex-start;font-size:19px;color:#fff;backgrou
 .seg button{background:var(--deep);border:2px solid var(--card2);border-radius:10px;padding:7px 4px;font-weight:800;color:var(--muted)}
 .seg button[aria-pressed="true"]{border-color:var(--gold);background:linear-gradient(var(--card),var(--card2));color:#fff}
 
+/* gear slots */
+.slot-btn{gap:4px;padding:8px 4px}
+.slot-btn .gear-icon{width:56px;height:56px}
+.gear-icon.empty{background:var(--deep);border:2px dashed var(--card)}
+.slot-name{font-family:var(--display);font-size:15px;letter-spacing:.03em;color:#fff;text-shadow:var(--stroke)}
+.slot-btn small{font-size:11px;color:var(--muted)}
+.gear-menu .ch.locked .ch-name{color:var(--muted)}
+.sheet .win h2{align-self:auto}
+
 /* chat */
 .chatlog{margin-top:14px;height:min(52vh,420px);overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:6px;padding:10px;background:var(--deep);border:2px solid var(--card2);border-radius:12px}
 .chatlog>:first-child{margin-top:auto}
@@ -310,6 +319,11 @@ input::placeholder{color:#7f8ccc}
       </div>
       <div class="note opt-label" style="margin-top:12px">Hair style</div>
       <div class="styles" id="hairStyles" role="group" aria-label="Hair style"></div>
+    </div>
+    <div class="win">
+      <h2>Gear</h2>
+      <p class="note" style="margin-top:10px">Tap a slot to see every item for it. Locked items unlock by completing challenges in the Rewards tab.</p>
+      <div class="styles slots" id="gearSlots" style="margin-top:12px"></div>
     </div>
     <div class="win stack" style="gap:10px">
       <h2>Character</h2>

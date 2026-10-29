@@ -22,32 +22,53 @@ const TITLES = [
   { lv: 8, t: "Keeper of Routines" }, { lv: 12, t: "Archmage of Mornings" }, { lv: 20, t: "Legend of the Daily Grind" },
 ];
 const STREAK_TITLES = [{ d: 7, t: "Week Warden" }, { d: 30, t: "Moon Marathoner" }];
+// Gear by slot. Shirts recolour the outfit's tabard and scarf; pants recolour the legs.
 const GEAR = [
-  { id: "sword", slot: "hand", name: "Iron Sword", desc: "A trusty blade for your first dungeon." },
-  { id: "shield", slot: "off", name: "Oak Shield", desc: "Blocks excuses. Mostly." },
-  { id: "cape", slot: "back", name: "Hero's Cape", desc: "Flutters dramatically on morning walks." },
-  { id: "dye_shadow", slot: "dye", name: "Shadow Dye", desc: "Recolours your tunic midnight black.", color: "#2a2a3a" },
   { id: "helm", slot: "head", name: "Knight Helm", desc: "Steel visor for the hardest quests." },
   { id: "hat", slot: "head", name: "Wizard Hat", desc: "Pointy. Increases perceived wisdom." },
-  { id: "dye_gold", slot: "dye", name: "Sunlit Dye", desc: "Recolours your tunic warm gold.", color: "#d4a017" },
-  { id: "staff", slot: "hand", name: "Arcane Staff", desc: "Topped with a glowing focus orb." },
-  { id: "goldcape", slot: "back", name: "Royal Mantle", desc: "Golden trim earned through consistency." },
   { id: "crown", slot: "head", name: "Golden Crown", desc: "Ruler of your own routine." },
+  { id: "dye_shadow", slot: "shirt", name: "Shadow Tunic", desc: "Midnight black, for quiet heroes.", color: "#363552" },
+  { id: "dye_gold", slot: "shirt", name: "Sunlit Tunic", desc: "Warm gold that catches the light.", color: "#d4a017" },
+  { id: "shirt_forest", slot: "shirt", name: "Forest Tunic", desc: "Deep green, made for long walks.", color: "#2f8f5a" },
+  { id: "pants_shadow", slot: "pants", name: "Shadow Trousers", desc: "Dark and quiet for late-night study.", color: "#23233a" },
+  { id: "pants_royal", slot: "pants", name: "Royal Leggings", desc: "Regal blue for a rising star.", color: "#3a46b8" },
+  { id: "pants_ember", slot: "pants", name: "Ember Breeches", desc: "Glowing red, like a week-long streak.", color: "#9a2d1c" },
+  { id: "cape", slot: "back", name: "Hero's Cape", desc: "Flutters dramatically on morning walks." },
+  { id: "goldcape", slot: "back", name: "Royal Mantle", desc: "Golden trim earned through consistency." },
+  { id: "cape_forest", slot: "back", name: "Ranger Cloak", desc: "Green and weathered, never thirsty." },
+  { id: "sword", slot: "hand", name: "Iron Sword", desc: "A trusty blade for your first dungeon." },
+  { id: "staff", slot: "hand", name: "Arcane Staff", desc: "Topped with a glowing focus orb." },
+  { id: "sword_gold", slot: "hand", name: "Golden Blade", desc: "Forged from a hundred finished quests." },
+  { id: "shield", slot: "off", name: "Oak Shield", desc: "Blocks excuses. Mostly." },
+  { id: "shield_steel", slot: "off", name: "Steel Buckler", desc: "Light, round and well trained." },
+  { id: "shield_royal", slot: "off", name: "Royal Aegis", desc: "Carried by those with perfect weeks." },
 ];
-// Each challenge unlocks one piece of gear. goal(c) returns [progress, target] from the player's counts.
+const GEAR_SLOTS = [
+  { slot: "head", name: "Helmet" }, { slot: "shirt", name: "Shirt" }, { slot: "pants", name: "Pants" },
+  { slot: "back", name: "Cape" }, { slot: "hand", name: "Sword" }, { slot: "off", name: "Shield" },
+];
+// Each challenge unlocks one piece of gear. prog(c) returns [progress, target] from the player's counts.
 const CHALLENGES = [
   { id: "first", name: "First Steps", goal: "Complete your first quest", gear: "sword", prog: (c) => [c.total, 1] },
   { id: "sweep", name: "Clean Sweep", goal: "Complete every quest in a single day", gear: "shield", prog: (c) => [c.clears, 1] },
   { id: "streak3", name: "Momentum", goal: "Reach a 3-day streak", gear: "cape", prog: (c) => [c.best, 3] },
+  { id: "trained", name: "Trained", goal: "Spend 3 skill points", gear: "shield_steel", prog: (c) => [c.spent, 3] },
+  { id: "trail", name: "Trailblazer", goal: "Complete Exercise 10 times", gear: "shirt_forest", prog: (c) => [c.exercise, 10] },
+  { id: "owl", name: "Night Owl", goal: "Complete work or study 10 times", gear: "pants_shadow", prog: (c) => [c.study, 10] },
+  { id: "hydrated", name: "Hydrated", goal: "Drink 2.5L of water 14 times", gear: "cape_forest", prog: (c) => [c.water, 14] },
   { id: "q25", name: "Quest Hunter", goal: "Complete 25 quests", gear: "dye_shadow", prog: (c) => [c.total, 25] },
+  { id: "lv5", name: "Rising Star", goal: "Reach level 5", gear: "pants_royal", prog: (c) => [c.level, 5] },
+  { id: "streak7", name: "Week Warden", goal: "Reach a 7-day streak", gear: "pants_ember", prog: (c) => [c.best, 7] },
+  { id: "clear7", name: "Perfect Week", goal: "Get 7 full clears", gear: "shield_royal", prog: (c) => [c.clears, 7] },
   { id: "str5", name: "Iron Will", goal: "Reach Strength level 5", gear: "helm", prog: (c) => [c.STR, 5] },
   { id: "int5", name: "Bookworm", goal: "Reach Intelligence level 5", gear: "hat", prog: (c) => [c.INT, 5] },
   { id: "hlt5", name: "Glowing", goal: "Reach Health level 5", gear: "dye_gold", prog: (c) => [c.HLT, 5] },
   { id: "clear10", name: "Unstoppable", goal: "Get 10 full clears", gear: "staff", prog: (c) => [c.clears, 10] },
   { id: "streak14", name: "Fortnight Hero", goal: "Reach a 14-day streak", gear: "goldcape", prog: (c) => [c.best, 14] },
   { id: "lv10", name: "Ruler of Routine", goal: "Reach level 10", gear: "crown", prog: (c) => [c.level, 10] },
+  { id: "q100", name: "Centurion", goal: "Complete 100 quests", gear: "sword_gold", prog: (c) => [c.total, 100] },
 ];
-const SLOTS = ["head", "back", "hand", "off", "dye"];
+const SLOTS = ["head", "shirt", "pants", "back", "hand", "off"];
 
 const dkey = (d) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
 const today = () => dkey(new Date());
@@ -80,6 +101,7 @@ function migrate(st) {
   if (!st.unlocked) st.unlocked = (st.owned || []).slice();
   if (!st.clearXp) st.clearXp = {};
   st.look = normLook(st.look);
+  if (st.equip && st.equip.dye) { st.equip.shirt = st.equip.dye; delete st.equip.dye; }
   // v2 quests: three core quests worth the same XP, attributes raised with skill points.
   if (st.qv !== 2) {
     st.quests = defaultQuests();
@@ -125,10 +147,11 @@ function normLook(l) {
 function heroParts(equip) {
   equip = equip || {};
   const look = normLook(equip.body ? { body: equip.body, hair: equip.hair, hc: equip.hc, skin: equip.skin, outfit: equip.outfit } : equip.look);
-  const dye = equip.dye ? GEAR.find((g) => g.id === equip.dye) : null;
+  const shirt = GEAR.find((g) => g.id === (equip.shirt || equip.dye));
+  const pants = GEAR.find((g) => g.id === equip.pants);
   return {
     body: look.body, hair: look.hair, hairColor: HAIR_COLOURS[look.hc], skin: SKIN_TONES[look.skin], outfit: look.outfit,
-    tunic: dye ? dye.color : OUTFITS[look.outfit].colour, head: equip.head, back: equip.back, hand: equip.hand, off: equip.off,
+    tunic: shirt ? shirt.color : OUTFITS[look.outfit].colour, pants: pants ? pants.color : null, head: equip.head, back: equip.back, hand: equip.hand, off: equip.off,
   };
 }
 function drawSprite(el, cls, equip, opts) { el.innerHTML = heroSVG(heroParts(equip), opts || {}); }
@@ -196,11 +219,18 @@ function refundSkillPoints() {
   return undone;
 }
 function totalQuests() { return Object.values(S.days).reduce((n, d) => n + Object.keys(d).length, 0); }
+// how many times one of the three core quests (by position) has been completed
+function coreDone(i) {
+  const q = S.quests.filter((x) => x.core)[i];
+  return q ? Object.values(S.days).filter((d) => d[q.id]).length : 0;
+}
 function counts() {
   return {
     total: totalQuests(), clears: Object.keys(S.clears).length, best: bestStreak(),
     level: levelInfo(S.xp).level,
     STR: S.attr.STR, INT: S.attr.INT, HLT: S.attr.HLT,
+    spent: Object.values(S.attr).reduce((n, l) => n + (l - 1), 0),
+    exercise: coreDone(0), water: coreDone(1), study: coreDone(2),
   };
 }
 // Unlocks are permanent: once a challenge is met, its gear stays yours even if a quest is later undone.
@@ -344,6 +374,56 @@ function floatText(ev, txt) {
   f.style.left = r.left + "px"; f.style.top = r.top - 6 + "px";
   document.body.appendChild(f); setTimeout(() => f.remove(), 1000);
 }
+/* ================= gear menus ================= */
+const challengeFor = (g) => CHALLENGES.find((ch) => ch.gear === g.id);
+function renderGearSlots() {
+  const box = $("#gearSlots"); box.innerHTML = "";
+  GEAR_SLOTS.forEach(({ slot, name }) => {
+    const items = GEAR.filter((g) => g.slot === slot);
+    const have = items.filter((g) => S.unlocked.includes(g.id)).length;
+    const worn = items.find((g) => S.equip[slot] === g.id);
+    const b = document.createElement("button"); b.type = "button"; b.className = "style-btn slot-btn";
+    b.setAttribute("aria-label", name + ": " + (worn ? worn.name : "nothing equipped") + ", " + have + " of " + items.length + " unlocked");
+    const icon = worn ? gearIcon(worn) : Object.assign(document.createElement("div"), { className: "gear-icon empty" });
+    const t = document.createElement("span"); t.className = "slot-name"; t.textContent = name;
+    const c = document.createElement("small"); c.className = "num"; c.textContent = have + " / " + items.length;
+    b.append(icon, t, c); b.onclick = () => openGearMenu(slot); box.appendChild(b);
+  });
+}
+function openGearMenu(slot) {
+  const info = GEAR_SLOTS.find((x) => x.slot === slot);
+  const c = counts();
+  openSheet((w, close) => {
+    const head = document.createElement("div"); head.className = "spread";
+    const h = document.createElement("h2"); h.textContent = info.name;
+    const x = document.createElement("button"); x.className = "iconbtn"; x.textContent = "Close"; x.onclick = close;
+    head.append(h, x); w.appendChild(head);
+    const list = document.createElement("ul"); list.className = "clist gear-menu";
+    GEAR.filter((g) => g.slot === slot).forEach((g) => {
+      const own = S.unlocked.includes(g.id), eq = S.equip[slot] === g.id, ch = challengeFor(g);
+      const li = document.createElement("li"); li.className = "ch" + (own ? " done" : " locked") + (eq ? " equipped" : "");
+      li.appendChild(gearIcon(g));
+      const mid = document.createElement("div"); mid.style.minWidth = "0";
+      const nm = document.createElement("div"); nm.className = "ch-name"; nm.textContent = own ? g.name : "???";
+      const sub = document.createElement("div"); sub.className = "ch-goal";
+      sub.textContent = own ? g.desc : "Unlock: " + (ch ? ch.goal : "a future challenge");
+      mid.append(nm, sub);
+      if (!own && ch) {
+        const [hv, need] = ch.prog(c);
+        const bar = document.createElement("div"); bar.className = "bar"; bar.innerHTML = '<i style="width:' + Math.min(100, (hv / need) * 100) + '%"></i>';
+        const pr = document.createElement("div"); pr.className = "ch-prog num"; pr.textContent = Math.min(hv, need) + " / " + need;
+        mid.append(bar, pr);
+      }
+      const b = document.createElement("button"); b.className = "btn" + (eq ? " gold" : " ghost");
+      b.textContent = own ? (eq ? "Unequip" : "Equip") : "Locked"; b.disabled = !own;
+      b.setAttribute("aria-label", own ? (eq ? "Unequip " : "Equip ") + g.name : "Locked item");
+      b.onclick = () => { toggleGear(g); openGearMenu(slot); };
+      li.append(mid, b); list.appendChild(li);
+    });
+    w.appendChild(list);
+  });
+}
+
 function openSheet(build) {
   const sh = $("#sheet"); sh.innerHTML = "";
   const w = document.createElement("div"); w.className = "win"; sh.appendChild(w);
@@ -505,6 +585,7 @@ function render() {
   });
   if (document.activeElement !== $("#nameIn")) $("#nameIn").value = S.name;
   renderAppearance();
+  renderGearSlots();
   $("#acct").textContent = me ? "Signed in as " + (me.email || me.displayName || "Google user") + ". Your progress syncs to every device you sign in on." : "";
 
   // challenges → gear
