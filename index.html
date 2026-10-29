@@ -103,9 +103,14 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
 .clear{font-family:var(--display);color:var(--gold);font-size:14px}
 
 /* stats */
-.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
-.stat{display:grid;grid-template-columns:1fr auto;column-gap:10px;row-gap:2px;align-items:baseline;min-width:0}
-.stat small,.stat .bar{grid-column:1/-1}
+.stats{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}
+.stat{display:grid;grid-template-columns:minmax(0,1fr) auto auto;column-gap:12px;align-items:center;min-width:0}
+.stat-info{min-width:0;display:flex;flex-direction:column}
+.stat .up{padding:6px 12px}
+.sp{font-family:var(--display);font-size:13px;color:var(--muted)}
+.sp.has{color:var(--gold)}
+.qdesc{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.nav .dot.gold-dot{background:var(--gold)}
 .stat-lv{font-family:var(--display);font-size:13px;color:var(--ink)}
 @media (max-width:520px){.stats{grid-template-columns:1fr}}
 .stat{border:2px solid var(--line);border-radius:6px;padding:10px;background:var(--well)}
@@ -251,16 +256,16 @@ input{font:inherit;font-size:16px;color:var(--ink);background:var(--deep);border
       <ul class="qlist" id="qlist"></ul>
       <div class="spread" style="margin-top:12px">
         <span class="clear" id="clearmsg"></span>
-        <button class="btn" id="addq">+ New quest</button>
+        <button class="btn" id="addq">+ Add your own quest</button>
       </div>
     </div>
   </section>
 
   <section class="panel stack" id="p-hero" hidden>
     <div class="win">
-      <h2>Attributes</h2>
+      <div class="spread"><h2>Attributes</h2><span class="sp num" id="spWrap"><span id="sp">0</span> skill points</span></div>
       <div class="stats" id="stats"></div>
-      <p class="note" style="margin-top:10px">Each quest trains Strength, Intelligence or Health.</p>
+      <p class="note" style="margin-top:10px">Complete every daily quest to earn a skill point, then spend it to level up an attribute.</p>
     </div>
     <div class="win">
       <h2>Appearance</h2>
@@ -340,7 +345,7 @@ input{font:inherit;font-size:16px;color:var(--ink);background:var(--deep);border
 
   <nav class="nav" aria-label="Menu"><div class="nav-in">
     <button data-tab="quests" aria-current="true">Quests</button>
-    <button data-tab="hero">Hero</button>
+    <button data-tab="hero">Hero<span class="dot gold-dot" id="heroDot" hidden aria-label="Skill points to spend"></span></button>
     <button data-tab="rewards">Rewards</button>
     <button data-tab="guild">Guild<span class="dot" id="guildDot" hidden aria-label="New messages"></span></button>
     <button data-tab="log">Log</button>

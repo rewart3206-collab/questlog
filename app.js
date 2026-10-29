@@ -3,16 +3,18 @@ const SDK = "https://www.gstatic.com/firebasejs/10.12.2/";
 
 /* ================= game data ================= */
 const STATS = {
-  STR: { name: "Strength", hint: "Exercise, movement" },
-  INT: { name: "Intelligence", hint: "Reading, learning" },
-  HLT: { name: "Health", hint: "Sleep, food, water, mind" },
+  STR: { name: "Strength", hint: "Physical power" },
+  INT: { name: "Intelligence", hint: "Knowledge and focus" },
+  HLT: { name: "Health", hint: "Stamina and resilience" },
 };
 const TUNIC = "#b8423a";
-const DIFF = {
-  easy: { name: "Easy", xp: 10 },
-  medium: { name: "Medium", xp: 25 },
-  hard: { name: "Hard", xp: 50 },
-};
+const QUEST_XP = 20;        // every quest is worth the same
+const MAX_EXTRA_QUESTS = 2; // on top of the 3 core quests
+const defaultQuests = () => [
+  { id: uid(), name: "Exercise", desc: "Training, climbing or a walk", core: true },
+  { id: uid(), name: "Drink 2.5L of water", desc: "", core: true },
+  { id: uid(), name: "15 minutes of work or study", desc: "", core: true },
+];
 const TITLES = [
   { lv: 1, t: "Novice" }, { lv: 3, t: "Habit Squire" }, { lv: 5, t: "Streak Knight" },
   { lv: 8, t: "Keeper of Routines" }, { lv: 12, t: "Archmage of Mornings" }, { lv: 20, t: "Legend of the Daily Grind" },
@@ -39,7 +41,7 @@ const CHALLENGES = [
   { id: "str5", name: "Iron Will", goal: "Reach Strength level 5", gear: "helm", prog: (c) => [c.STR, 5] },
   { id: "int5", name: "Bookworm", goal: "Reach Intelligence level 5", gear: "hat", prog: (c) => [c.INT, 5] },
   { id: "hlt5", name: "Glowing", goal: "Reach Health level 5", gear: "dye_gold", prog: (c) => [c.HLT, 5] },
-  { id: "hard20", name: "No Easy Way", goal: "Complete 20 Hard quests", gear: "staff", prog: (c) => [c.hard, 20] },
+  { id: "clear10", name: "Unstoppable", goal: "Get 10 full clears", gear: "staff", prog: (c) => [c.clears, 10] },
   { id: "streak14", name: "Fortnight Hero", goal: "Reach a 14-day streak", gear: "goldcape", prog: (c) => [c.best, 14] },
   { id: "lv10", name: "Ruler of Routine", goal: "Reach level 10", gear: "crown", prog: (c) => [c.level, 10] },
 ];
@@ -52,15 +54,8 @@ const uid = () => Math.random().toString(36).slice(2, 9);
 function freshState(name) {
   return {
     v: 1, at: Date.now(), name: name || "Adventurer", xp: 0,
-    statXp: { STR: 0, INT: 0, HLT: 0 },
-    quests: [
-      { id: uid(), name: "Walk for 20 minutes", stat: "STR", diff: "medium" },
-      { id: uid(), name: "Read 10 pages", stat: "INT", diff: "easy" },
-      { id: uid(), name: "Drink 2 litres of water", stat: "HLT", diff: "easy" },
-      { id: uid(), name: "In bed by 11pm", stat: "HLT", diff: "medium" },
-      { id: uid(), name: "10 minutes of meditation", stat: "HLT", diff: "easy" },
-      { id: uid(), name: "Gym session", stat: "STR", diff: "hard" },
-    ],
+    attr: { STR: 1, INT: 1, HLT: 1 }, qv: 2,
+    quests: defaultQuests(),
     treasures: [
       { id: uid(), name: "One episode of a show", every: 5, base: 0 },
       { id: uid(), name: "A fancy coffee", every: 8, base: 0 },
@@ -83,6 +78,12 @@ function migrate(st) {
   if (!st.unlocked) st.unlocked = (st.owned || []).slice();
   if (!st.clearXp) st.clearXp = {};
   st.look = normLook(st.look);
+  // v2 quests: three core quests worth the same XP, attributes raised with skill points.
+  if (st.qv !== 2) {
+    st.quests = defaultQuests();
+    st.attr = { STR: 1, INT: 1, HLT: 1 };
+    st.qv = 2;
+  }
   const total = Object.values(st.days || {}).reduce((n, d) => n + Object.keys(d).length, 0);
   (st.treasures || []).forEach((t) => {
     if (t.every == null) { t.every = Math.max(3, Math.round((t.cost || 40) / 8)); t.base = total; delete t.cost; }
@@ -212,14 +213,25 @@ function bestStreak() {
   for (const k of keys) { const d = new Date(k + "T12:00:00"); run = prev && (d - prev) / 864e5 < 1.5 ? run + 1 : 1; best = Math.max(best, run); prev = d; }
   return best;
 }
+// One skill point per full-clear day; each point raises an attribute by one level.
+function skillPoints() {
+  const earned = Object.keys(S.clears).length;
+  const spent = Object.values(S.attr).reduce((n, l) => n + (l - 1), 0);
+  return Math.max(0, earned - spent);
+}
+function upgradeAttr(k) {
+  if (skillPoints() < 1) { toast("Complete every quest in a day to earn a skill point"); return; }
+  S.attr[k]++; logEvent(STATS[k].name + " upgraded to level " + S.attr[k]);
+  const fresh = checkUnlocks();
+  save(); render(); toast(STATS[k].name + " is now level " + S.attr[k]);
+  fresh.forEach(showUnlock);
+}
 function totalQuests() { return Object.values(S.days).reduce((n, d) => n + Object.keys(d).length, 0); }
 function counts() {
-  let hard = 0;
-  Object.values(S.days).forEach((d) => Object.values(d).forEach((r) => { if (r && r.xp >= 50) hard++; }));
   return {
-    total: totalQuests(), clears: Object.keys(S.clears).length, best: bestStreak(), hard,
+    total: totalQuests(), clears: Object.keys(S.clears).length, best: bestStreak(),
     level: levelInfo(S.xp).level,
-    STR: statLevel(S.statXp.STR || 0).level, INT: statLevel(S.statXp.INT || 0).level, HLT: statLevel(S.statXp.HLT || 0).level,
+    STR: S.attr.STR, INT: S.attr.INT, HLT: S.attr.HLT,
   };
 }
 // Unlocks are permanent: once a challenge is met, its gear stays yours even if a quest is later undone.
@@ -277,18 +289,17 @@ function toggleQuest(q, ev) {
   const before = levelInfo(S.xp).level;
   if (S.days[k][q.id]) {
     const r = S.days[k][q.id]; delete S.days[k][q.id];
-    S.xp = Math.max(0, S.xp - r.xp); S.statXp[q.stat] = Math.max(0, (S.statXp[q.stat] || 0) - r.xp);
+    S.xp = Math.max(0, S.xp - r.xp);
     if (S.clears[k]) { delete S.clears[k]; if (S.clearXp[k]) { S.xp = Math.max(0, S.xp - S.clearXp[k]); delete S.clearXp[k]; } }
     toast("Quest undone");
   } else {
-    const d = DIFF[q.diff];
-    const xp = d.xp;
-    S.days[k][q.id] = { xp }; S.xp += xp; S.statXp[q.stat] = (S.statXp[q.stat] || 0) + xp;
+    const xp = QUEST_XP;
+    S.days[k][q.id] = { xp }; S.xp += xp;
     logEvent("Completed “" + q.name + "” (+" + xp + " XP)");
     if (ev) floatText(ev, "+" + xp + " XP");
     if (S.quests.length && S.quests.every((x) => S.days[k][x.id]) && !S.clears[k]) {
-      const b = Math.max(10, S.quests.length * 5); S.clears[k] = 1; S.clearXp[k] = b; S.xp += b;
-      logEvent("Full clear! +" + b + " bonus XP"); toast("Full clear! +" + b + " bonus XP");
+      S.clears[k] = 1;
+      logEvent("Full clear! Earned a skill point"); toast("Full clear! +1 skill point. Spend it in the Hero tab");
     }
   }
   const after = levelInfo(S.xp).level;
@@ -381,15 +392,13 @@ function armedDelete(btn, onConfirm) {
   btn.onclick = () => { if (!armed) { armed = true; btn.textContent = "Tap again to delete"; btn.className = "btn danger"; return; } onConfirm(); };
 }
 function questForm(q) {
-  const isNew = !q; q = q || { id: uid(), name: "", stat: "STR", diff: "easy" };
-  let stat = q.stat, diff = q.diff;
+  const isNew = !q; q = q || { id: uid(), name: "", desc: "", core: false };
   openSheet((w, close) => {
-    w.innerHTML = "<h2>" + (isNew ? "New quest" : "Edit quest") + '</h2><label for="qn">Quest<input id="qn" maxlength="60" placeholder="e.g. Stretch for 5 minutes" autocomplete="off"></label><div><div class="note" style="margin-bottom:4px">Attribute it trains</div><div class="seg three" id="qs"></div></div><div><div class="note" style="margin-bottom:4px">Difficulty</div><div class="seg three" id="qd"></div></div><div class="actions"></div>';
-    w.querySelector("#qn").value = q.name;
-    segment(w.querySelector("#qs"), Object.fromEntries(Object.keys(STATS).map((k) => [k, { label: k, cls: k }])), stat, (k) => (stat = k));
-    segment(w.querySelector("#qd"), Object.fromEntries(Object.entries(DIFF).map(([k, d]) => [k, { label: d.name + " · " + d.xp + "xp" }])), diff, (k) => (diff = k));
+    w.innerHTML = "<h2>" + (isNew ? "New quest" : q.core ? "Edit daily quest" : "Edit quest") + '</h2><label for="qn">Quest<input id="qn" maxlength="60" placeholder="e.g. Stretch for 5 minutes" autocomplete="off"></label><label for="qdesc">Details (optional)<input id="qdesc" maxlength="80" placeholder="e.g. Before bed" autocomplete="off"></label><p class="note"></p><div class="actions"></div>';
+    w.querySelector("#qn").value = q.name; w.querySelector("#qdesc").value = q.desc || "";
+    w.querySelector("p.note").textContent = "Every quest is worth " + QUEST_XP + " XP." + (q.core ? " This is one of your 3 core quests: you can rename it, but not remove it." : "");
     const a = w.querySelector(".actions");
-    if (!isNew) {
+    if (!isNew && !q.core) {
       const del = document.createElement("button"); del.className = "btn ghost"; del.textContent = "Delete";
       armedDelete(del, () => { S.quests = S.quests.filter((x) => x.id !== q.id); save(); render(); close(); toast("Quest removed"); });
       a.appendChild(del);
@@ -398,7 +407,8 @@ function questForm(q) {
     const ok = document.createElement("button"); ok.className = "btn gold"; ok.textContent = isNew ? "Add quest" : "Save";
     ok.onclick = () => {
       const n = w.querySelector("#qn").value.trim(); if (!n) { w.querySelector("#qn").focus(); return; }
-      Object.assign(q, { name: n, stat, diff }); if (isNew) S.quests.push(q);
+      Object.assign(q, { name: n, desc: w.querySelector("#qdesc").value.trim() });
+      if (isNew) S.quests.push(q);
       save(); render(); close(); toast(isNew ? "Quest added" : "Quest saved");
     };
     a.appendChild(ok);
@@ -475,9 +485,10 @@ function render() {
   if (!S.quests.length) ql.innerHTML = '<li class="muted" style="padding:10px 2px">No quests yet. Add a daily habit to start earning XP.</li>';
   S.quests.forEach((q) => {
     const li = document.createElement("li"); li.className = "q" + (done[q.id] ? " done" : "");
-    const d = DIFF[q.diff], st = questStreak(q.id);
-    li.innerHTML = '<button class="check"></button><div class="qmain"><div class="qname"></div><div class="qmeta"><span class="chip ' + q.stat + '">' + q.stat + '</span><span class="num">' + d.xp + " XP</span>" + (st > 1 ? '<span class="flame num">' + st + "d streak</span>" : "") + '</div></div><button class="iconbtn">Edit</button>';
+    const st = questStreak(q.id);
+    li.innerHTML = '<button class="check"></button><div class="qmain"><div class="qname"></div><div class="qdesc"></div><div class="qmeta"><span class="num">' + QUEST_XP + " XP</span>" + (st > 1 ? '<span class="flame num">' + st + "d streak</span>" : "") + '</div></div><button class="iconbtn">Edit</button>';
     li.querySelector(".qname").textContent = q.name;
+    const qd = li.querySelector(".qdesc"); if (q.desc) qd.textContent = q.desc; else qd.remove();
     const chk = li.querySelector(".check");
     chk.textContent = done[q.id] ? "✓" : "";
     chk.setAttribute("aria-label", (done[q.id] ? "Undo " : "Complete ") + q.name);
@@ -487,14 +498,22 @@ function render() {
     ql.appendChild(li);
   });
   const n = S.quests.filter((q) => done[q.id]).length;
-  $("#clearmsg").textContent = S.clears[today()] ? "★ Full clear today" : S.quests.length ? n + " of " + S.quests.length + " done · clear all for bonus XP" : "";
+  $("#clearmsg").textContent = S.clears[today()] ? "★ Full clear today" : S.quests.length ? n + " of " + S.quests.length + " done · clear all for a skill point" : "";
+  const extras = S.quests.filter((q) => !q.core).length;
+  const addBtn = $("#addq");
+  addBtn.hidden = extras >= MAX_EXTRA_QUESTS;
+  addBtn.textContent = "+ Add your own quest (" + extras + "/" + MAX_EXTRA_QUESTS + ")";
 
   // attributes
+  const sp = skillPoints();
+  $("#sp").textContent = sp; $("#spWrap").classList.toggle("has", sp > 0);
+  $("#heroDot").hidden = sp < 1;
   const sg = $("#stats"); sg.innerHTML = "";
   Object.entries(STATS).forEach(([k, s]) => {
-    const sl = statLevel(S.statXp[k] || 0);
     const el = document.createElement("div"); el.className = "stat " + k;
-    el.innerHTML = '<span class="px stat-name">' + s.name + '</span><span class="stat-lv num">LV ' + sl.level + "</span><small>" + s.hint + '</small><div class="bar"><i style="width:' + (sl.into / sl.need) * 100 + '%"></i></div>';
+    el.innerHTML = '<div class="stat-info"><span class="px stat-name">' + s.name + '</span><small>' + s.hint + '</small></div><span class="stat-lv num">LV ' + S.attr[k] + '</span><button class="btn up" type="button">+1</button>';
+    const b = el.querySelector(".up"); b.disabled = sp < 1; b.setAttribute("aria-label", "Upgrade " + s.name);
+    b.onclick = () => upgradeAttr(k);
     sg.appendChild(el);
   });
 
