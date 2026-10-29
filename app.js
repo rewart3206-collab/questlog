@@ -4,15 +4,13 @@ const SDK = "https://www.gstatic.com/firebasejs/10.12.2/";
 /* ================= game data ================= */
 const STATS = {
   STR: { name: "Strength", hint: "Exercise, movement" },
-  INT: { name: "Intellect", hint: "Reading, learning" },
-  VIT: { name: "Vitality", hint: "Sleep, food, water" },
-  SPI: { name: "Spirit", hint: "Calm, people, chores" },
+  INT: { name: "Intelligence", hint: "Reading, learning" },
+  HLT: { name: "Health", hint: "Sleep, food, water, mind" },
 };
 const CLASSES = {
   warrior: { name: "Warrior", stat: "STR", tunic: "#b8423a" },
   scholar: { name: "Scholar", stat: "INT", tunic: "#3a6fc4" },
-  druid: { name: "Druid", stat: "VIT", tunic: "#2f8f5a" },
-  monk: { name: "Monk", stat: "SPI", tunic: "#8a5cc4" },
+  druid: { name: "Druid", stat: "HLT", tunic: "#2f8f5a" },
 };
 const DIFF = {
   easy: { name: "Easy", xp: 10, gold: 5 },
@@ -45,13 +43,13 @@ const uid = () => Math.random().toString(36).slice(2, 9);
 function freshState(name) {
   return {
     v: 1, at: Date.now(), name: name || "Adventurer", cls: "warrior", xp: 0, gold: 0,
-    statXp: { STR: 0, INT: 0, VIT: 0, SPI: 0 },
+    statXp: { STR: 0, INT: 0, HLT: 0 },
     quests: [
       { id: uid(), name: "Walk for 20 minutes", stat: "STR", diff: "medium" },
       { id: uid(), name: "Read 10 pages", stat: "INT", diff: "easy" },
-      { id: uid(), name: "Drink 2 litres of water", stat: "VIT", diff: "easy" },
-      { id: uid(), name: "In bed by 11pm", stat: "VIT", diff: "medium" },
-      { id: uid(), name: "10 minutes of meditation", stat: "SPI", diff: "easy" },
+      { id: uid(), name: "Drink 2 litres of water", stat: "HLT", diff: "easy" },
+      { id: uid(), name: "In bed by 11pm", stat: "HLT", diff: "medium" },
+      { id: uid(), name: "10 minutes of meditation", stat: "HLT", diff: "easy" },
       { id: uid(), name: "Gym session", stat: "STR", diff: "hard" },
     ],
     treasures: [
@@ -62,6 +60,17 @@ function freshState(name) {
     ],
     owned: [], equip: {}, title: "Novice", days: {}, clears: {}, log: [],
   };
+}
+
+// Older saves used four attributes (Vitality, Spirit) and a Monk class: fold them into Health / Druid.
+function migrate(st) {
+  if (!st || st.v !== 1) return st;
+  const old = { VIT: "HLT", SPI: "HLT" };
+  (st.quests || []).forEach((q) => { if (old[q.stat]) q.stat = old[q.stat]; if (!STATS[q.stat]) q.stat = "HLT"; });
+  const sx = st.statXp || {};
+  if (!("HLT" in sx)) st.statXp = { STR: sx.STR || 0, INT: sx.INT || 0, HLT: (sx.VIT || 0) + (sx.SPI || 0) };
+  if (!CLASSES[st.cls]) st.cls = "druid";
+  return st;
 }
 
 /* ================= levels ================= */
@@ -263,7 +272,7 @@ function questForm(q) {
   const isNew = !q; q = q || { id: uid(), name: "", stat: "STR", diff: "easy" };
   let stat = q.stat, diff = q.diff;
   openSheet((w, close) => {
-    w.innerHTML = "<h2>" + (isNew ? "New quest" : "Edit quest") + '</h2><label for="qn">Quest<input id="qn" maxlength="60" placeholder="e.g. Stretch for 5 minutes" autocomplete="off"></label><div><div class="note" style="margin-bottom:4px">Attribute it trains</div><div class="seg" id="qs"></div></div><div><div class="note" style="margin-bottom:4px">Difficulty</div><div class="seg three" id="qd"></div></div><div class="actions"></div>';
+    w.innerHTML = "<h2>" + (isNew ? "New quest" : "Edit quest") + '</h2><label for="qn">Quest<input id="qn" maxlength="60" placeholder="e.g. Stretch for 5 minutes" autocomplete="off"></label><div><div class="note" style="margin-bottom:4px">Attribute it trains</div><div class="seg three" id="qs"></div></div><div><div class="note" style="margin-bottom:4px">Difficulty</div><div class="seg three" id="qd"></div></div><div class="actions"></div>';
     w.querySelector("#qn").value = q.name;
     segment(w.querySelector("#qs"), Object.fromEntries(Object.keys(STATS).map((k) => [k, { label: k, cls: k }])), stat, (k) => (stat = k));
     segment(w.querySelector("#qd"), Object.fromEntries(Object.entries(DIFF).map(([k, d]) => [k, { label: d.name + " · " + d.xp + "xp" }])), diff, (k) => (diff = k));
@@ -347,7 +356,7 @@ function render() {
   Object.entries(STATS).forEach(([k, s]) => {
     const sl = statLevel(S.statXp[k] || 0);
     const el = document.createElement("div"); el.className = "stat " + k;
-    el.innerHTML = '<div class="row" style="justify-content:space-between"><span class="px">' + s.name + '</span><span class="px num">' + sl.level + "</span></div><small>" + s.hint + '</small><div class="bar"><i style="width:' + (sl.into / sl.need) * 100 + '%"></i></div>';
+    el.innerHTML = '<span class="px stat-name">' + s.name + '</span><span class="stat-lv num">LV ' + sl.level + "</span><small>" + s.hint + '</small><div class="bar"><i style="width:' + (sl.into / sl.need) * 100 + '%"></i></div>';
     sg.appendChild(el);
   });
 
@@ -623,14 +632,14 @@ async function startFirebase() {
     profileRef = doc(db, "profiles", user.uid);
 
     // instant start from this device's copy
-    try { const raw = localStorage.getItem(localKey()); if (raw) { const s = JSON.parse(raw); if (s && s.v === 1) { S = s; enterGame(); } } } catch (e) {}
+    try { const raw = localStorage.getItem(localKey()); if (raw) { const s = JSON.parse(raw); if (s && s.v === 1) { S = migrate(s); enterGame(); } } } catch (e) {}
 
     unsubs.push(onSnapshot(userRef, { includeMetadataChanges: false }, (snap) => {
       if (snap.metadata.hasPendingWrites) return;
       if (snap.exists()) {
         let remote = null; try { remote = JSON.parse(snap.data().save); } catch (e) {}
         if (remote && remote.v === 1 && (!S || (remote.at || 0) > (S.at || 0))) {
-          S = remote; try { localStorage.setItem(localKey(), JSON.stringify(S)); } catch (e) {}
+          S = migrate(remote); try { localStorage.setItem(localKey(), JSON.stringify(S)); } catch (e) {}
           enterGame(); setSync("Saved to the cloud");
         } else if (S && (S.at || 0) > (snap.data().at || 0)) {
           pushToCloud();

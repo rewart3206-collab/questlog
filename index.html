@@ -89,7 +89,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
 .qname{font-weight:700;overflow-wrap:anywhere}
 .qmeta{display:flex;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:2px}
 .chip{font-family:var(--display);font-size:12px;padding:0 6px;border-radius:3px;border:1.5px solid currentColor}
-.STR{color:var(--str)}.INT{color:var(--int)}.VIT{color:var(--vit)}.SPI{color:var(--spi)}
+.STR{color:var(--str)}.INT{color:var(--int)}.HLT{color:var(--vit)}
 .iconbtn{background:none;border:2px solid transparent;border-radius:4px;color:var(--muted);padding:4px 8px;font-family:var(--display)}
 .iconbtn:hover{border-color:var(--line);color:var(--ink)}
 .btn{background:var(--frame);color:var(--night);border:0;border-radius:4px;padding:9px 14px;font-family:var(--display);font-weight:600;font-size:15px;box-shadow:0 3px 0 #8d95c4}
@@ -103,7 +103,11 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
 .clear{font-family:var(--display);color:var(--gold);font-size:14px}
 
 /* stats */
-.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
+.stat{display:grid;grid-template-columns:1fr auto;column-gap:10px;row-gap:2px;align-items:baseline;min-width:0}
+.stat small,.stat .bar{grid-column:1/-1}
+.stat-lv{font-family:var(--display);font-size:13px;color:var(--ink)}
+@media (max-width:520px){.stats{grid-template-columns:1fr}}
 .stat{border:2px solid var(--line);border-radius:6px;padding:10px;background:var(--well)}
 .stat .px{font-size:18px}
 .stat .bar{height:8px;border-width:1.5px;margin-top:6px}
@@ -223,7 +227,7 @@ input{font:inherit;font-size:16px;color:var(--ink);background:var(--deep);border
     <div class="win">
       <h2>Attributes</h2>
       <div class="stats" id="stats"></div>
-      <p class="note" style="margin-top:10px">Each quest trains one attribute. Your class earns +20% XP on its favoured attribute.</p>
+      <p class="note" style="margin-top:10px">Each quest trains Strength, Intelligence or Health. Your class earns +20% XP on its favoured attribute.</p>
     </div>
     <div class="win">
       <h2>Titles</h2>
@@ -232,7 +236,7 @@ input{font:inherit;font-size:16px;color:var(--ink);background:var(--deep);border
     <div class="win stack" style="gap:10px">
       <h2>Character</h2>
       <label for="nameIn">Hero name (your guild sees this)<input id="nameIn" maxlength="24" autocomplete="off"></label>
-      <div><div class="note" style="margin-bottom:4px">Class</div><div class="seg" id="classSeg"></div></div>
+      <div><div class="note" style="margin-bottom:4px">Class</div><div class="seg three" id="classSeg"></div></div>
       <div class="actions"><button class="btn ghost" id="resetBtn">Start a new save</button></div>
     </div>
     <div class="win stack" style="gap:10px">
