@@ -308,13 +308,6 @@ function toggleGear(g) {
   if (!S.unlocked.includes(g.id)) return;
   S.equip[g.slot] = S.equip[g.slot] === g.id ? null : g.id; save(); render();
 }
-function claim(t) {
-  const have = totalQuests() - (t.base || 0);
-  if (have < t.every) { toast((t.every - have) + " more quests to unlock this"); return; }
-  t.base = (t.base || 0) + t.every;
-  logEvent("Claimed reward: " + t.name);
-  save(); render(); toast("Enjoy it: " + t.name);
-}
 
 /* ================= UI helpers ================= */
 function $(s) { return document.querySelector(s); }
@@ -366,28 +359,6 @@ function questForm(q) {
       Object.assign(q, { name: n, desc: w.querySelector("#qdesc").value.trim() });
       if (isNew) S.quests.push(q);
       save(); render(); close(); toast(isNew ? "Quest added" : "Quest saved");
-    };
-    a.appendChild(ok);
-  });
-}
-function treasureForm(t) {
-  const isNew = !t; t = t || { id: uid(), name: "", every: 10, base: totalQuests() };
-  openSheet((w, close) => {
-    w.innerHTML = "<h2>" + (isNew ? "New reward" : "Edit reward") + '</h2><label for="tn">Reward<input id="tn" maxlength="60" placeholder="e.g. Cinema trip" autocomplete="off"></label><label for="tc">Unlocks after this many completed quests<input id="tc" type="number" min="1" max="999" inputmode="numeric"></label><div class="actions"></div>';
-    w.querySelector("#tn").value = t.name; w.querySelector("#tc").value = t.every;
-    const a = w.querySelector(".actions");
-    if (!isNew) {
-      const del = document.createElement("button"); del.className = "btn ghost"; del.textContent = "Delete";
-      armedDelete(del, () => { S.treasures = S.treasures.filter((x) => x.id !== t.id); save(); render(); close(); });
-      a.appendChild(del);
-    }
-    const c = document.createElement("button"); c.className = "btn ghost"; c.textContent = "Cancel"; c.onclick = close; a.appendChild(c);
-    const ok = document.createElement("button"); ok.className = "btn gold"; ok.textContent = isNew ? "Add reward" : "Save";
-    ok.onclick = () => {
-      const n = w.querySelector("#tn").value.trim(); const every = Math.max(1, Math.min(999, parseInt(w.querySelector("#tc").value, 10) || 0));
-      if (!n) { w.querySelector("#tn").focus(); return; }
-      Object.assign(t, { name: n, every }); if (isNew) S.treasures.push(t);
-      save(); render(); close();
     };
     a.appendChild(ok);
   });
@@ -537,20 +508,6 @@ function render() {
   });
   $("#chcount").textContent = doneCount + " / " + CHALLENGES.length + " complete";
 
-  // treasures
-  const tl = $("#tlist"); tl.innerHTML = "";
-  if (!S.treasures.length) tl.innerHTML = '<li class="muted">Add a treat you would genuinely look forward to.</li>';
-  S.treasures.forEach((t) => {
-    const have = Math.max(0, tq - (t.base || 0)), ready = have >= t.every;
-    const li = document.createElement("li"); li.className = "t" + (ready ? " ready" : "");
-    li.innerHTML = '<div style="min-width:0"><span class="tname"></span><div class="bar"><i style="width:' + Math.min(100, (have / t.every) * 100) + '%"></i></div><small class="num"></small></div><button class="iconbtn">Edit</button><button class="btn"></button>';
-    li.querySelector(".tname").textContent = t.name;
-    li.querySelector("small").textContent = ready ? "Ready to claim" : Math.min(have, t.every) + " / " + t.every + " quests";
-    li.querySelector(".iconbtn").onclick = () => treasureForm(t);
-    const b = li.querySelector(".btn"); b.className = "btn" + (ready ? " gold" : " ghost"); b.textContent = ready ? "Claim" : "Locked";
-    b.disabled = !ready; b.setAttribute("aria-label", "Claim " + t.name); b.onclick = () => claim(t);
-    tl.appendChild(li);
-  });
 
   // log
   const hm = $("#heat"); hm.innerHTML = ""; const now = new Date();
@@ -686,7 +643,6 @@ function showTab(t) {
 }
 document.querySelectorAll(".nav button").forEach((b) => (b.onclick = () => showTab(b.dataset.tab)));
 $("#addq").onclick = () => questForm(null);
-$("#addt").onclick = () => treasureForm(null);
 $("#nameIn").addEventListener("input", (e) => { S.name = e.target.value.trim() || "Adventurer"; $("#hname").textContent = S.name; save(); });
 let resetArmed = false;
 $("#resetBtn").onclick = () => {
