@@ -132,6 +132,26 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
 .g .lv{font-family:var(--display);text-align:right;font-size:14px}
 .g .lv small{display:block;color:#ff9f43;font-size:12px}
 
+/* chat */
+.chatlog{margin-top:10px;height:min(52vh,420px);overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:6px;padding:10px;background:var(--deep);border:2px solid var(--line);border-radius:6px}
+.chatlog>:first-child{margin-top:auto}
+.chat-empty{margin:auto;text-align:center}
+.msg{display:grid;grid-template-columns:24px minmax(0,1fr);gap:8px;align-items:start;max-width:88%}
+.msg.mine{align-self:flex-end;grid-template-columns:minmax(0,1fr)}
+.msg.cont{margin-top:-3px}
+.msg canvas{width:24px;height:30px;image-rendering:pixelated}
+.bubble{background:var(--well);border:2px solid var(--line);border-radius:6px;padding:6px 10px;min-width:0}
+.msg.mine .bubble{border-color:var(--gold);background:#1d2047}
+.msg .who{font-family:var(--display);font-size:12px;color:var(--gold);display:flex;gap:10px;justify-content:space-between}
+.msg.mine .who{color:var(--muted)}
+.msg .who time{color:var(--muted);font-variant-numeric:tabular-nums}
+.msg .text{overflow-wrap:anywhere;white-space:pre-wrap}
+.msg-del{background:none;border:0;padding:2px 0 0;font-size:11px;color:var(--muted);display:block;margin-left:auto}
+.chatform{display:flex;gap:8px;margin-top:10px}
+.chatform input{flex:1;min-width:0}
+.nav .dot{display:inline-block;width:8px;height:8px;background:var(--hp);border-radius:2px;margin-left:4px;vertical-align:2px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
 /* log */
 .heat{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:10px}
 .heat div{aspect-ratio:1;border-radius:3px;background:var(--deep);border:1.5px solid var(--line);max-width:100%}
@@ -146,7 +166,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
 .sheet{position:fixed;inset:0;z-index:40;background:#05071599;display:flex;align-items:flex-end;justify-content:center;padding:16px max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
 .sheet .win{width:100%;max-width:520px;display:flex;flex-direction:column;gap:12px;max-height:100%;overflow:auto}
 label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
-input{font:inherit;color:var(--ink);background:var(--deep);border:2px solid var(--line);border-radius:4px;padding:9px 10px;width:100%}
+input{font:inherit;font-size:16px;color:var(--ink);background:var(--deep);border:2px solid var(--line);border-radius:4px;padding:9px 10px;width:100%}
 .seg{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 .seg.three{grid-template-columns:repeat(3,1fr)}
 .seg button{background:var(--deep);border:2px solid var(--line);border-radius:4px;padding:8px 4px;font-family:var(--display);font-size:13px}
@@ -245,6 +265,16 @@ input{font:inherit;color:var(--ink);background:var(--deep);border:2px solid var(
       <p class="note" style="margin-top:6px">Everyone who signs in to this Questlog appears here, ranked by total XP.</p>
       <ul class="glist" id="glist"></ul>
     </div>
+    <div class="win">
+      <h2>Guild chat</h2>
+      <div class="chatlog" id="chatlog" role="log" aria-label="Guild messages" aria-live="polite"></div>
+      <form class="chatform" id="chatForm" autocomplete="off">
+        <label for="chatIn" class="sr-only">Message</label>
+        <input id="chatIn" maxlength="500" placeholder="Message your guild" enterkeyhint="send">
+        <button class="btn gold" type="submit">Send</button>
+      </form>
+      <p class="note" id="chatNote" style="margin-top:8px" hidden></p>
+    </div>
   </section>
 
   <section class="panel stack" id="p-log" hidden>
@@ -263,7 +293,7 @@ input{font:inherit;color:var(--ink);background:var(--deep);border:2px solid var(
     <button data-tab="quests" aria-current="true">Quests</button>
     <button data-tab="hero">Hero</button>
     <button data-tab="shop">Shop</button>
-    <button data-tab="guild">Guild</button>
+    <button data-tab="guild">Guild<span class="dot" id="guildDot" hidden aria-label="New messages"></span></button>
     <button data-tab="log">Log</button>
   </div></nav>
 </div>

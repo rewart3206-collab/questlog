@@ -413,6 +413,9 @@ function render() {
 }
 
 function renderGuild(profiles) {
+  const hadAvatars = Object.keys(guildProfiles).length;
+  profiles.forEach((p) => { guildProfiles[p.id] = p; });
+  if (!hadAvatars && chatMsgs.length) renderChat(chatMsgs);
   const gl = $("#glist"); gl.innerHTML = "";
   if (!profiles.length) { gl.innerHTML = '<li class="muted">No heroes yet. Copy the invite link and send it to your friends.</li>'; return; }
   profiles.forEach((p, i) => {
@@ -429,12 +432,98 @@ function renderGuild(profiles) {
   });
 }
 
+/* ================= guild chat ================= */
+let chatCol = null, chatMsgs = [], chatFirst = true;
+const guildProfiles = {};
+const seenKey = () => "questlog-chatseen:" + (me ? me.uid : "");
+const msgTime = (m) => (m.at && m.at.toMillis ? m.at.toMillis() : Date.now());
+function fmtChatTime(ms) {
+  const d = new Date(ms), now = new Date();
+  const t = d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  if (dkey(d) === dkey(now)) return t;
+  const y = new Date(now); y.setDate(now.getDate() - 1);
+  if (dkey(d) === dkey(y)) return "Yesterday " + t;
+  return d.toLocaleDateString(undefined, { day: "numeric", month: "short" }) + " " + t;
+}
+function renderChat(msgs) {
+  chatMsgs = msgs;
+  const box = $("#chatlog");
+  const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+  box.innerHTML = "";
+  if (!msgs.length) {
+    const p = document.createElement("p"); p.className = "muted chat-empty";
+    p.textContent = "No messages yet. Say hello to your guild!";
+    box.appendChild(p);
+  }
+  let prev = null;
+  msgs.forEach((m) => {
+    const mine = me && m.uid === me.uid;
+    const cont = prev && prev.uid === m.uid && msgTime(m) - msgTime(prev) < 5 * 60e3;
+    const row = document.createElement("div");
+    row.className = "msg" + (mine ? " mine" : "") + (cont ? " cont" : "");
+    if (!mine) {
+      const c = document.createElement("canvas"); c.width = 16; c.height = 20;
+      const p = guildProfiles[m.uid];
+      if (!cont) drawSprite(c, p ? p.cls : "warrior", p ? p.equip : {});
+      row.appendChild(c);
+    }
+    const bubble = document.createElement("div"); bubble.className = "bubble";
+    if (!cont) {
+      const who = document.createElement("div"); who.className = "who";
+      const nm = document.createElement("span"); nm.textContent = mine ? "You" : (m.name || "Adventurer");
+      const tm = document.createElement("time"); tm.textContent = fmtChatTime(msgTime(m));
+      who.append(nm, tm); bubble.appendChild(who);
+    }
+    const text = document.createElement("div"); text.className = "text"; text.textContent = m.text;
+    bubble.appendChild(text);
+    if (mine) {
+      const del = document.createElement("button"); del.className = "msg-del"; del.type = "button"; del.textContent = "Delete";
+      let armed = false;
+      del.onclick = async () => {
+        if (!armed) { armed = true; del.textContent = "Tap again to delete"; setTimeout(() => { armed = false; del.textContent = "Delete"; }, 3000); return; }
+        try { await fb.deleteDoc(fb.doc(chatCol, m.id)); } catch (e) { toast("Couldn't delete that message"); }
+      };
+      bubble.appendChild(del);
+    }
+    row.appendChild(bubble); box.appendChild(row);
+    prev = m;
+  });
+  if (chatFirst || nearBottom || (msgs.length && me && msgs[msgs.length - 1].uid === me.uid)) box.scrollTop = box.scrollHeight;
+  chatFirst = false;
+  updateUnread();
+}
+function updateUnread() {
+  const dot = $("#guildDot");
+  const others = chatMsgs.filter((m) => !me || m.uid !== me.uid);
+  const newest = others.length ? msgTime(others[others.length - 1]) : 0;
+  let seen = 0; try { seen = +localStorage.getItem(seenKey()) || 0; } catch (e) {}
+  const viewing = !$("#p-guild").hidden && !document.hidden;
+  if (viewing && newest > seen) { try { localStorage.setItem(seenKey(), String(newest)); } catch (e) {} seen = newest; }
+  dot.hidden = !(newest > seen);
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden) updateUnread(); });
+$("#chatForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const inp = $("#chatIn"), text = inp.value.trim();
+  if (!text) return;
+  if (!chatCol || !fb || !me || !S) { toast("Chat is still connecting"); return; }
+  inp.value = "";
+  try {
+    await fb.addDoc(chatCol, { uid: me.uid, name: S.name.slice(0, 24), text: text.slice(0, 500), at: fb.serverTimestamp() });
+  } catch (err) {
+    console.error(err);
+    if (!inp.value) inp.value = text;
+    toast(err.code === "permission-denied" ? "Chat isn't switched on yet. The Firebase rules need updating." : "Message not sent. Check your connection.");
+  }
+});
+
 /* ================= navigation ================= */
 const TABS = ["quests", "hero", "shop", "guild", "log"];
 function showTab(t) {
   document.querySelectorAll(".nav button").forEach((x) => x.setAttribute("aria-current", String(x.dataset.tab === t)));
   TABS.forEach((p) => ($("#p-" + p).hidden = p !== t));
   history.replaceState(null, "", "#" + t); window.scrollTo(0, 0);
+  if (t === "guild") { const box = $("#chatlog"); box.scrollTop = box.scrollHeight; updateUnread(); }
 }
 document.querySelectorAll(".nav button").forEach((b) => (b.onclick = () => showTab(b.dataset.tab)));
 $("#addq").onclick = () => questForm(null);
@@ -489,9 +578,9 @@ async function startFirebase() {
   const [
     { initializeApp },
     { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut },
-    { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, setDoc, onSnapshot, collection, query, orderBy, limit, serverTimestamp },
+    { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, setDoc, addDoc, deleteDoc, onSnapshot, collection, query, orderBy, limit, serverTimestamp },
   ] = await Promise.all([import(SDK + "firebase-app.js"), import(SDK + "firebase-auth.js"), import(SDK + "firebase-firestore.js")]);
-  fb = { setDoc, serverTimestamp };
+  fb = { setDoc, addDoc, deleteDoc, doc, serverTimestamp };
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = initializeFirestore(app, {
@@ -523,7 +612,8 @@ async function startFirebase() {
     unsubs.forEach((u) => u()); unsubs = [];
     me = user;
     if (!user) {
-      S = null; userRef = profileRef = null;
+      S = null; userRef = profileRef = null; chatCol = null; chatMsgs = [];
+      $("#chatlog").innerHTML = ""; $("#guildDot").hidden = true;
       $("#screen-game").hidden = true; $("#screen-title").hidden = false;
       titleStatus.hidden = true; signinBtn.disabled = false;
       return;
@@ -554,6 +644,20 @@ async function startFirebase() {
     unsubs.push(onSnapshot(query(collection(db, "profiles"), orderBy("xp", "desc"), limit(50)), (qs) => {
       renderGuild(qs.docs.map((d) => ({ id: d.id, ...d.data() })));
     }, (e) => console.error(e)));
+
+    chatCol = collection(db, "messages");
+    chatFirst = true;
+    unsubs.push(onSnapshot(query(chatCol, orderBy("at", "desc"), limit(80)), (qs) => {
+      $("#chatNote").hidden = true;
+      renderChat(qs.docs.map((d) => ({ id: d.id, ...d.data({ serverTimestamps: "estimate" }) })).reverse());
+    }, (e) => {
+      console.error(e);
+      const n = $("#chatNote");
+      n.textContent = e.code === "permission-denied"
+        ? "Chat isn't switched on yet. The Firebase rules need updating to allow messages."
+        : "Couldn't load the chat: " + (e.code || e.message);
+      n.hidden = false;
+    }));
   });
 }
 
