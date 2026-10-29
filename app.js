@@ -1,5 +1,5 @@
 import { firebaseConfig } from "./firebase-config.js";
-import { heroSVG, itemSVG, flameSVG, POSES } from "./art.js";
+import { heroSVG, itemSVG, flameSVG, POSES, pixelize, HERO_PX, HEAD_PX } from "./art.js";
 const SDK = "https://www.gstatic.com/firebasejs/10.12.2/";
 
 /* ================= game data ================= */
@@ -8,7 +8,7 @@ const STATS = {
   INT: { name: "Intelligence", hint: "Knowledge and focus" },
   HLT: { name: "Health", hint: "Stamina and resilience" },
 };
-const TUNIC = "#e04a3f";
+const TUNIC = "#2f56b8";
 const QUEST_XP = 20;        // every quest is worth the same
 const MAX_EXTRA_QUESTS = 2; // on top of the 3 core quests
 // The three core quests are the same for every player and can't be edited or removed.
@@ -132,10 +132,20 @@ function heroParts(equip) {
     tunic: dye ? dye.color : TUNIC, pose: look.pose, head: equip.head, back: equip.back, hand: equip.hand, off: equip.off,
   };
 }
-function drawSprite(el, cls, equip, opts) { el.innerHTML = heroSVG(heroParts(equip), opts || {}); }
+// Draw a pixel-art image into an element; the image is produced asynchronously and cached.
+function pixelInto(el, svg, size, shadow) {
+  let img = el.querySelector(":scope > img.px");
+  if (!img) { el.innerHTML = ""; img = document.createElement("img"); img.className = "px"; img.alt = ""; img.width = size.w; img.height = size.h; el.appendChild(img); }
+  const token = Symbol(); el._pxToken = token;
+  pixelize(svg, size.w, size.h, shadow).then((url) => { if (el._pxToken === token && url) img.src = url; });
+}
+function drawSprite(el, cls, equip, opts) {
+  opts = opts || {};
+  pixelInto(el, heroSVG(heroParts(equip), opts), opts.head ? HEAD_PX : HERO_PX, !opts.head);
+}
 function gearIcon(g) {
   const d = document.createElement("div"); d.className = "gear-icon";
-  d.innerHTML = itemSVG(g.id, g.color);
+  pixelInto(d, itemSVG(g.id, g.color), { w: 24, h: 24 }, false);
   return d;
 }
 
@@ -367,7 +377,7 @@ function questForm(q) {
 /* ================= streak badge ================= */
 let flameDrawn = false;
 function renderStreak() {
-  if (!flameDrawn) { $("#flame").innerHTML = flameSVG(); flameDrawn = true; }
+  if (!flameDrawn) { pixelInto($("#flame"), flameSVG(), { w: 27, h: 32 }, false); flameDrawn = true; }
   const n = dayStreak(), doneToday = Object.keys(S.days[today()] || {}).length > 0;
   const badge = $("#streakBadge"), num = $("#streakNum");
   num.textContent = n; num.classList.toggle("long", n > 99);
