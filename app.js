@@ -10,11 +10,13 @@ const STATS = {
 const TUNIC = "#b8423a";
 const QUEST_XP = 20;        // every quest is worth the same
 const MAX_EXTRA_QUESTS = 2; // on top of the 3 core quests
-const defaultQuests = () => [
-  { id: uid(), name: "Exercise", desc: "Training, climbing or a walk", core: true },
-  { id: uid(), name: "Drink 2.5L of water", desc: "", core: true },
-  { id: uid(), name: "15 minutes of work or study", desc: "", core: true },
+// The three core quests are the same for every player and can't be edited or removed.
+const CORE_QUESTS = [
+  { name: "Exercise", desc: "Training, climbing or a walk" },
+  { name: "Drink 2.5L of water", desc: "" },
+  { name: "15 minutes of work or study", desc: "" },
 ];
+const defaultQuests = () => CORE_QUESTS.map((c) => ({ id: uid(), ...c, core: true }));
 const TITLES = [
   { lv: 1, t: "Novice" }, { lv: 3, t: "Habit Squire" }, { lv: 5, t: "Streak Knight" },
   { lv: 8, t: "Keeper of Routines" }, { lv: 12, t: "Archmage of Mornings" }, { lv: 20, t: "Legend of the Daily Grind" },
@@ -84,6 +86,8 @@ function migrate(st) {
     st.attr = { STR: 1, INT: 1, HLT: 1 };
     st.qv = 2;
   }
+  // Core quests always use the standard wording, even if renamed in an earlier version.
+  st.quests.filter((q) => q.core).forEach((q, i) => { if (CORE_QUESTS[i]) Object.assign(q, CORE_QUESTS[i]); });
   const total = Object.values(st.days || {}).reduce((n, d) => n + Object.keys(d).length, 0);
   (st.treasures || []).forEach((t) => {
     if (t.every == null) { t.every = Math.max(3, Math.round((t.cost || 40) / 8)); t.base = total; delete t.cost; }
@@ -394,11 +398,11 @@ function armedDelete(btn, onConfirm) {
 function questForm(q) {
   const isNew = !q; q = q || { id: uid(), name: "", desc: "", core: false };
   openSheet((w, close) => {
-    w.innerHTML = "<h2>" + (isNew ? "New quest" : q.core ? "Edit daily quest" : "Edit quest") + '</h2><label for="qn">Quest<input id="qn" maxlength="60" placeholder="e.g. Stretch for 5 minutes" autocomplete="off"></label><label for="qdesc">Details (optional)<input id="qdesc" maxlength="80" placeholder="e.g. Before bed" autocomplete="off"></label><p class="note"></p><div class="actions"></div>';
+    w.innerHTML = "<h2>" + (isNew ? "New quest" : "Edit quest") + '</h2><label for="qn">Quest<input id="qn" maxlength="60" placeholder="e.g. Stretch for 5 minutes" autocomplete="off"></label><label for="qdesc">Details (optional)<input id="qdesc" maxlength="80" placeholder="e.g. Before bed" autocomplete="off"></label><p class="note"></p><div class="actions"></div>';
     w.querySelector("#qn").value = q.name; w.querySelector("#qdesc").value = q.desc || "";
-    w.querySelector("p.note").textContent = "Every quest is worth " + QUEST_XP + " XP." + (q.core ? " This is one of your 3 core quests: you can rename it, but not remove it." : "");
+    w.querySelector("p.note").textContent = "Every quest is worth " + QUEST_XP + " XP.";
     const a = w.querySelector(".actions");
-    if (!isNew && !q.core) {
+    if (!isNew) {
       const del = document.createElement("button"); del.className = "btn ghost"; del.textContent = "Delete";
       armedDelete(del, () => { S.quests = S.quests.filter((x) => x.id !== q.id); save(); render(); close(); toast("Quest removed"); });
       a.appendChild(del);
@@ -494,7 +498,9 @@ function render() {
     chk.setAttribute("aria-label", (done[q.id] ? "Undo " : "Complete ") + q.name);
     chk.setAttribute("aria-pressed", String(!!done[q.id]));
     chk.onclick = (e) => toggleQuest(q, e);
-    const ed = li.querySelector(".iconbtn"); ed.setAttribute("aria-label", "Edit " + q.name); ed.onclick = () => questForm(q);
+    const ed = li.querySelector(".iconbtn");
+    if (q.core) ed.remove();
+    else { ed.setAttribute("aria-label", "Edit " + q.name); ed.onclick = () => questForm(q); }
     ql.appendChild(li);
   });
   const n = S.quests.filter((q) => done[q.id]).length;
