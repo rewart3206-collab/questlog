@@ -226,10 +226,27 @@ function skillPoints() {
 }
 function upgradeAttr(k) {
   if (skillPoints() < 1) { toast("Complete every quest in a day to earn a skill point"); return; }
-  S.attr[k]++; logEvent(STATS[k].name + " upgraded to level " + S.attr[k]);
+  S.attr[k]++; (S.attrLog = S.attrLog || []).push(k);
+  logEvent(STATS[k].name + " upgraded to level " + S.attr[k]);
   const fresh = checkUnlocks();
   save(); render(); toast(STATS[k].name + " is now level " + S.attr[k]);
   fresh.forEach(showUnlock);
+}
+// If undoing a quest takes away a full clear whose skill point was already spent,
+// take back the most recent upgrade(s) so attributes never exceed the points earned.
+function refundSkillPoints() {
+  const earned = Object.keys(S.clears).length;
+  let spent = Object.values(S.attr).reduce((n, l) => n + (l - 1), 0);
+  S.attrLog = S.attrLog || [];
+  const undone = [];
+  while (spent > earned) {
+    let k = S.attrLog.pop();
+    if (!k || S.attr[k] <= 1) k = Object.keys(S.attr).sort((a, b) => S.attr[b] - S.attr[a])[0];
+    if (S.attr[k] <= 1) break;
+    S.attr[k]--; spent--; undone.push(k);
+    logEvent(STATS[k].name + " back to level " + S.attr[k] + " (skill point taken back)");
+  }
+  return undone;
 }
 function totalQuests() { return Object.values(S.days).reduce((n, d) => n + Object.keys(d).length, 0); }
 function counts() {
@@ -240,15 +257,25 @@ function counts() {
   };
 }
 // Unlocks are permanent: once a challenge is met, its gear stays yours even if a quest is later undone.
+// Challenges follow your progress both ways: meeting a goal unlocks its gear, and undoing the
+// quest that met it locks the gear again (and takes it off). Gear bought with gold in older
+// versions stays yours.
 function checkUnlocks() {
-  const c = counts(), fresh = [];
+  const c = counts(), fresh = [], lost = [];
   CHALLENGES.forEach((ch) => {
     const [have, need] = ch.prog(c);
+    const g = GEAR.find((x) => x.id === ch.gear);
     if (have >= need && !S.unlocked.includes(ch.gear)) {
       S.unlocked.push(ch.gear); fresh.push(ch);
-      logEvent("Challenge complete: " + ch.name + ". Unlocked " + GEAR.find((g) => g.id === ch.gear).name);
+      logEvent("Challenge complete: " + ch.name + ". Unlocked " + g.name);
+    } else if (have < need && S.unlocked.includes(ch.gear) && !(S.owned || []).includes(ch.gear)) {
+      S.unlocked = S.unlocked.filter((id) => id !== ch.gear);
+      if (S.equip[g.slot] === g.id) S.equip[g.slot] = null;
+      lost.push(ch);
+      logEvent("Challenge undone: " + ch.name + ". " + g.name + " locked again");
     }
   });
+  if (lost.length) toast(lost.map((ch) => GEAR.find((x) => x.id === ch.gear).name).join(", ") + " locked again");
   return fresh;
 }
 function unlockedTitles() {
@@ -309,6 +336,8 @@ function toggleQuest(q, ev) {
   }
   const after = levelInfo(S.xp).level;
   if (after > before) logEvent("Reached level " + after);
+  const refunded = refundSkillPoints();
+  if (refunded.length) toast("Skill point taken back from " + refunded.map((k) => STATS[k].name).join(", "));
   const fresh = checkUnlocks();
   save(); render();
   if (after > before) levelUp(after);
