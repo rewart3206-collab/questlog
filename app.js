@@ -441,6 +441,28 @@ function treasureForm(t) {
   });
 }
 
+/* ================= streak badge ================= */
+const FLAME = [
+  "....o.......", "...oRo......", "...oRo...o..", "..oRRo..oRo.", "..oRRRo.oRo.", ".oRRORRooRRo", ".oRROORRRRRo",
+  "oRROOOORRRRo", "oRROOYOORRRo", "oRROYYYOORRo", "oRROYYYYORRo", "oRRROYYORRRo", ".oRRROORRRo.", "..oooooooo..",
+];
+const FLAME_PAL = { o: "#3a1500", R: "#e8531e", O: "#ff9f43", Y: "#ffd23f" };
+let flameDrawn = false;
+function renderStreak() {
+  if (!flameDrawn) {
+    const ctx = $("#flame").getContext("2d");
+    FLAME.forEach((r, y) => [...r].forEach((ch, x) => { if (FLAME_PAL[ch]) { ctx.fillStyle = FLAME_PAL[ch]; ctx.fillRect(x, y, 1, 1); } }));
+    flameDrawn = true;
+  }
+  const n = dayStreak(), doneToday = Object.keys(S.days[today()] || {}).length > 0;
+  const badge = $("#streakBadge"), num = $("#streakNum");
+  num.textContent = n; num.classList.toggle("long", n > 99);
+  badge.classList.toggle("out", n === 0);
+  badge.classList.toggle("waiting", n > 0 && !doneToday);
+  const label = n + "-day streak" + (n > 0 && !doneToday ? ". Complete a quest today to keep it going" : "");
+  badge.setAttribute("aria-label", label); badge.title = label;
+}
+
 /* ================= appearance ================= */
 function setLook(change) { S.look = { ...normLook(S.look), ...change }; save(); render(); }
 function swatches(container, options, current, onPick, labels) {
@@ -480,7 +502,7 @@ function render() {
   $("#xpbar").setAttribute("aria-valuenow", L.into); $("#xpbar").setAttribute("aria-valuemax", L.need);
   $("#xptext").textContent = L.into + " / " + L.need + " XP to LV " + (L.level + 1);
   const tq = totalQuests(); $("#qtotal").textContent = tq + (tq === 1 ? " quest done" : " quests done");
-  $("#streak").textContent = dayStreak() + "-day streak";
+  renderStreak();
   drawSprite($("#sprite"), null, heroLook());
 
   // quests

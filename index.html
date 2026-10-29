@@ -56,7 +56,15 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
 .err{color:var(--hp);font-size:14px;max-width:36ch}
 
 /* hero */
-.hero{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center}
+.hero{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center;position:relative}
+.hero-info>.row:first-child,.hero-name{padding-right:58px}
+.streak-badge{position:absolute;top:4px;right:10px;width:50px;height:58px}
+.streak-badge canvas{width:50px;height:58px;image-rendering:pixelated;display:block}
+.streak-num{position:absolute;left:0;right:0;top:30px;text-align:center;font-family:var(--display);font-weight:700;font-size:19px;line-height:1;color:#3a1500}
+.streak-num.long{font-size:13px;top:33px}
+.streak-badge.waiting canvas{opacity:.55}
+.streak-badge.out canvas{filter:grayscale(1) brightness(.7)}
+.streak-badge.out .streak-num{color:var(--ink)}
 .sprite{width:96px;height:120px;image-rendering:pixelated;background:radial-gradient(ellipse at 50% 90%,#ffffff18 0,transparent 60%);border-radius:6px}
 .hero-info{min-width:0;display:flex;flex-direction:column;gap:6px}
 .hero-name{font-size:22px;line-height:1.1;overflow-wrap:anywhere}
@@ -239,13 +247,17 @@ input{font:inherit;font-size:16px;color:var(--ink);background:var(--deep);border
 <!-- GAME -->
 <div id="screen-game" class="wrap" hidden>
   <section class="win hero" aria-label="Your hero">
+    <div class="streak-badge" id="streakBadge" role="img" aria-label="0-day streak">
+      <canvas id="flame" width="12" height="14" aria-hidden="true"></canvas>
+      <span class="streak-num num" id="streakNum" aria-hidden="true">0</span>
+    </div>
     <canvas id="sprite" class="sprite" width="16" height="20" aria-hidden="true"></canvas>
     <div class="hero-info">
       <div class="row" style="flex-wrap:wrap;gap:8px"><span class="lvl num" id="lvl">LV 1</span><span class="title-tag" id="htitle">Novice</span></div>
       <h1 class="hero-name" id="hname">Adventurer</h1>
       <div class="bar" role="progressbar" aria-label="Experience" id="xpbar"><i style="width:0"></i></div>
       <div class="row muted num" style="justify-content:space-between;font-size:12px"><span id="xptext">0 / 100 XP</span></div>
-      <div class="purse num"><span id="qtotal">0 quests done</span><span class="flame" id="streak">0-day streak</span></div>
+      <div class="purse num"><span id="qtotal">0 quests done</span></div>
       <span class="sync" id="sync">Saved</span>
     </div>
   </section>
