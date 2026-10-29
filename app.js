@@ -1,5 +1,4 @@
 import { firebaseConfig } from "./firebase-config.js";
-import { heroSVG, itemSVG, flameSVG, POSES, pixelize, HERO_PX, HEAD_PX } from "./art.js";
 const SDK = "https://www.gstatic.com/firebasejs/10.12.2/";
 
 /* ================= game data ================= */
@@ -8,7 +7,7 @@ const STATS = {
   INT: { name: "Intelligence", hint: "Knowledge and focus" },
   HLT: { name: "Health", hint: "Stamina and resilience" },
 };
-const TUNIC = "#2f56b8";
+const TUNIC = "#b8423a";
 const QUEST_XP = 20;        // every quest is worth the same
 const MAX_EXTRA_QUESTS = 2; // on top of the 3 core quests
 // The three core quests are the same for every player and can't be edited or removed.
@@ -27,7 +26,7 @@ const GEAR = [
   { id: "sword", slot: "hand", name: "Iron Sword", desc: "A trusty blade for your first dungeon." },
   { id: "shield", slot: "off", name: "Oak Shield", desc: "Blocks excuses. Mostly." },
   { id: "cape", slot: "back", name: "Hero's Cape", desc: "Flutters dramatically on morning walks." },
-  { id: "dye_shadow", slot: "dye", name: "Shadow Dye", desc: "Recolours your tunic midnight black.", color: "#363552" },
+  { id: "dye_shadow", slot: "dye", name: "Shadow Dye", desc: "Recolours your tunic midnight black.", color: "#2a2a3a" },
   { id: "helm", slot: "head", name: "Knight Helm", desc: "Steel visor for the hardest quests." },
   { id: "hat", slot: "head", name: "Wizard Hat", desc: "Pointy. Increases perceived wisdom." },
   { id: "dye_gold", slot: "dye", name: "Sunlit Dye", desc: "Recolours your tunic warm gold.", color: "#d4a017" },
@@ -102,9 +101,28 @@ function levelInfo(xp) { let l = 1, r = xp; while (r >= needFor(l)) { r -= needF
 function statLevel(x) { let l = 1, r = x; while (r >= 30 + 20 * l) { r -= 30 + 20 * l; l++; } return { level: l, into: r, need: 30 + 20 * l }; }
 
 /* ================= sprite ================= */
+// Bodies are drawn bald; hair is a separate layer so styles and colours can be mixed freely.
+const BODIES = {
+  m: [
+    "................", "................", "................", "................", "................",
+    ".....oooooo.....", "....oSSSSSSo....", "....oSSSSSSo....", "....oSeSSeSo....", "....oSSSSSSo....",
+    ".....oSSSSo.....", "...ooTTTTTToo...", "..oSoTTTTTToSo..", "..oSoTTTTTToSo..", "..ooobbbbbbooo..",
+    "....oPPPPPPo....", "....oPPooPPo....", "....oPPooPPo....", "...oBBBooBBBo...", "...oooo..oooo...",
+  ],
+  f: [
+    "................", "................", "................", "................", "................",
+    ".....oooooo.....", "....oSSSSSSo....", "....oSSSSSSo....", "....oSeSSeSo....", "....ocSSSSco....",
+    ".....oSSSSo.....", "...ooTTTTTToo...", "..oSoTTTTTToSo..", "..oSoTTTTTToSo..", "..ooobbbbbbooo..",
+    "...oTTTTTTTTo...", "...oTTTTTTTTo...", "....oSSooSSo....", "...oBBBooBBBo...", "...oooo..oooo...",
+  ],
+};
 const HAIRSTYLES = {
-  short: { name: "Short" }, long: { name: "Long" }, spiky: { name: "Spiky" },
-  bun: { name: "Bun" }, ponytail: { name: "Ponytail" }, bald: { name: "Bald" },
+  short: { name: "Short", rows: { 5: ".....oooooo.....", 6: "....oHHHHHHo....", 7: "....oH....Ho...." } },
+  long: { name: "Long", rows: { 5: ".....oooooo.....", 6: "....oHHHHHHo....", 7: "...oHH....HHo...", 8: "...oH......Ho...", 9: "...oH......Ho...", 10: "...oHo....oHo..." } },
+  spiky: { name: "Spiky", rows: { 3: ".....o.oo.o.....", 4: "....oHoHHoHo....", 5: "....oHHHHHHo....", 6: "....oHHHHHHo....", 7: "....oH....Ho...." } },
+  bun: { name: "Bun", rows: { 2: "......oooo......", 3: ".....oHHHHo.....", 4: ".....ooHHoo.....", 5: "....oHHHHHHo....", 6: "....oHHHHHHo....", 7: "....oH....Ho...." } },
+  ponytail: { name: "Ponytail", rows: { 5: ".....oooooo.....", 6: "....oHHHHHHoo...", 7: "....oH....HoHo..", 8: "...........oHo..", 9: "...........oHo..", 10: "............o..." } },
+  bald: { name: "Bald", rows: {} },
 };
 const HAIR_COLOURS = { brown: "#5a3a22", black: "#1f1a24", blonde: "#e0b84c", ginger: "#c2582a", silver: "#c9ccd6", pink: "#e27fb5", blue: "#4c78d6" };
 const SKIN_TONES = { s1: "#f6d7b8", s2: "#f1c9a0", s3: "#d9a77c", s4: "#b07a50", s5: "#7d5235", s6: "#5a3824" };
@@ -122,31 +140,68 @@ function normLook(l) {
   }
   return l === "f" ? { ...DEFAULT_LOOK, body: "f", hair: "long" } : { ...DEFAULT_LOOK };
 }
-// Turn saved gear + look into what the art needs, then draw the cartoon hero into an element.
-function heroParts(equip) {
+const OVER = {
+  cape: { z: 0, rows: { 14: "..CC........CC..", 15: "..CC........CC..", 16: "..CC........CC..", 17: "...C........C...", 18: "...C........C..." }, pal: { C: "#c0392b" } },
+  goldcape: { z: 0, rows: { 14: "..CC........CC..", 15: "..CC........CC..", 16: "..CC........CC..", 17: "..CY........YC..", 18: "..YY........YY.." }, pal: { C: "#6b2fa0", Y: "#f4c542" } },
+  hat: { z: 1, rows: { 0: "........W.......", 1: ".......WW.......", 2: "......WWWW......", 3: "......WYWW......", 4: ".....WWWWWW.....", 5: "...WWWWWWWWWW..." }, pal: { W: "#4a3aa8", Y: "#f4c542" } },
+  helm: { z: 1, rows: { 4: ".....oooooo.....", 5: "....oMMMMMMo....", 6: "....oMMMMMMo....", 7: "....oMoooooMo...", 8: "....oMeSSeMo...." }, pal: { M: "#aab4c8" } },
+  crown: { z: 1, rows: { 2: ".....G.GG.G.....", 3: ".....GGGGGG.....", 4: ".....GrGGrG....." }, pal: { G: "#f4c542", r: "#e0314b" } },
+  sword: { z: 1, rows: { 6: ".............I..", 7: ".............I..", 8: ".............I..", 9: ".............I..", 10: ".............I..", 11: ".............I..", 12: "............hhh.", 13: ".............h.." }, pal: { I: "#d6dbe8", h: "#a0742c" } },
+  staff: { z: 1, rows: { 3: ".............O..", 4: "............OOO.", 5: ".............O..", 6: ".............w..", 7: ".............w..", 8: ".............w..", 9: ".............w..", 10: ".............w..", 11: ".............w..", 12: ".............w..", 13: ".............w..", 14: ".............w..", 15: ".............w..", 16: ".............w.." }, pal: { O: "#6ff0ff", w: "#8a5a2b" } },
+  shield: { z: 1, rows: { 12: "AAAA............", 13: "AYYA............", 14: "AAAA............", 15: ".AA............." }, pal: { A: "#8a5a2b", Y: "#f4c542" } },
+};
+// Poses swap the arm rows of the body. In any pose other than standing the hands are busy,
+// so held gear (sword, staff, shield) isn't drawn.
+const POSES = {
+  stand: { name: "Standing" },
+  crossed: { name: "Arms crossed", rows: () => ({ 12: "...oTTTTTTTTo...", 13: "...oSSSoSSSSo..." }) },
+  behind: { name: "Behind back", rows: () => ({ 12: "...oTTTTTTTTo...", 13: "...oTTTTTTTTo..." }) },
+  hips: { name: "Hands on hips", rows: () => ({ 12: ".oSooTTTTTTooSo.", 13: "..oSoTTTTTToSo..", 14: "..ooSbbbbbbSoo.." }) },
+  fist: { name: "Fist pump", rows: (B) => ({
+    6: ".ooo" + B[6].slice(4), 7: "oSSS" + B[7].slice(4), 8: "oSSS" + B[8].slice(4), 9: ".oSo" + B[9].slice(4),
+    10: ".oSo" + B[10].slice(4), 11: "..oSo" + B[11].slice(5), 12: "...oo" + B[12].slice(5), 13: "....o" + B[13].slice(5),
+  }) },
+  think: { name: "Thinking", rows: () => ({ 10: ".....oSSSoSSo...", 11: "...ooTTTTTToSo..", 13: "..oSoTTTTTTo...." }) },
+};
+function drawSprite(canvas, cls, equip) {
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, 16, 20);
   equip = equip || {};
-  const look = normLook(equip.body ? { body: equip.body, hair: equip.hair, hc: equip.hc, skin: equip.skin, pose: equip.pose } : equip.look);
   const dye = equip.dye ? GEAR.find((g) => g.id === equip.dye) : null;
-  return {
-    body: look.body, hair: look.hair, hairColor: HAIR_COLOURS[look.hc], skin: SKIN_TONES[look.skin],
-    tunic: dye ? dye.color : TUNIC, pose: look.pose, head: equip.head, back: equip.back, hand: equip.hand, off: equip.off,
-  };
+  const look = normLook(equip.body ? { body: equip.body, hair: equip.hair, hc: equip.hc, skin: equip.skin, pose: equip.pose } : equip.look);
+  const pal = { o: "#0b0d1f", H: HAIR_COLOURS[look.hc], S: SKIN_TONES[look.skin], e: "#0b0d1f", T: dye ? dye.color : TUNIC, b: "#6b4a2a", P: "#3a3f63", B: "#4a2f1e", c: "#ec9a8c" };
+  const held = look.pose === "stand" ? [] : ["hand", "off"];
+  const layers = SLOTS.filter((s) => s !== "dye" && !held.includes(s)).map((s) => OVER[equip[s]]).filter(Boolean);
+  const paint = (rows, p) => { for (const y in rows) { const r = rows[y]; for (let x = 0; x < 16; x++) { const c = r[x]; if (c && c !== "." && p[c]) { ctx.fillStyle = p[c]; ctx.fillRect(x, +y, 1, 1); } } } };
+  layers.filter((l) => l.z === 0).forEach((l) => paint(l.rows, l.pal));
+  const rows = Object.fromEntries(BODIES[look.body].map((r, i) => [i, r]));
+  if (POSES[look.pose].rows) Object.assign(rows, POSES[look.pose].rows(BODIES[look.body]));
+  paint(rows, pal);
+  paint(HAIRSTYLES[look.hair].rows, pal);
+  layers.filter((l) => l.z === 1).forEach((l) => paint(l.rows, { ...pal, ...l.pal }));
 }
-// Draw a pixel-art image into an element; the image is produced asynchronously and cached.
-function pixelInto(el, svg, size, shadow) {
-  let img = el.querySelector(":scope > img.px");
-  if (!img) { el.innerHTML = ""; img = document.createElement("img"); img.className = "px"; img.alt = ""; img.width = size.w; img.height = size.h; el.appendChild(img); }
-  const token = Symbol(); el._pxToken = token;
-  pixelize(svg, size.w, size.h, shadow).then((url) => { if (el._pxToken === token && url) img.src = url; });
-}
-function drawSprite(el, cls, equip, opts) {
-  opts = opts || {};
-  pixelInto(el, heroSVG(heroParts(equip), opts), opts.head ? HEAD_PX : HERO_PX, !opts.head);
-}
+// Gear icons: draw the item at its spot on the hero, then crop to the item and centre it in a square.
 function gearIcon(g) {
-  const d = document.createElement("div"); d.className = "gear-icon";
-  pixelInto(d, itemSVG(g.id, g.color), { w: 24, h: 24 }, false);
-  return d;
+  const raw = gearIconRaw(g), rctx = raw.getContext("2d");
+  const px = rctx.getImageData(0, 0, 16, 20).data;
+  let x0 = 16, y0 = 20, x1 = -1, y1 = -1;
+  for (let y = 0; y < 20; y++) for (let x = 0; x < 16; x++) if (px[(y * 16 + x) * 4 + 3]) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+  if (x1 < 0) return raw;
+  const w = x1 - x0 + 1, h = y1 - y0 + 1, size = Math.max(w, h) + 2;
+  const c = document.createElement("canvas"); c.width = size; c.height = size;
+  c.getContext("2d").drawImage(raw, x0, y0, w, h, Math.floor((size - w) / 2), Math.floor((size - h) / 2), w, h);
+  return c;
+}
+function gearIconRaw(g) {
+  const c = document.createElement("canvas"); c.width = 16; c.height = 20;
+  const ctx = c.getContext("2d");
+  if (g.slot === "dye") {
+    ctx.fillStyle = "#0b0d1f"; ctx.fillRect(4, 5, 8, 12); ctx.fillStyle = g.color; ctx.fillRect(5, 6, 6, 10); ctx.fillStyle = "#ffffff55"; ctx.fillRect(6, 7, 1, 6);
+  } else {
+    const l = OVER[g.id];
+    for (const y in l.rows) { const r = l.rows[y]; for (let x = 0; x < 16; x++) { const ch = r[x]; const col = l.pal[ch] || (ch === "o" ? "#0b0d1f" : null); if (col) { ctx.fillStyle = col; ctx.fillRect(x, +y, 1, 1); } } }
+  }
+  return c;
 }
 
 /* ================= state ================= */
@@ -293,9 +348,9 @@ function nextModal() {
 function levelUp(L) {
   const newTitle = TITLES.filter((t) => t.lv === L).map((t) => t.t);
   queueModal((w, done) => {
-    w.innerHTML = '<div class="title-tag">LEVEL UP</div><h1></h1><div class="sprite"></div><p class="muted" style="margin:0"></p><button class="btn gold">Onward</button>';
+    w.innerHTML = '<div class="title-tag">LEVEL UP</div><h1></h1><canvas width="16" height="20" class="sprite"></canvas><p class="muted" style="margin:0"></p><button class="btn gold">Onward</button>';
     w.querySelector("h1").textContent = "Level " + L;
-    drawSprite(w.querySelector(".sprite"), null, heroLook());
+    drawSprite(w.querySelector("canvas"), null, heroLook());
     w.querySelector("p").textContent = newTitle.length ? "New title unlocked: " + newTitle.join(", ") : "Your hero grows stronger.";
     w.querySelector("button").onclick = done;
   });
@@ -303,11 +358,11 @@ function levelUp(L) {
 function showUnlock(ch) {
   const g = GEAR.find((x) => x.id === ch.gear);
   queueModal((w, done) => {
-    w.innerHTML = '<div class="title-tag">CHALLENGE COMPLETE</div><h1></h1><p class="muted" style="margin:0"></p><div class="unlock-slot"></div><p style="margin:0"></p><div class="actions" style="justify-content:center"><button class="btn gold">Equip now</button><button class="btn ghost">Later</button></div>';
+    w.innerHTML = '<div class="title-tag">CHALLENGE COMPLETE</div><h1></h1><p class="muted" style="margin:0"></p><canvas class="unlock-icon"></canvas><p style="margin:0"></p><div class="actions" style="justify-content:center"><button class="btn gold">Equip now</button><button class="btn ghost">Later</button></div>';
     w.querySelector("h1").textContent = ch.name;
     w.querySelectorAll("p")[0].textContent = ch.goal;
     const icon = gearIcon(g); icon.className = "unlock-icon";
-    w.querySelector(".unlock-slot").replaceWith(icon);
+    w.querySelector("canvas").replaceWith(icon);
     w.querySelectorAll("p")[1].textContent = "Unlocked: " + g.name;
     const [equipBtn, laterBtn] = w.querySelectorAll("button");
     equipBtn.onclick = () => { S.equip[g.slot] = g.id; save(); render(); done(); };
@@ -375,9 +430,25 @@ function questForm(q) {
 }
 
 /* ================= streak badge ================= */
+const FLAME = [
+  "....o.......", "...oRo......", "...oRo...o..", "..oRRo..oRo.", "..oRRRo.oRo.", ".oRRORRooRRo", ".oRROORRRRRo",
+  "oRROOOORRRRo", "oRROOYOORRRo", "oRROYYYOORRo", "oRROYYYYORRo", "oRRROYYORRRo", ".oRRROORRRo.", "..oooooooo..",
+];
+const FLAME_PAL = { o: "#3a1500", R: "#e8531e", O: "#ff9f43", Y: "#ffd23f" };
+// Flicker frames: the base flame, one with the tips leaning the other way, one with the hot core lower.
+const FLAME_FRAMES = [
+  FLAME,
+  [".......o....", "......oRo...", "..o...oRo...", ".oRo..oRRo..", ".oRo.oRRRo..", ...FLAME.slice(5)],
+  [...FLAME.slice(0, 8), "oRROOOOORRRo", "oRROOYOORRRo", "oRROYYYOORRo", ...FLAME.slice(11)],
+];
+function drawFlame(i) {
+  const ctx = $("#flame").getContext("2d");
+  ctx.clearRect(0, 0, 12, 14);
+  FLAME_FRAMES[i].forEach((r, y) => [...r].forEach((ch, x) => { if (FLAME_PAL[ch]) { ctx.fillStyle = FLAME_PAL[ch]; ctx.fillRect(x, y, 1, 1); } }));
+}
 let flameDrawn = false;
 function renderStreak() {
-  if (!flameDrawn) { pixelInto($("#flame"), flameSVG(), { w: 27, h: 32 }, false); flameDrawn = true; }
+  if (!flameDrawn) { drawFlame(0); flameDrawn = true; }
   const n = dayStreak(), doneToday = Object.keys(S.days[today()] || {}).length > 0;
   const badge = $("#streakBadge"), num = $("#streakNum");
   num.textContent = n; num.classList.toggle("long", n > 99);
@@ -402,19 +473,20 @@ function renderAppearance() {
   const lk = normLook(S.look);
   drawSprite($("#lookPreview"), null, { ...S.equip, ...lk });
   segment($("#lookSeg"), { m: { label: "Male" }, f: { label: "Female" } }, lk.body, (k) => setLook({ body: k }));
+  const ps = $("#poses"); ps.innerHTML = "";
+  Object.entries(POSES).forEach(([k, po]) => {
+    const b = document.createElement("button"); b.type = "button"; b.className = "style-btn pose-btn"; b.setAttribute("aria-pressed", String(k === lk.pose));
+    const c = document.createElement("canvas"); c.width = 16; c.height = 20; drawSprite(c, null, { ...S.equip, ...lk, pose: k });
+    const t = document.createElement("span"); t.textContent = po.name;
+    b.append(c, t); b.onclick = () => setLook({ pose: k }); ps.appendChild(b);
+  });
   const st = $("#hairStyles"); st.innerHTML = "";
   Object.entries(HAIRSTYLES).forEach(([k, h]) => {
     const b = document.createElement("button"); b.type = "button"; b.className = "style-btn"; b.setAttribute("aria-pressed", String(k === lk.hair));
-    const c = document.createElement("div"); c.className = "style-head"; drawSprite(c, null, { ...lk, hair: k }, { head: true });
+    const full = document.createElement("canvas"); full.width = 16; full.height = 20; drawSprite(full, null, { ...lk, hair: k });
+    const c = document.createElement("canvas"); c.width = 14; c.height = 11; c.getContext("2d").drawImage(full, 1, 2, 14, 11, 0, 0, 14, 11);
     const t = document.createElement("span"); t.textContent = h.name;
     b.append(c, t); b.onclick = () => setLook({ hair: k }); st.appendChild(b);
-  });
-  const ps = $("#poses"); ps.innerHTML = "";
-  Object.entries(POSES).forEach(([k, name]) => {
-    const b = document.createElement("button"); b.type = "button"; b.className = "style-btn pose-btn"; b.setAttribute("aria-pressed", String(k === lk.pose));
-    const c = document.createElement("div"); c.className = "pose-fig"; drawSprite(c, null, { ...S.equip, ...lk, pose: k });
-    const t = document.createElement("span"); t.textContent = name;
-    b.append(c, t); b.onclick = () => setLook({ pose: k }); ps.appendChild(b);
   });
   swatches($("#hairColours"), HAIR_COLOURS, lk.hc, (k) => setLook({ hc: k }), ["Brown", "Black", "Blonde", "Ginger", "Silver", "Pink", "Blue"]);
   swatches($("#skinTones"), SKIN_TONES, lk.skin, (k) => setLook({ skin: k }), ["Skin tone 1", "Skin tone 2", "Skin tone 3", "Skin tone 4", "Skin tone 5", "Skin tone 6"]);
@@ -547,7 +619,7 @@ function renderGuild(profiles) {
   profiles.forEach((p, i) => {
     const li = document.createElement("li"); li.className = "g" + (me && p.id === me.uid ? " me" : "");
     const rank = document.createElement("span"); rank.className = "rank"; rank.textContent = i + 1;
-    const c = document.createElement("div"); c.className = "g-av"; drawSprite(c, null, p.equip, { head: true });
+    const c = document.createElement("canvas"); c.width = 16; c.height = 20; drawSprite(c, p.cls, p.equip);
     const who = document.createElement("div"); who.className = "who";
     const b = document.createElement("b"); b.textContent = (p.name || "Adventurer") + (me && p.id === me.uid ? " (you)" : "");
     const s = document.createElement("span"); s.textContent = p.title || "Novice";
@@ -588,9 +660,9 @@ function renderChat(msgs) {
     const row = document.createElement("div");
     row.className = "msg" + (mine ? " mine" : "") + (cont ? " cont" : "");
     if (!mine) {
-      const c = document.createElement("div"); c.className = "msg-av";
+      const c = document.createElement("canvas"); c.width = 16; c.height = 20;
       const p = guildProfiles[m.uid];
-      if (!cont) drawSprite(c, null, p ? p.equip : {}, { head: true });
+      if (!cont) drawSprite(c, p ? p.cls : "warrior", p ? p.equip : {});
       row.appendChild(c);
     }
     const bubble = document.createElement("div"); bubble.className = "bubble";
@@ -683,8 +755,19 @@ const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
 const isStandalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 if (isIOS && !isStandalone) $("#iosHint").hidden = false;
 
+/* ================= animation ================= */
+// The streak flame flickers. Paused when the app is hidden or motion is reduced.
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
+let flameFrame = 0;
+setInterval(() => {
+  if (document.hidden || reduceMotion.matches || !S || $("#screen-game").hidden) return;
+  if ($("#streakBadge").classList.contains("out")) { if (flameFrame) { flameFrame = 0; drawFlame(0); } return; }
+  flameFrame = (flameFrame + 1 + Math.floor(Math.random() * 2)) % FLAME_FRAMES.length;
+  drawFlame(flameFrame);
+}, 150);
+
 /* ================= Firebase ================= */
-drawSprite($("#titleSprite"), null, { hand: "sword", back: "cape" });
+drawSprite($("#titleSprite"), "warrior", { hand: "sword", back: "cape" });
 const titleStatus = $("#titleStatus"), titleErr = $("#titleErr"), signinBtn = $("#signin");
 function showError(msg) { titleErr.textContent = msg; titleErr.hidden = false; }
 
