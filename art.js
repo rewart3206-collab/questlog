@@ -1,8 +1,9 @@
-// Questlog cartoon art: a chunky chibi hero, gear and the streak flame, all as inline SVG.
-// Everything shares one thick dark outline so it reads like a mobile game sticker.
+// Questlog cartoon art: a chunky, determined hero seen from a 3/4 angle, plus gear and the streak flame.
+// Flat colours with a darker side tone and one thick dark outline, like a mobile action game sticker.
+// The hero faces right; the "near" limbs are on the viewer's side, the "far" limbs sit behind the body.
 
-const INK = "#1d1530";
-const SW = 3.2; // outline width
+const INK = "#1b1530";
+const SW = 3.4; // outline width
 
 const st = (fill, extra = "") => `fill="${fill}" stroke="${INK}" stroke-width="${SW}" stroke-linejoin="round" stroke-linecap="round" ${extra}`;
 const noStroke = (fill, extra = "") => `fill="${fill}" stroke="none" ${extra}`;
@@ -14,114 +15,135 @@ function shade(hex, amt) {
   return "#" + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
 }
 
-/* ---------- gear pieces (drawn in hero coordinates) ---------- */
+/* ---------- gear (hero coordinates) ---------- */
+// hand items sit in the far hand at (86, 100); the shield rides on the near arm.
 const ITEMS = {
   sword: () => `
-    <path d="M86.5 44 L91.5 52 L91.5 96 L81.5 96 L81.5 52 Z" ${st("#e6ecf7")}/>
-    <path d="M86.5 50 L86.5 94" stroke="#b9c3d8" stroke-width="2" fill="none"/>
-    <rect x="74" y="94" width="25" height="7" rx="3.5" ${st("#e0a53a")}/>
-    <rect x="83" y="100" width="7" height="13" rx="2" ${st("#7a4a25")}/>`,
+    <path d="M84 40 L90 48 L90 92 L80 92 L80 48 Z" ${st("#e3e9f5")}/>
+    <path d="M85 47 L85 90" stroke="#aeb9cf" stroke-width="2.4" fill="none"/>
+    <rect x="73" y="91" width="24" height="7" rx="2.5" ${st("#c98a2e")}/>
+    <rect x="81.5" y="97" width="7" height="12" rx="2" ${st("#5e3a1f")}/>`,
   staff: () => `
-    <rect x="83.5" y="38" width="6" height="86" rx="3" ${st("#9a6331")}/>
-    <circle cx="86.5" cy="32" r="14" ${noStroke("#6ff0ff", 'opacity=".25"')}/>
-    <circle cx="86.5" cy="32" r="9.5" ${st("#62e6ff")}/>
-    <circle cx="83.5" cy="29" r="3" ${noStroke("#ffffff")}/>`,
+    <rect x="82.5" y="34" width="6" height="90" rx="3" ${st("#8a5a2b")}/>
+    <circle cx="85.5" cy="27" r="14" ${noStroke("#5ff0ff", 'opacity=".22"')}/>
+    <path d="M85.5 16 L95 27 L85.5 38 L76 27 Z" ${st("#4fe3ff")}/>
+    <path d="M85.5 20 L90 27 L85.5 27 Z" ${noStroke("#ffffff", 'opacity=".75"')}/>`,
   shield: () => `
-    <circle cx="30" cy="97" r="16" ${st("#b06f34")}/>
-    <circle cx="30" cy="97" r="11" fill="none" stroke="#f4c542" stroke-width="3"/>
-    <circle cx="30" cy="97" r="4.5" ${st("#f4c542")}/>`,
-  cape: () => `<path d="M42 72 L78 72 L92 124 Q60 132 28 124 Z" ${st("#d8403a")}/>
-    <path d="M60 76 L60 126" stroke="${shade("#d8403a", -0.25)}" stroke-width="3" fill="none"/>`,
-  goldcape: () => `<path d="M42 72 L78 72 L92 124 Q60 132 28 124 Z" ${st("#7b3fc4")}/>
-    <path d="M31 116 Q60 124 89 116 L92 124 Q60 132 28 124 Z" ${st("#f4c542")}/>`,
+    <path d="M38 78 L60 78 L60 98 Q60 112 49 118 Q38 112 38 98 Z" ${st("#9c6230")}/>
+    <path d="M38 78 L44 78 L44 112 Q40 108 38 98 Z" ${noStroke(shade("#9c6230", -0.3))}/>
+    <path d="M38 78 L60 78 L60 98 Q60 112 49 118 Q38 112 38 98 Z" fill="none" stroke="${INK}" stroke-width="${SW}" stroke-linejoin="round"/>
+    <path d="M49 82 L49 112 M41 92 L57 92" stroke="#e8b33a" stroke-width="4" stroke-linecap="round"/>`,
+  cape: () => `<path d="M44 70 L62 70 L56 118 Q38 128 18 116 Q30 100 36 74 Z" ${st("#c8362f")}/>
+    <path d="M40 80 Q34 102 26 114" stroke="${shade("#c8362f", -0.3)}" stroke-width="3.5" fill="none" stroke-linecap="round"/>`,
+  goldcape: () => `<path d="M44 70 L62 70 L56 118 Q38 128 18 116 Q30 100 36 74 Z" ${st("#6a34b0")}/>
+    <path d="M21 112 Q38 120 56.6 112 L56 118 Q38 128 18 116 Z" ${st("#f1b829")}/>`,
   hat: () => `
-    <path d="M38 22 Q50 -6 76 -14 Q70 -4 74 6 Q80 14 84 22 Z" ${st("#5446c9")}/>
-    <ellipse cx="60" cy="23" rx="40" ry="8" ${st("#5446c9")}/>
-    <path d="M42 18 Q60 22 80 18" stroke="#f4c542" stroke-width="4" fill="none" stroke-linecap="round"/>
-    <path d="M62 2 l2.2 4.6 5 .7 -3.6 3.5 .9 5 -4.5 -2.4 -4.5 2.4 .9 -5 -3.6 -3.5 5 -.7 Z" ${noStroke("#ffd84a")}/>`,
+    <ellipse cx="58" cy="17" rx="40" ry="8.5" ${st("#3f3596")}/>
+    <path d="M36 15 Q44 -4 34 -20 Q56 -12 68 2 Q74 9 80 15 Z" ${st("#4a3fb0")}/>
+    <path d="M38 12 Q58 17 78 12" stroke="#e8b33a" stroke-width="4.5" fill="none" stroke-linecap="round"/>`,
   helm: () => `
-    <path d="M27 50 Q27 12 60 12 Q93 12 93 50 L93 58 Q88 60 84 56 L84 40 L36 40 L36 56 Q32 60 27 58 Z" ${st("#b8c3d6")}/>
-    <path d="M36 40 L84 40" stroke="${INK}" stroke-width="${SW}"/>
-    <path d="M40 20 Q60 12 80 20" stroke="#ffffff" stroke-width="3" fill="none" opacity=".6"/>
-    <path d="M60 12 Q58 0 66 -6 Q70 4 64 12 Z" ${st("#e0314b")}/>`,
+    <path d="M26 56 L26 30 Q26 4 58 4 Q92 4 92 30 L92 36 L70 36 Q66 46 66 60 L26 60 Z" ${st("#a9b4c8")}/>
+    <path d="M26 56 L26 30 Q26 12 40 7 Q32 20 34 60 L26 60 Z" ${noStroke(shade("#a9b4c8", -0.28))}/>
+    <path d="M26 56 L26 30 Q26 4 58 4 Q92 4 92 30 L92 36 L70 36 Q66 46 66 60 L26 60 Z" fill="none" stroke="${INK}" stroke-width="${SW}" stroke-linejoin="round"/>
+    <path d="M44 12 Q60 6 78 10" stroke="#ffffff" stroke-width="3" fill="none" opacity=".55" stroke-linecap="round"/>
+    <path d="M40 6 Q30 -8 16 -6 Q26 2 34 12 Z" ${st("#c3283e")}/>`,
   crown: () => `
-    <path d="M38 24 L36 4 L48 14 L60 -2 L72 14 L84 4 L82 24 Z" ${st("#ffcc33")}/>
-    <circle cx="60" cy="16" r="3.6" ${st("#e0314b")}/>
-    <circle cx="46" cy="19" r="2.6" ${noStroke("#4cc3ff")}/><circle cx="74" cy="19" r="2.6" ${noStroke("#4cc3ff")}/>`,
+    <path d="M36 16 L34 -4 L46 6 L57 -10 L68 6 L80 -4 L80 16 Z" ${st("#f2bb2a")}/>
+    <path d="M36 16 L34 -4 L42 3 L42 16 Z" ${noStroke(shade("#f2bb2a", -0.25))}/>
+    <path d="M36 16 L34 -4 L46 6 L57 -10 L68 6 L80 -4 L80 16 Z" fill="none" stroke="${INK}" stroke-width="${SW}" stroke-linejoin="round"/>
+    <rect x="53" y="5" width="8" height="8" rx="1.5" transform="rotate(45 57 9)" ${st("#d8233f")}/>`,
 };
-// Icon framing for each item when shown on its own: [x, y, w, h] of the viewBox.
+// viewBox for each item shown alone: [x, y, w, h]
 const ITEM_BOX = {
-  sword: [62, 40, 50, 76], staff: [62, 14, 50, 112], shield: [8, 75, 44, 44], cape: [22, 66, 76, 70],
-  goldcape: [22, 66, 76, 70], hat: [16, -20, 88, 52], helm: [20, -12, 80, 74], crown: [30, -8, 60, 38],
+  sword: [58, 36, 54, 76], staff: [60, 10, 52, 116], shield: [24, 74, 50, 48], cape: [12, 64, 56, 66],
+  goldcape: [12, 64, 56, 66], hat: [14, -24, 88, 46], helm: [10, -12, 88, 76], crown: [28, -14, 58, 34],
 };
 
-/* ---------- hair (drawn in hero coordinates) ---------- */
+/* ---------- hair (hero coordinates, head spans x 28..90, y 10..66) ---------- */
 function hairBack(style, c) {
-  if (style === "long") return `<path d="M27 44 Q26 10 60 10 Q94 10 93 44 L96 92 Q88 100 80 90 L80 62 L40 62 L40 90 Q32 100 24 92 Z" ${st(c)}/>`;
-  if (style === "ponytail") return `<path d="M84 26 Q108 30 106 62 Q104 80 112 92 Q94 92 92 70 Q90 50 80 40 Z" ${st(c)}/>`;
+  const d = shade(c, -0.22);
+  if (style === "long") return `<path d="M28 30 Q26 8 56 8 L60 66 L44 96 Q30 98 22 88 Q28 72 26 50 Z" ${st(d)}/>`;
+  if (style === "ponytail") return `<path d="M34 22 Q14 22 10 46 Q8 66 16 82 Q26 70 26 56 Q28 42 40 34 Z" ${st(d)}/>`;
+  if (style === "bun") return `<circle cx="36" cy="10" r="12" ${st(d)}/>`;
   return "";
 }
 function hairFront(style, c) {
-  const hi = shade(c, 0.35);
-  const fringe = `<path d="M29 48 Q27 14 60 13 Q93 14 91 48 Q86 36 78 33 Q72 42 62 34 Q52 42 44 34 Q36 37 29 48 Z" ${st(c)}/>
-    <path d="M42 22 Q52 17 62 18" stroke="${hi}" stroke-width="4" fill="none" stroke-linecap="round"/>`;
+  const d = shade(c, -0.22), hi = shade(c, 0.3);
+  // covers the crown and the back of the head, with a fringe falling over the front of the face
+  const cap = `<path d="M27 52 L26 30 Q26 6 58 6 Q90 6 91 28 Q84 22 76 24 Q74 30 66 28 Q62 34 56 30 L50 34 Q46 44 48 56 Q36 58 27 52 Z" ${st(c)}/>
+    <path d="M27 52 L26 30 Q26 12 40 8 Q34 24 36 54 Q30 55 27 52 Z" ${noStroke(d)}/>
+    <path d="M27 52 L26 30 Q26 6 58 6 Q90 6 91 28 Q84 22 76 24 Q74 30 66 28 Q62 34 56 30 L50 34 Q46 44 48 56 Q36 58 27 52 Z" fill="none" stroke="${INK}" stroke-width="${SW}" stroke-linejoin="round"/>
+    <path d="M50 13 Q62 10 74 13" stroke="${hi}" stroke-width="3.5" fill="none" stroke-linecap="round"/>`;
   switch (style) {
-    case "short": return fringe;
-    case "long": return `<path d="M28 50 Q26 12 60 12 Q94 12 92 50 Q88 34 74 30 Q64 40 44 34 Q34 38 28 50 Z" ${st(c)}/>
-      <path d="M44 22 Q54 16 66 18" stroke="${hi}" stroke-width="4" fill="none" stroke-linecap="round"/>`;
-    case "spiky": return `<path d="M28 50 L24 26 L38 30 L38 8 L52 22 L60 2 L68 22 L82 8 L82 30 L96 26 L92 50 Q86 36 76 35 Q60 44 44 35 Q34 36 28 50 Z" ${st(c)}/>
-      <path d="M46 24 L52 16" stroke="${hi}" stroke-width="4" fill="none" stroke-linecap="round"/>`;
-    case "bun": return `<circle cx="60" cy="10" r="12" ${st(c)}/>${fringe}`;
-    case "ponytail": return fringe;
-    default: return `<ellipse cx="48" cy="24" rx="9" ry="4" transform="rotate(-20 48 24)" ${noStroke("#ffffff", 'opacity=".35"')}/>`;
+    case "short": case "bun": case "ponytail": return cap;
+    case "long": return cap + `<path d="M48 56 Q44 70 46 84" stroke="${INK}" stroke-width="${SW}" fill="none" stroke-linecap="round"/>`;
+    case "spiky": return `<path d="M27 54 L24 34 L12 30 L24 22 L16 8 L32 12 L34 -4 L48 8 L58 -8 L66 8 L82 0 L80 14 L94 18 L90 28 Q84 22 76 24 Q74 30 66 28 Q60 34 54 30 Q46 42 48 56 Q36 58 27 54 Z" ${st(c)}/>
+      <path d="M27 54 L24 34 L12 30 L24 22 L16 8 L32 12 L34 -4 L40 8 Q32 24 36 56 Z" ${noStroke(d)}/>
+      <path d="M27 54 L24 34 L12 30 L24 22 L16 8 L32 12 L34 -4 L48 8 L58 -8 L66 8 L82 0 L80 14 L94 18 L90 28 Q84 22 76 24 Q74 30 66 28 Q60 34 54 30 Q46 42 48 56 Q36 58 27 54 Z" fill="none" stroke="${INK}" stroke-width="${SW}" stroke-linejoin="round"/>`;
+    default: return `<path d="M46 16 Q58 12 70 15" stroke="#ffffff" stroke-width="3.5" fill="none" opacity=".35" stroke-linecap="round"/>`;
   }
 }
 
 /* ---------- the hero ---------- */
 // p: { body:"m"|"f", hair, hairColor, skin, tunic, head, back, hand, off }
 export function heroSVG(p, opts = {}) {
-  const skin = p.skin, tunic = p.tunic, tunicDark = shade(tunic, -0.28);
-  const pants = "#3b4377", boot = "#5b3a22";
   const female = p.body === "f";
-  const box = opts.head ? "12 -18 96 96" : "0 -22 120 158";
-  const backItem = p.back && ITEMS[p.back] ? ITEMS[p.back]() : "";
-  const headItem = p.head && ITEMS[p.head] ? ITEMS[p.head]() : "";
-  const handItem = p.hand && ITEMS[p.hand] ? ITEMS[p.hand]() : "";
-  const offItem = p.off && ITEMS[p.off] ? ITEMS[p.off]() : "";
-  const legFill = female ? skin : pants;
-  const leg = (x) => `<rect x="${x}" y="${female ? 106 : 94}" width="12" height="${female ? 14 : 26}" rx="5" ${st(legFill)}/>
-      <path d="M${x - 3} 124 Q${x - 3} 112 ${x + 6} 112 Q${x + 15} 112 ${x + 15} 124 Z" ${st(boot)}/>`;
-  const bottom = female ? 108 : 100;
-  const torso = `<path d="M40 80 Q40 70 50 70 L70 70 Q80 70 80 80 L82 ${bottom - 4} Q82 ${bottom} 77 ${bottom} L43 ${bottom} Q38 ${bottom} 38 ${bottom - 4} Z" ${st(tunic)}/>
-      <path d="M44 74 Q50 72 56 73" stroke="${shade(tunic, 0.35)}" stroke-width="3" fill="none" stroke-linecap="round"/>`;
-  const skirt = female ? `<path d="M40 98 L80 98 L90 116 Q60 124 30 116 Z" ${st(tunic)}/>
-      <path d="M46 104 L42 116 M60 104 L60 119 M74 104 L78 116" stroke="${tunicDark}" stroke-width="2.5" fill="none" stroke-linecap="round"/>` : "";
-  const by = female ? 94 : 88;
-  const belt = `<rect x="38" y="${by}" width="44" height="8" rx="3" ${st("#6b4428")}/><rect x="55" y="${by - 1}" width="10" height="10" rx="2" ${st("#f4c542")}/>`;
-  const armL = `<g class="arm-l"><rect x="27" y="74" width="13" height="26" rx="6.5" ${st(tunic)}/><circle cx="33.5" cy="102" r="6.5" ${st(skin)}/></g>`;
-  const armR = `<g class="arm-r"><rect x="80" y="74" width="13" height="26" rx="6.5" ${st(tunic)}/>${handItem}<circle cx="86.5" cy="102" r="6.5" ${st(skin)}/></g>`;
-  const lash = female ? `<path d="M42.6 48.5 l-3.6 -1.6 M42.4 51.5 l-3.8 .2 M77.4 48.5 l3.6 -1.6 M77.6 51.5 l3.8 .2" stroke="${INK}" stroke-width="2.2" stroke-linecap="round"/>` : "";
+  const skin = p.skin, skinD = shade(skin, -0.2);
+  const tunic = p.tunic, tunicD = shade(tunic, -0.3);
+  const pants = "#343c6e", pantsD = shade(pants, -0.3), boot = "#4a2f1c", bootD = shade(boot, -0.3);
+  const box = opts.head ? "14 -22 92 92" : "-2 -26 124 162";
+  const item = (k) => (k && ITEMS[k] ? ITEMS[k]() : "");
+
+  // legs pivot at the hip; boots point forward (right)
+  const leg = (x, far) => {
+    const lf = female ? (far ? skinD : skin) : (far ? pantsD : pants);
+    return `<rect x="${x}" y="96" width="13" height="22" rx="5" ${st(lf)}/>
+      <path d="M${x - 2} 127 L${x - 2} 116 Q${x - 2} 112 ${x + 4} 112 L${x + 11} 112 Q${x + 15} 112 ${x + 16} 116 Q${x + 22} 118 ${x + 22} 124 L${x + 22} 127 Z" ${st(far ? bootD : boot)}/>`;
+  };
+  const legs = `<g class="leg-f">${leg(58, true)}</g><g class="leg-n">${leg(46, false)}</g>`;
+
+  // torso: front panel plus a darker side panel on the left (the side turned away)
+  const bottom = female ? 104 : 100;
+  const torso = `<path d="M38 78 Q38 68 48 68 L74 68 Q82 68 82 78 L82 ${bottom} L38 ${bottom} Z" ${st(tunic)}/>
+    <path d="M38 78 Q38 68 48 68 L52 68 Q48 76 48 ${bottom} L38 ${bottom} Z" ${noStroke(tunicD)}/>
+    <path d="M38 78 Q38 68 48 68 L74 68 Q82 68 82 78 L82 ${bottom} L38 ${bottom} Z" fill="none" stroke="${INK}" stroke-width="${SW}" stroke-linejoin="round"/>
+    <path d="M64 70 L60 84 L68 84 Z" ${noStroke(tunicD)}/>`;
+  const skirt = female ? `<path d="M37 96 L83 96 L90 114 Q62 122 32 114 Z" ${st(tunic)}/>
+    <path d="M37 96 L48 96 L44 117 Q37 116 32 114 Z" ${noStroke(tunicD)}/>
+    <path d="M37 96 L83 96 L90 114 Q62 122 32 114 Z" fill="none" stroke="${INK}" stroke-width="${SW}" stroke-linejoin="round"/>` : "";
+  const by = female ? 92 : 88;
+  const belt = `<path d="M37 ${by} L83 ${by} L83 ${by + 8} L37 ${by + 8} Z" ${st("#5a3820")}/><rect x="64" y="${by - 1}" width="10" height="10" rx="1.5" ${st("#e8b33a")}/>`;
+
+  // arms pivot at the shoulder
+  const armFar = `<g class="arm-f"><rect x="78" y="70" width="13" height="28" rx="6" ${st(tunicD)}/>${item(p.hand)}<circle cx="85" cy="102" r="6.5" ${st(skinD)}/></g>`;
+  const armNear = `<g class="arm-n"><rect x="42" y="70" width="14" height="30" rx="6.5" ${st(tunic)}/><circle cx="49" cy="103" r="7" ${st(skin)}/>${item(p.off)}</g>`;
+
+  // boxy head turned to the right: ear on the left, both eyes on the right half
   const head = `
-    <rect x="53" y="66" width="14" height="8" rx="3" ${st(skin)}/>
-    <circle cx="30" cy="52" r="6.5" ${st(skin)}/><circle cx="90" cy="52" r="6.5" ${st(skin)}/>
-    <ellipse cx="60" cy="44" rx="31" ry="29" ${st(skin)}/>
-    <ellipse cx="47" cy="52" rx="5" ry="6.6" ${noStroke(INK)}/><ellipse cx="73" cy="52" rx="5" ry="6.6" ${noStroke(INK)}/>
-    <circle cx="48.8" cy="49.4" r="1.9" ${noStroke("#ffffff")}/><circle cx="74.8" cy="49.4" r="1.9" ${noStroke("#ffffff")}/>
-    ${lash}
-    <ellipse cx="39" cy="61" rx="5.5" ry="3.2" ${noStroke("#ff7f7f", `opacity="${female ? 0.55 : 0.35}"`)}/>
-    <ellipse cx="81" cy="61" rx="5.5" ry="3.2" ${noStroke("#ff7f7f", `opacity="${female ? 0.55 : 0.35}"`)}/>
-    <path d="M55 62 Q60 67 65 62" stroke="${INK}" stroke-width="2.6" fill="none" stroke-linecap="round"/>`;
-  const shadow = opts.head ? "" : `<ellipse cx="60" cy="127" rx="30" ry="5" fill="#000" opacity=".28"/>`;
+    <rect x="52" y="60" width="16" height="10" rx="3" ${st(skinD)}/>
+    <rect x="28" y="10" width="62" height="56" rx="17" ${st(skin)}/>
+    <path d="M28 40 L28 27 Q28 10 45 10 L44 10 Q34 30 38 66 L36 66 Q28 66 28 50 Z" ${noStroke(skinD)}/>
+    <rect x="28" y="10" width="62" height="56" rx="17" fill="none" stroke="${INK}" stroke-width="${SW}"/>
+    <ellipse cx="44" cy="42" rx="6" ry="7.5" ${st(skin)}/>
+    <path d="M44 38 Q41 42 44 46" stroke="${skinD}" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <path d="M64 33 L74 35" stroke="${INK}" stroke-width="3.6" stroke-linecap="round"/>
+    <path d="M81 35 L87 33" stroke="${INK}" stroke-width="3.6" stroke-linecap="round"/>
+    <rect x="66.5" y="39" width="5.5" height="9" rx="2.7" ${noStroke(INK)}/>
+    <rect x="81" y="39" width="4.5" height="8.5" rx="2.2" ${noStroke(INK)}/>
+    ${female ? `<path d="M66 40 L62.5 37.5 M81 40 L78.5 37.8" stroke="${INK}" stroke-width="2.2" stroke-linecap="round"/>` : ""}
+    <path d="M71 56 L82 55" stroke="${INK}" stroke-width="3" stroke-linecap="round"/>`;
+
+  const shadow = opts.head ? "" : `<ellipse cx="58" cy="128" rx="34" ry="5.5" fill="#000" opacity=".28"/>`;
   return `<svg viewBox="${box}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
     ${shadow}
-    <g class="upper">${backItem}${hairBack(p.hair, p.hairColor)}</g>
-    <g class="leg-l">${leg(46)}</g><g class="leg-r">${leg(62)}</g>
+    <g class="upper">${item(p.back)}${hairBack(p.hair, p.hairColor)}${armFar}</g>
+    ${legs}
     <g class="upper">
       ${torso}${skirt}${belt}
-      ${armL}${offItem}${armR}
       ${head}
       ${hairFront(p.hair, p.hairColor)}
-      ${headItem}
+      ${item(p.head)}
+      ${armNear}
     </g>
   </svg>`;
 }
