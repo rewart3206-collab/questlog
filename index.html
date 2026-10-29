@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Questlog</title>
+<meta name="description" content="Turn your daily habits into quests. Level up your hero with friends.">
+<meta name="theme-color" content="#0f1226">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Questlog">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* 16-bit JRPG menu: framed blue windows in one column, hero card on top, command bar at the bottom. */
+:root{
+  --night:#0f1226; --win:#1c2556; --win2:#141b42; --frame:#e6eaff; --ink:#eef0ff; --muted:#a2abdd; --line:#2e3a7a; --well:#0d1233; --deep:#0a0e24;
+  --gold:#f4c542; --xp:#5fd38a; --hp:#ff6b6b;
+  --str:#ff8a5c; --int:#6fb8ff; --vit:#62e0a0; --spi:#c79bff;
+  --display:"Pixelify Sans","Courier New",monospace;
+  --body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{background:var(--night);color:var(--ink);margin:0}
+body{font-family:var(--body);font-size:15px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:calc(16px + env(safe-area-inset-top,0px)) calc(96px + env(safe-area-inset-bottom,0px));
+  background-image:radial-gradient(circle at 20% 0%,#1a2160 0,transparent 55%),radial-gradient(1px 1px at 10px 10px,#ffffff22 50%,transparent 51%);background-size:auto,28px 28px;background-attachment:fixed;
+  -webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+.wrap{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+h1,h2,h3,.px{font-family:var(--display);font-weight:600;letter-spacing:.02em;margin:0;text-wrap:balance}
+h2{font-size:15px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.win{background:linear-gradient(180deg,var(--win),var(--win2));border:3px solid var(--frame);border-radius:8px;box-shadow:inset 0 0 0 2px var(--deep),0 4px 0 #070a1c;padding:14px}
+.stack{display:flex;flex-direction:column;gap:14px}
+.row{display:flex;align-items:center;gap:10px}
+.muted{color:var(--muted)}
+.num{font-variant-numeric:tabular-nums}
+.note{font-size:12px;color:var(--muted);margin:0}
+
+/* title screen */
+.title-screen{min-height:calc(100dvh - 140px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center}
+.logo{font-family:var(--display);font-size:clamp(40px,12vw,64px);font-weight:700;color:var(--gold);text-shadow:4px 4px 0 #6b4f0a;letter-spacing:.04em;margin:0}
+.tagline{color:var(--muted);max-width:30ch;margin:0}
+.title-sprite{width:128px;height:160px;image-rendering:pixelated;animation:bob 1.2s steps(2) infinite}
+@keyframes bob{50%{transform:translateY(-4px)}}
+.blink{animation:blink 1s steps(2) infinite;font-family:var(--display);color:var(--frame);font-size:13px}
+@keyframes blink{50%{opacity:0}}
+.err{color:var(--hp);font-size:14px;max-width:36ch}
+
+/* hero */
+.hero{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center}
+.sprite{width:96px;height:120px;image-rendering:pixelated;background:radial-gradient(ellipse at 50% 90%,#ffffff18 0,transparent 60%);border-radius:6px}
+.hero-info{min-width:0;display:flex;flex-direction:column;gap:6px}
+.hero-name{font-size:22px;line-height:1.1;overflow-wrap:anywhere}
+.title-tag{font-family:var(--display);font-size:13px;color:var(--gold)}
+.lvl{font-family:var(--display);font-size:13px;background:var(--frame);color:var(--night);padding:1px 7px;border-radius:3px}
+.bar{height:12px;border:2px solid var(--frame);border-radius:3px;background:var(--deep);overflow:hidden}
+.bar>i{display:block;height:100%;background:repeating-linear-gradient(90deg,var(--xp) 0 6px,#4bbd76 6px 8px);transition:width .5s steps(12)}
+.purse{display:flex;gap:14px;flex-wrap:wrap;font-family:var(--display);font-size:14px}
+.coin{display:inline-block;width:12px;height:12px;background:var(--gold);box-shadow:inset -2px -2px 0 #b8901f;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.flame{color:#ff9f43}
+.sync{font-size:11px;color:var(--muted);font-family:var(--display)}
+.sync.off{color:#ff9f43}
+
+/* nav */
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--win2);border-top:3px solid var(--frame);
+  padding:8px max(16px,env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.nav-in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+.nav button{background:none;border:0;padding:8px 2px;font-family:var(--display);font-size:14px;color:var(--muted);border-radius:4px}
+.nav button[aria-current="true"]{color:var(--night);background:var(--frame)}
+
+/* quests */
+.date{font-family:var(--display);font-size:13px;color:var(--muted)}
+.qlist,.tlist,.glist{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.q{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:10px;border:2px solid var(--line);border-radius:6px;background:var(--well)}
+.q.done{opacity:.62}
+.q.done .qname{text-decoration:line-through;text-decoration-thickness:2px}
+.check{width:32px;height:32px;border:3px solid var(--frame);border-radius:4px;background:var(--deep);display:grid;place-items:center;font-family:var(--display);font-size:18px;color:var(--night);padding:0}
+.q.done .check{background:var(--xp);border-color:var(--xp)}
+.qmain{min-width:0}
+.qname{font-weight:700;overflow-wrap:anywhere}
+.qmeta{display:flex;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:2px}
+.chip{font-family:var(--display);font-size:12px;padding:0 6px;border-radius:3px;border:1.5px solid currentColor}
+.STR{color:var(--str)}.INT{color:var(--int)}.VIT{color:var(--vit)}.SPI{color:var(--spi)}
+.iconbtn{background:none;border:2px solid transparent;border-radius:4px;color:var(--muted);padding:4px 8px;font-family:var(--display)}
+.iconbtn:hover{border-color:var(--line);color:var(--ink)}
+.btn{background:var(--frame);color:var(--night);border:0;border-radius:4px;padding:9px 14px;font-family:var(--display);font-weight:600;font-size:15px;box-shadow:0 3px 0 #8d95c4}
+.btn:active{transform:translateY(2px);box-shadow:0 1px 0 #8d95c4}
+.btn.gold{background:var(--gold);box-shadow:0 3px 0 #a07d1a}
+.btn.ghost{background:transparent;color:var(--ink);border:2px solid var(--line);box-shadow:none}
+.btn.danger{background:var(--hp);box-shadow:0 3px 0 #a83d3d}
+.btn.big{font-size:17px;padding:12px 20px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.spread{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.clear{font-family:var(--display);color:var(--gold);font-size:14px}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}
+.stat{border:2px solid var(--line);border-radius:6px;padding:10px;background:var(--well)}
+.stat .px{font-size:18px}
+.stat .bar{height:8px;border-width:1.5px;margin-top:6px}
+.stat .bar>i{background:currentColor}
+.stat small{display:block;color:var(--muted);font-size:12px}
+
+/* shop */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:10px}
+.item{border:2px solid var(--line);border-radius:6px;padding:10px;background:var(--well);display:flex;flex-direction:column;gap:6px}
+.item canvas{width:48px;height:60px;image-rendering:pixelated}
+.item .px{font-size:15px}
+.item p{margin:0;font-size:12px;color:var(--muted);flex:1}
+.item.locked{opacity:.55}
+.item.equipped{border-color:var(--gold)}
+.t{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:10px;border:2px solid var(--line);border-radius:6px;background:var(--well)}
+.t .tname{min-width:0;overflow-wrap:anywhere;font-weight:700}
+
+/* guild */
+.g{display:grid;grid-template-columns:auto auto 1fr auto;gap:12px;align-items:center;padding:8px 10px;border:2px solid var(--line);border-radius:6px;background:var(--well)}
+.g.me{border-color:var(--gold)}
+.g canvas{width:40px;height:50px;image-rendering:pixelated}
+.rank{font-family:var(--display);font-size:16px;color:var(--muted);width:2ch;text-align:right}
+.g .who{min-width:0}
+.g .who b{display:block;overflow-wrap:anywhere}
+.g .who span{font-size:12px;color:var(--muted)}
+.g .lv{font-family:var(--display);text-align:right;font-size:14px}
+.g .lv small{display:block;color:#ff9f43;font-size:12px}
+
+/* log */
+.heat{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:10px}
+.heat div{aspect-ratio:1;border-radius:3px;background:var(--deep);border:1.5px solid var(--line);max-width:100%}
+.heat div.today{border-color:var(--frame)}
+.heat-legend{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted);margin-top:8px}
+.heat-legend span{width:12px;height:12px;border-radius:2px;display:inline-block}
+.events{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:14px}
+.events li{display:flex;justify-content:space-between;gap:10px;border-bottom:1px dashed var(--line);padding-bottom:6px}
+.events li span:first-child{min-width:0;overflow-wrap:anywhere}
+
+/* sheets */
+.sheet{position:fixed;inset:0;z-index:40;background:#05071599;display:flex;align-items:flex-end;justify-content:center;padding:16px max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.sheet .win{width:100%;max-width:520px;display:flex;flex-direction:column;gap:12px;max-height:100%;overflow:auto}
+label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+input{font:inherit;color:var(--ink);background:var(--deep);border:2px solid var(--line);border-radius:4px;padding:9px 10px;width:100%}
+.seg{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.seg.three{grid-template-columns:repeat(3,1fr)}
+.seg button{background:var(--deep);border:2px solid var(--line);border-radius:4px;padding:8px 4px;font-family:var(--display);font-size:13px}
+.seg button[aria-pressed="true"]{border-color:currentColor;background:#ffffff12}
+.actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.lvlup{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:#050715cc;padding:16px}
+.lvlup .win{text-align:center;max-width:360px;width:100%;display:flex;flex-direction:column;gap:10px;align-items:center;animation:pop .45s steps(5)}
+.lvlup h1{font-size:34px;color:var(--gold);text-shadow:3px 3px 0 #6b4f0a}
+@keyframes pop{from{transform:scale(.6)}to{transform:scale(1)}}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:60;background:var(--frame);color:var(--night);font-family:var(--display);padding:8px 14px;border-radius:4px;box-shadow:0 3px 0 #8d95c4;max-width:calc(100% - 32px);text-align:center}
+.float{position:fixed;z-index:35;font-family:var(--display);font-weight:700;color:var(--xp);pointer-events:none;animation:rise 1s ease-out forwards;text-shadow:2px 2px 0 #000}
+@keyframes rise{to{transform:translateY(-46px);opacity:0}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- TITLE / SIGN-IN -->
+<main id="screen-title" class="wrap title-screen">
+  <canvas id="titleSprite" class="title-sprite" width="16" height="20" aria-hidden="true"></canvas>
+  <h1 class="logo">QUESTLOG</h1>
+  <p class="tagline">Your daily habits are quests. Complete them, level up, and race your friends.</p>
+  <button class="btn gold big" id="signin" disabled>Sign in with Google</button>
+  <p class="blink" id="titleStatus">LOADING…</p>
+  <p class="err" id="titleErr" hidden></p>
+</main>
+
+<!-- GAME -->
+<div id="screen-game" class="wrap" hidden>
+  <section class="win hero" aria-label="Your hero">
+    <canvas id="sprite" class="sprite" width="16" height="20" aria-hidden="true"></canvas>
+    <div class="hero-info">
+      <div class="row" style="flex-wrap:wrap;gap:8px"><span class="lvl num" id="lvl">LV 1</span><span class="title-tag" id="htitle">Novice</span></div>
+      <h1 class="hero-name" id="hname">Adventurer</h1>
+      <div class="bar" role="progressbar" aria-label="Experience" id="xpbar"><i style="width:0"></i></div>
+      <div class="row muted num" style="justify-content:space-between;font-size:12px"><span id="xptext">0 / 100 XP</span><span id="classname">Warrior</span></div>
+      <div class="purse num"><span><i class="coin"></i><span id="gold">0</span> gold</span><span class="flame" id="streak">0-day streak</span></div>
+      <span class="sync" id="sync">Saved</span>
+    </div>
+  </section>
+
+  <section class="panel" id="p-quests">
+    <div class="win">
+      <div class="spread"><h2>Daily quests</h2><span class="date" id="today"></span></div>
+      <ul class="qlist" id="qlist"></ul>
+      <div class="spread" style="margin-top:12px">
+        <span class="clear" id="clearmsg"></span>
+        <button class="btn" id="addq">+ New quest</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel stack" id="p-hero" hidden>
+    <div class="win">
+      <h2>Attributes</h2>
+      <div class="stats" id="stats"></div>
+      <p class="note" style="margin-top:10px">Each quest trains one attribute. Your class earns +20% XP on its favoured attribute.</p>
+    </div>
+    <div class="win">
+      <h2>Titles</h2>
+      <div class="grid" id="titles"></div>
+    </div>
+    <div class="win stack" style="gap:10px">
+      <h2>Character</h2>
+      <label for="nameIn">Hero name (your guild sees this)<input id="nameIn" maxlength="24" autocomplete="off"></label>
+      <div><div class="note" style="margin-bottom:4px">Class</div><div class="seg" id="classSeg"></div></div>
+      <div class="actions"><button class="btn ghost" id="resetBtn">Start a new save</button></div>
+    </div>
+    <div class="win stack" style="gap:10px">
+      <h2>Account</h2>
+      <p class="note" id="acct"></p>
+      <div class="actions">
+        <button class="btn" id="installBtn" hidden>Install app</button>
+        <button class="btn ghost" id="signout">Sign out</button>
+      </div>
+      <p class="note" id="iosHint" hidden>To install on iPhone: tap Share, then “Add to Home Screen”.</p>
+    </div>
+  </section>
+
+  <section class="panel stack" id="p-shop" hidden>
+    <div class="win">
+      <div class="spread"><h2>Armoury</h2><span class="purse num"><span><i class="coin"></i><span class="goldmirror">0</span></span></span></div>
+      <p class="note" style="margin-top:6px">Gear unlocks at higher levels. Buy once, equip any time. Your guild sees what you wear.</p>
+      <div class="grid" id="gear"></div>
+    </div>
+    <div class="win">
+      <div class="spread"><h2>Real-life treasures</h2><button class="btn" id="addt">+ Treasure</button></div>
+      <p class="note" style="margin-top:6px">Rewards you give yourself in real life. Spend gold to claim one.</p>
+      <ul class="tlist" id="tlist"></ul>
+    </div>
+  </section>
+
+  <section class="panel stack" id="p-guild" hidden>
+    <div class="win">
+      <div class="spread"><h2>Guild</h2><button class="btn" id="invite">Copy invite link</button></div>
+      <p class="note" style="margin-top:6px">Everyone who signs in to this Questlog appears here, ranked by total XP.</p>
+      <ul class="glist" id="glist"></ul>
+    </div>
+  </section>
+
+  <section class="panel stack" id="p-log" hidden>
+    <div class="win">
+      <h2>Last 4 weeks</h2>
+      <div class="heat" id="heat"></div>
+      <div class="heat-legend">None <span style="background:var(--deep);border:1.5px solid var(--line)"></span><span style="background:#2a6b47"></span><span style="background:#3fa46a"></span><span style="background:var(--xp)"></span> Full clear</div>
+    </div>
+    <div class="win">
+      <h2>Adventure log</h2>
+      <ul class="events" id="events"></ul>
+    </div>
+  </section>
+
+  <nav class="nav" aria-label="Menu"><div class="nav-in">
+    <button data-tab="quests" aria-current="true">Quests</button>
+    <button data-tab="hero">Hero</button>
+    <button data-tab="shop">Shop</button>
+    <button data-tab="guild">Guild</button>
+    <button data-tab="log">Log</button>
+  </div></nav>
+</div>
+
+<div class="sheet" id="sheet" hidden></div>
+<div class="lvlup" id="lvlup" hidden></div>
+<div class="toast" id="toast" hidden></div>
+
+<script type="module" src="app.js"></script>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}
+</script>
+</body>
+</html>
