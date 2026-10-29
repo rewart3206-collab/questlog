@@ -160,8 +160,6 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
 .styles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .style-btn{background:var(--deep);border:2px solid var(--line);border-radius:4px;padding:6px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;font-family:var(--display);font-size:13px;color:var(--muted)}
 .style-btn canvas{width:56px;height:44px;image-rendering:pixelated}
-.pose-btn canvas{width:48px;height:60px}
-.pose-btn span{font-size:12px;text-align:center;line-height:1.15}
 .style-btn[aria-pressed="true"]{border-color:var(--gold);color:var(--ink)}
 
 /* challenges */
@@ -291,8 +289,6 @@ input{font:inherit;font-size:16px;color:var(--ink);background:var(--deep);border
           <div><div class="note opt-label">Skin tone</div><div class="swatches" id="skinTones" role="group" aria-label="Skin tone"></div></div>
         </div>
       </div>
-      <div class="note opt-label" style="margin-top:12px">Pose</div>
-      <div class="styles" id="poses" role="group" aria-label="Pose"></div>
       <div class="note opt-label" style="margin-top:12px">Hair style</div>
       <div class="styles" id="hairStyles" role="group" aria-label="Hair style"></div>
     </div>

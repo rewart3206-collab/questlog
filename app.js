@@ -126,7 +126,7 @@ const HAIRSTYLES = {
 };
 const HAIR_COLOURS = { brown: "#5a3a22", black: "#1f1a24", blonde: "#e0b84c", ginger: "#c2582a", silver: "#c9ccd6", pink: "#e27fb5", blue: "#4c78d6" };
 const SKIN_TONES = { s1: "#f6d7b8", s2: "#f1c9a0", s3: "#d9a77c", s4: "#b07a50", s5: "#7d5235", s6: "#5a3824" };
-const DEFAULT_LOOK = { body: "m", hair: "short", hc: "brown", skin: "s2", pose: "stand" };
+const DEFAULT_LOOK = { body: "m", hair: "short", hc: "brown", skin: "s2" };
 // Works with old saves/profiles that only stored "m"/"f".
 function normLook(l) {
   if (l && typeof l === "object") {
@@ -135,7 +135,6 @@ function normLook(l) {
       hair: HAIRSTYLES[l.hair] ? l.hair : "short",
       hc: HAIR_COLOURS[l.hc] ? l.hc : "brown",
       skin: SKIN_TONES[l.skin] ? l.skin : "s2",
-      pose: POSES[l.pose] ? l.pose : "stand",
     };
   }
   return l === "f" ? { ...DEFAULT_LOOK, body: "f", hair: "long" } : { ...DEFAULT_LOOK };
@@ -150,32 +149,17 @@ const OVER = {
   staff: { z: 1, rows: { 3: ".............O..", 4: "............OOO.", 5: ".............O..", 6: ".............w..", 7: ".............w..", 8: ".............w..", 9: ".............w..", 10: ".............w..", 11: ".............w..", 12: ".............w..", 13: ".............w..", 14: ".............w..", 15: ".............w..", 16: ".............w.." }, pal: { O: "#6ff0ff", w: "#8a5a2b" } },
   shield: { z: 1, rows: { 12: "AAAA............", 13: "AYYA............", 14: "AAAA............", 15: ".AA............." }, pal: { A: "#8a5a2b", Y: "#f4c542" } },
 };
-// Poses swap the arm rows of the body. In any pose other than standing the hands are busy,
-// so held gear (sword, staff, shield) isn't drawn.
-const POSES = {
-  stand: { name: "Standing" },
-  crossed: { name: "Arms crossed", rows: () => ({ 12: "...oTTTTTTTTo...", 13: "...oSSSoSSSSo..." }) },
-  behind: { name: "Behind back", rows: () => ({ 12: "...oTTTTTTTTo...", 13: "...oTTTTTTTTo..." }) },
-  hips: { name: "Hands on hips", rows: () => ({ 12: ".oSooTTTTTTooSo.", 13: "..oSoTTTTTToSo..", 14: "..ooSbbbbbbSoo.." }) },
-  fist: { name: "Fist pump", rows: (B) => ({
-    6: ".ooo" + B[6].slice(4), 7: "oSSS" + B[7].slice(4), 8: "oSSS" + B[8].slice(4), 9: ".oSo" + B[9].slice(4),
-    10: ".oSo" + B[10].slice(4), 11: "..oSo" + B[11].slice(5), 12: "...oo" + B[12].slice(5), 13: "....o" + B[13].slice(5),
-  }) },
-  think: { name: "Thinking", rows: () => ({ 10: ".....oSSSoSSo...", 11: "...ooTTTTTToSo..", 13: "..oSoTTTTTTo...." }) },
-};
 function drawSprite(canvas, cls, equip) {
   const ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, 16, 20);
   equip = equip || {};
   const dye = equip.dye ? GEAR.find((g) => g.id === equip.dye) : null;
-  const look = normLook(equip.body ? { body: equip.body, hair: equip.hair, hc: equip.hc, skin: equip.skin, pose: equip.pose } : equip.look);
+  const look = normLook(equip.body ? { body: equip.body, hair: equip.hair, hc: equip.hc, skin: equip.skin } : equip.look);
   const pal = { o: "#0b0d1f", H: HAIR_COLOURS[look.hc], S: SKIN_TONES[look.skin], e: "#0b0d1f", T: dye ? dye.color : TUNIC, b: "#6b4a2a", P: "#3a3f63", B: "#4a2f1e", c: "#ec9a8c" };
-  const held = look.pose === "stand" ? [] : ["hand", "off"];
-  const layers = SLOTS.filter((s) => s !== "dye" && !held.includes(s)).map((s) => OVER[equip[s]]).filter(Boolean);
+  const layers = SLOTS.filter((s) => s !== "dye").map((s) => OVER[equip[s]]).filter(Boolean);
   const paint = (rows, p) => { for (const y in rows) { const r = rows[y]; for (let x = 0; x < 16; x++) { const c = r[x]; if (c && c !== "." && p[c]) { ctx.fillStyle = p[c]; ctx.fillRect(x, +y, 1, 1); } } } };
   layers.filter((l) => l.z === 0).forEach((l) => paint(l.rows, l.pal));
   const rows = Object.fromEntries(BODIES[look.body].map((r, i) => [i, r]));
-  if (POSES[look.pose].rows) Object.assign(rows, POSES[look.pose].rows(BODIES[look.body]));
   paint(rows, pal);
   paint(HAIRSTYLES[look.hair].rows, pal);
   layers.filter((l) => l.z === 1).forEach((l) => paint(l.rows, { ...pal, ...l.pal }));
@@ -473,13 +457,6 @@ function renderAppearance() {
   const lk = normLook(S.look);
   drawSprite($("#lookPreview"), null, { ...S.equip, ...lk });
   segment($("#lookSeg"), { m: { label: "Male" }, f: { label: "Female" } }, lk.body, (k) => setLook({ body: k }));
-  const ps = $("#poses"); ps.innerHTML = "";
-  Object.entries(POSES).forEach(([k, po]) => {
-    const b = document.createElement("button"); b.type = "button"; b.className = "style-btn pose-btn"; b.setAttribute("aria-pressed", String(k === lk.pose));
-    const c = document.createElement("canvas"); c.width = 16; c.height = 20; drawSprite(c, null, { ...S.equip, ...lk, pose: k });
-    const t = document.createElement("span"); t.textContent = po.name;
-    b.append(c, t); b.onclick = () => setLook({ pose: k }); ps.appendChild(b);
-  });
   const st = $("#hairStyles"); st.innerHTML = "";
   Object.entries(HAIRSTYLES).forEach(([k, h]) => {
     const b = document.createElement("button"); b.type = "button"; b.className = "style-btn"; b.setAttribute("aria-pressed", String(k === lk.hair));
