@@ -149,7 +149,18 @@ const OVER = {
   staff: { z: 1, rows: { 3: ".............O..", 4: "............OOO.", 5: ".............O..", 6: ".............w..", 7: ".............w..", 8: ".............w..", 9: ".............w..", 10: ".............w..", 11: ".............w..", 12: ".............w..", 13: ".............w..", 14: ".............w..", 15: ".............w..", 16: ".............w.." }, pal: { O: "#6ff0ff", w: "#8a5a2b" } },
   shield: { z: 1, rows: { 12: "AAAA............", 13: "AYYA............", 14: "AAAA............", 15: ".AA............." }, pal: { A: "#8a5a2b", Y: "#f4c542" } },
 };
-function drawSprite(canvas, cls, equip) {
+// Walk cycle: frame 1 lifts the left foot, frame 2 the right; 0 is standing.
+const STEP_ROWS = {
+  m: {
+    1: { 17: "...oBBBooPPo....", 18: "...oooo.oBBBo...", 19: ".........oooo..." },
+    2: { 17: "....oPPooBBBo...", 18: "...oBBBo.oooo...", 19: "...oooo........." },
+  },
+  f: {
+    1: { 17: "...oBBBooSSo....", 18: "...oooo.oBBBo...", 19: ".........oooo..." },
+    2: { 17: "....oSSooBBBo...", 18: "...oBBBo.oooo...", 19: "...oooo........." },
+  },
+};
+function drawSprite(canvas, cls, equip, frame) {
   const ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, 16, 20);
   equip = equip || {};
@@ -159,7 +170,9 @@ function drawSprite(canvas, cls, equip) {
   const layers = SLOTS.filter((s) => s !== "dye").map((s) => OVER[equip[s]]).filter(Boolean);
   const paint = (rows, p) => { for (const y in rows) { const r = rows[y]; for (let x = 0; x < 16; x++) { const c = r[x]; if (c && c !== "." && p[c]) { ctx.fillStyle = p[c]; ctx.fillRect(x, +y, 1, 1); } } } };
   layers.filter((l) => l.z === 0).forEach((l) => paint(l.rows, l.pal));
-  paint(Object.fromEntries(BODIES[look.body].map((r, i) => [i, r])), pal);
+  const rows = Object.fromEntries(BODIES[look.body].map((r, i) => [i, r]));
+  if (frame) Object.assign(rows, STEP_ROWS[look.body][frame]);
+  paint(rows, pal);
   paint(HAIRSTYLES[look.hair].rows, pal);
   layers.filter((l) => l.z === 1).forEach((l) => paint(l.rows, { ...pal, ...l.pal }));
 }
@@ -447,13 +460,20 @@ const FLAME = [
   "oRROOOORRRRo", "oRROOYOORRRo", "oRROYYYOORRo", "oRROYYYYORRo", "oRRROYYORRRo", ".oRRROORRRo.", "..oooooooo..",
 ];
 const FLAME_PAL = { o: "#3a1500", R: "#e8531e", O: "#ff9f43", Y: "#ffd23f" };
+// Flicker frames: the base flame, one with the tips leaning the other way, one with the hot core lower.
+const FLAME_FRAMES = [
+  FLAME,
+  [".......o....", "......oRo...", "..o...oRo...", ".oRo..oRRo..", ".oRo.oRRRo..", ...FLAME.slice(5)],
+  [...FLAME.slice(0, 8), "oRROOOOORRRo", "oRROOYOORRRo", "oRROYYYOORRo", ...FLAME.slice(11)],
+];
+function drawFlame(i) {
+  const ctx = $("#flame").getContext("2d");
+  ctx.clearRect(0, 0, 12, 14);
+  FLAME_FRAMES[i].forEach((r, y) => [...r].forEach((ch, x) => { if (FLAME_PAL[ch]) { ctx.fillStyle = FLAME_PAL[ch]; ctx.fillRect(x, y, 1, 1); } }));
+}
 let flameDrawn = false;
 function renderStreak() {
-  if (!flameDrawn) {
-    const ctx = $("#flame").getContext("2d");
-    FLAME.forEach((r, y) => [...r].forEach((ch, x) => { if (FLAME_PAL[ch]) { ctx.fillStyle = FLAME_PAL[ch]; ctx.fillRect(x, y, 1, 1); } }));
-    flameDrawn = true;
-  }
+  if (!flameDrawn) { drawFlame(0); flameDrawn = true; }
   const n = dayStreak(), doneToday = Object.keys(S.days[today()] || {}).length > 0;
   const badge = $("#streakBadge"), num = $("#streakNum");
   num.textContent = n; num.classList.toggle("long", n > 99);
@@ -503,7 +523,7 @@ function render() {
   $("#xptext").textContent = L.into + " / " + L.need + " XP to LV " + (L.level + 1);
   const tq = totalQuests(); $("#qtotal").textContent = tq + (tq === 1 ? " quest done" : " quests done");
   renderStreak();
-  drawSprite($("#sprite"), null, heroLook());
+  drawSprite($("#sprite"), null, heroLook(), walkFrame);
 
   // quests
   $("#today").textContent = new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "short" });
@@ -767,6 +787,24 @@ $("#installBtn").onclick = async () => { if (!deferredInstall) return; deferredI
 const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
 const isStandalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 if (isIOS && !isStandalone) $("#iosHint").hidden = false;
+
+/* ================= animation ================= */
+// The hero walks on the spot and the streak flame flickers. Paused when the app is hidden or motion is reduced.
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
+const WALK = [1, 0, 2, 0];
+let walkFrame = 0, walkStep = 0, flameFrame = 0;
+setInterval(() => {
+  if (document.hidden || reduceMotion.matches || !S || $("#screen-game").hidden) return;
+  walkStep = (walkStep + 1) % WALK.length; walkFrame = WALK[walkStep];
+  drawSprite($("#sprite"), null, heroLook(), walkFrame);
+  $("#sprite").style.transform = walkFrame ? "translateY(0)" : "translateY(-3px)";
+}, 240);
+setInterval(() => {
+  if (document.hidden || reduceMotion.matches || !S || $("#screen-game").hidden) return;
+  if ($("#streakBadge").classList.contains("out")) { if (flameFrame) { flameFrame = 0; drawFlame(0); } return; }
+  flameFrame = (flameFrame + 1 + Math.floor(Math.random() * 2)) % FLAME_FRAMES.length;
+  drawFlame(flameFrame);
+}, 150);
 
 /* ================= Firebase ================= */
 drawSprite($("#titleSprite"), "warrior", { hand: "sword", back: "cape" });
