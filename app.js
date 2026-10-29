@@ -82,6 +82,7 @@ function migrate(st) {
   // Gold economy replaced by challenges: keep anything already bought, convert gold-priced rewards to quest counts.
   if (!st.unlocked) st.unlocked = (st.owned || []).slice();
   if (!st.clearXp) st.clearXp = {};
+  st.look = normLook(st.look);
   const total = Object.values(st.days || {}).reduce((n, d) => n + Object.keys(d).length, 0);
   (st.treasures || []).forEach((t) => {
     if (t.every == null) { t.every = Math.max(3, Math.round((t.cost || 40) / 8)); t.base = total; delete t.cost; }
@@ -95,19 +96,44 @@ function levelInfo(xp) { let l = 1, r = xp; while (r >= needFor(l)) { r -= needF
 function statLevel(x) { let l = 1, r = x; while (r >= 30 + 20 * l) { r -= 30 + 20 * l; l++; } return { level: l, into: r, need: 30 + 20 * l }; }
 
 /* ================= sprite ================= */
-const BASE = [
-  "................", "................", "................", "................", "................",
-  ".....oooooo.....", "....oHHHHHHo....", "....oHSSSSHo....", "....oSeSSeSo....", "....oSSSSSSo....",
-  ".....oSSSSo.....", "...ooTTTTTToo...", "..oSoTTTTTToSo..", "..oSoTTTTTToSo..", "..ooobbbbbbooo..",
-  "....oPPPPPPo....", "....oPPooPPo....", "....oPPooPPo....", "...oBBBooBBBo...", "...oooo..oooo...",
-];
-// Female hero: hair falls to the shoulders, a skirted tunic, rosy cheeks.
-const BASE_F = [
-  "................", "................", "................", "................", "................",
-  ".....oooooo.....", "....oHHHHHHo....", "...oHHSSSSHHo...", "...oHSeSSeSHo...", "...oHcSSSScHo...",
-  "...oHoSSSSoHo...", "...ooTTTTTToo...", "..oSoTTTTTToSo..", "..oSoTTTTTToSo..", "..ooobbbbbbooo..",
-  "...oTTTTTTTTo...", "...oTTTTTTTTo...", "....oSSooSSo....", "...oBBBooBBBo...", "...oooo..oooo...",
-];
+// Bodies are drawn bald; hair is a separate layer so styles and colours can be mixed freely.
+const BODIES = {
+  m: [
+    "................", "................", "................", "................", "................",
+    ".....oooooo.....", "....oSSSSSSo....", "....oSSSSSSo....", "....oSeSSeSo....", "....oSSSSSSo....",
+    ".....oSSSSo.....", "...ooTTTTTToo...", "..oSoTTTTTToSo..", "..oSoTTTTTToSo..", "..ooobbbbbbooo..",
+    "....oPPPPPPo....", "....oPPooPPo....", "....oPPooPPo....", "...oBBBooBBBo...", "...oooo..oooo...",
+  ],
+  f: [
+    "................", "................", "................", "................", "................",
+    ".....oooooo.....", "....oSSSSSSo....", "....oSSSSSSo....", "....oSeSSeSo....", "....ocSSSSco....",
+    ".....oSSSSo.....", "...ooTTTTTToo...", "..oSoTTTTTToSo..", "..oSoTTTTTToSo..", "..ooobbbbbbooo..",
+    "...oTTTTTTTTo...", "...oTTTTTTTTo...", "....oSSooSSo....", "...oBBBooBBBo...", "...oooo..oooo...",
+  ],
+};
+const HAIRSTYLES = {
+  short: { name: "Short", rows: { 5: ".....oooooo.....", 6: "....oHHHHHHo....", 7: "....oH....Ho...." } },
+  long: { name: "Long", rows: { 5: ".....oooooo.....", 6: "....oHHHHHHo....", 7: "...oHH....HHo...", 8: "...oH......Ho...", 9: "...oH......Ho...", 10: "...oHo....oHo..." } },
+  spiky: { name: "Spiky", rows: { 3: ".....o.oo.o.....", 4: "....oHoHHoHo....", 5: "....oHHHHHHo....", 6: "....oHHHHHHo....", 7: "....oH....Ho...." } },
+  bun: { name: "Bun", rows: { 2: "......oooo......", 3: ".....oHHHHo.....", 4: ".....ooHHoo.....", 5: "....oHHHHHHo....", 6: "....oHHHHHHo....", 7: "....oH....Ho...." } },
+  ponytail: { name: "Ponytail", rows: { 5: ".....oooooo.....", 6: "....oHHHHHHoo...", 7: "....oH....HoHo..", 8: "...........oHo..", 9: "...........oHo..", 10: "............o..." } },
+  bald: { name: "Bald", rows: {} },
+};
+const HAIR_COLOURS = { brown: "#5a3a22", black: "#1f1a24", blonde: "#e0b84c", ginger: "#c2582a", silver: "#c9ccd6", pink: "#e27fb5", blue: "#4c78d6" };
+const SKIN_TONES = { s1: "#f6d7b8", s2: "#f1c9a0", s3: "#d9a77c", s4: "#b07a50", s5: "#7d5235", s6: "#5a3824" };
+const DEFAULT_LOOK = { body: "m", hair: "short", hc: "brown", skin: "s2" };
+// Works with old saves/profiles that only stored "m"/"f".
+function normLook(l) {
+  if (l && typeof l === "object") {
+    return {
+      body: l.body === "f" ? "f" : "m",
+      hair: HAIRSTYLES[l.hair] ? l.hair : "short",
+      hc: HAIR_COLOURS[l.hc] ? l.hc : "brown",
+      skin: SKIN_TONES[l.skin] ? l.skin : "s2",
+    };
+  }
+  return l === "f" ? { ...DEFAULT_LOOK, body: "f", hair: "long" } : { ...DEFAULT_LOOK };
+}
 const OVER = {
   cape: { z: 0, rows: { 14: "..CC........CC..", 15: "..CC........CC..", 16: "..CC........CC..", 17: "...C........C...", 18: "...C........C..." }, pal: { C: "#c0392b" } },
   goldcape: { z: 0, rows: { 14: "..CC........CC..", 15: "..CC........CC..", 16: "..CC........CC..", 17: "..CY........YC..", 18: "..YY........YY.." }, pal: { C: "#6b2fa0", Y: "#f4c542" } },
@@ -123,11 +149,13 @@ function drawSprite(canvas, cls, equip) {
   ctx.clearRect(0, 0, 16, 20);
   equip = equip || {};
   const dye = equip.dye ? GEAR.find((g) => g.id === equip.dye) : null;
-  const pal = { o: "#0b0d1f", H: "#5a3a22", S: "#f1c9a0", e: "#0b0d1f", T: dye ? dye.color : TUNIC, b: "#6b4a2a", P: "#3a3f63", B: "#4a2f1e", c: "#ec9a8c" };
+  const look = normLook(equip.body ? { body: equip.body, hair: equip.hair, hc: equip.hc, skin: equip.skin } : equip.look);
+  const pal = { o: "#0b0d1f", H: HAIR_COLOURS[look.hc], S: SKIN_TONES[look.skin], e: "#0b0d1f", T: dye ? dye.color : TUNIC, b: "#6b4a2a", P: "#3a3f63", B: "#4a2f1e", c: "#ec9a8c" };
   const layers = SLOTS.filter((s) => s !== "dye").map((s) => OVER[equip[s]]).filter(Boolean);
   const paint = (rows, p) => { for (const y in rows) { const r = rows[y]; for (let x = 0; x < 16; x++) { const c = r[x]; if (c && c !== "." && p[c]) { ctx.fillStyle = p[c]; ctx.fillRect(x, +y, 1, 1); } } } };
   layers.filter((l) => l.z === 0).forEach((l) => paint(l.rows, l.pal));
-  paint(Object.fromEntries((equip.look === "f" ? BASE_F : BASE).map((r, i) => [i, r])), pal);
+  paint(Object.fromEntries(BODIES[look.body].map((r, i) => [i, r])), pal);
+  paint(HAIRSTYLES[look.hair].rows, pal);
   layers.filter((l) => l.z === 1).forEach((l) => paint(l.rows, { ...pal, ...l.pal }));
 }
 // Gear icons: draw the item at its spot on the hero, then crop to the item and centre it in a square.
@@ -156,7 +184,7 @@ function gearIconRaw(g) {
 
 /* ================= state ================= */
 // The hero's look travels inside the gear map so friends' Guild sprites show it too.
-const heroLook = () => ({ ...S.equip, look: S.look === "f" ? "f" : "m" });
+const heroLook = () => ({ ...S.equip, ...normLook(S.look) });
 let S = null;
 let me = null;          // Firebase user
 let userRef = null, profileRef = null;
@@ -224,7 +252,7 @@ function save() {
 async function pushToCloud() {
   if (!userRef || !fb) return;
   const L = levelInfo(S.xp);
-  const equip = {}; SLOTS.forEach((s) => { equip[s] = S.equip[s] || null; }); equip.look = S.look === "f" ? "f" : "m";
+  const equip = {}; SLOTS.forEach((s) => { equip[s] = S.equip[s] || null; }); const lk = normLook(S.look); Object.assign(equip, lk); equip.look = lk.body;
   try {
     await Promise.all([
       fb.setDoc(userRef, { save: JSON.stringify(S), at: S.at }),
@@ -399,6 +427,33 @@ function treasureForm(t) {
   });
 }
 
+/* ================= appearance ================= */
+function setLook(change) { S.look = { ...normLook(S.look), ...change }; save(); render(); }
+function swatches(container, options, current, onPick, labels) {
+  container.innerHTML = "";
+  Object.entries(options).forEach(([k, colour], i) => {
+    const b = document.createElement("button"); b.type = "button"; b.className = "sw";
+    b.style.background = colour; b.setAttribute("aria-pressed", String(k === current));
+    b.setAttribute("aria-label", labels ? labels[i] : k);
+    b.onclick = () => onPick(k); container.appendChild(b);
+  });
+}
+function renderAppearance() {
+  const lk = normLook(S.look);
+  drawSprite($("#lookPreview"), null, { ...S.equip, ...lk });
+  segment($("#lookSeg"), { m: { label: "Male" }, f: { label: "Female" } }, lk.body, (k) => setLook({ body: k }));
+  const st = $("#hairStyles"); st.innerHTML = "";
+  Object.entries(HAIRSTYLES).forEach(([k, h]) => {
+    const b = document.createElement("button"); b.type = "button"; b.className = "style-btn"; b.setAttribute("aria-pressed", String(k === lk.hair));
+    const full = document.createElement("canvas"); full.width = 16; full.height = 20; drawSprite(full, null, { ...lk, hair: k });
+    const c = document.createElement("canvas"); c.width = 14; c.height = 11; c.getContext("2d").drawImage(full, 1, 2, 14, 11, 0, 0, 14, 11);
+    const t = document.createElement("span"); t.textContent = h.name;
+    b.append(c, t); b.onclick = () => setLook({ hair: k }); st.appendChild(b);
+  });
+  swatches($("#hairColours"), HAIR_COLOURS, lk.hc, (k) => setLook({ hc: k }), ["Brown", "Black", "Blonde", "Ginger", "Silver", "Pink", "Blue"]);
+  swatches($("#skinTones"), SKIN_TONES, lk.skin, (k) => setLook({ skin: k }), ["Skin tone 1", "Skin tone 2", "Skin tone 3", "Skin tone 4", "Skin tone 5", "Skin tone 6"]);
+}
+
 /* ================= render ================= */
 function render() {
   if (!S) return;
@@ -456,7 +511,7 @@ function render() {
     el.append(h, p, b); tg.appendChild(el);
   });
   if (document.activeElement !== $("#nameIn")) $("#nameIn").value = S.name;
-  segment($("#lookSeg"), { m: { label: "Male" }, f: { label: "Female" } }, S.look === "f" ? "f" : "m", (k) => { S.look = k; save(); render(); });
+  renderAppearance();
   $("#acct").textContent = me ? "Signed in as " + (me.email || me.displayName || "Google user") + ". Your progress syncs to every device you sign in on." : "";
 
   // challenges → gear

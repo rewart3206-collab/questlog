@@ -136,6 +136,19 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
 .g .lv{font-family:var(--display);text-align:right;font-size:14px}
 .g .lv small{display:block;color:#ff9f43;font-size:12px}
 
+/* appearance */
+.look{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:start;margin-top:10px}
+.look-preview{width:96px;height:120px;image-rendering:pixelated;background:var(--deep);border:2px solid var(--line);border-radius:6px}
+.look-opts{display:flex;flex-direction:column;gap:10px;min-width:0}
+.opt-label{margin-bottom:4px}
+.swatches{display:flex;flex-wrap:wrap;gap:8px}
+.sw{width:30px;height:30px;padding:0;border:3px solid var(--deep);border-radius:4px;box-shadow:0 0 0 2px var(--line)}
+.sw[aria-pressed="true"]{box-shadow:0 0 0 3px var(--gold)}
+.styles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.style-btn{background:var(--deep);border:2px solid var(--line);border-radius:4px;padding:6px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;font-family:var(--display);font-size:13px;color:var(--muted)}
+.style-btn canvas{width:56px;height:44px;image-rendering:pixelated}
+.style-btn[aria-pressed="true"]{border-color:var(--gold);color:var(--ink)}
+
 /* challenges */
 .clist{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
 .ch{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px;border:2px solid var(--line);border-radius:6px;background:var(--well)}
@@ -249,10 +262,22 @@ input{font:inherit;font-size:16px;color:var(--ink);background:var(--deep);border
       <div class="stats" id="stats"></div>
       <p class="note" style="margin-top:10px">Each quest trains Strength, Intelligence or Health.</p>
     </div>
+    <div class="win">
+      <h2>Appearance</h2>
+      <div class="look">
+        <canvas id="lookPreview" class="look-preview" width="16" height="20" aria-hidden="true"></canvas>
+        <div class="look-opts">
+          <div><div class="note opt-label">Body</div><div class="seg two" id="lookSeg" role="group" aria-label="Body"></div></div>
+          <div><div class="note opt-label">Hair colour</div><div class="swatches" id="hairColours" role="group" aria-label="Hair colour"></div></div>
+          <div><div class="note opt-label">Skin tone</div><div class="swatches" id="skinTones" role="group" aria-label="Skin tone"></div></div>
+        </div>
+      </div>
+      <div class="note opt-label" style="margin-top:12px">Hair style</div>
+      <div class="styles" id="hairStyles" role="group" aria-label="Hair style"></div>
+    </div>
     <div class="win stack" style="gap:10px">
       <h2>Character</h2>
       <label for="nameIn">Hero name (your guild sees this)<input id="nameIn" maxlength="24" autocomplete="off"></label>
-      <div><div class="note" style="margin-bottom:4px">Hero</div><div class="seg two" id="lookSeg" role="group" aria-label="Hero"></div></div>
       <div class="actions"><button class="btn ghost" id="resetBtn">Start a new save</button></div>
     </div>
     <div class="win stack" style="gap:10px">
