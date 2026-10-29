@@ -29,13 +29,13 @@ const GEAR = [
   { id: "crown", slot: "head", name: "Golden Crown", desc: "Ruler of your own routine." },
   { id: "dye_shadow", slot: "shirt", name: "Shadow Tunic", desc: "Midnight black, for quiet heroes.", color: "#363552" },
   { id: "dye_gold", slot: "shirt", name: "Sunlit Tunic", desc: "Warm gold that catches the light.", color: "#d4a017" },
-  { id: "shirt_forest", slot: "shirt", name: "Forest Tunic", desc: "Deep green, made for long walks.", color: "#2f8f5a" },
-  { id: "pants_shadow", slot: "pants", name: "Shadow Trousers", desc: "Dark and quiet for late-night study.", color: "#23233a" },
+  { id: "shirt_forest", slot: "shirt", name: "Forest Tunic", desc: "Deep green, for heroes who finish what they start.", color: "#2f8f5a" },
+  { id: "pants_shadow", slot: "pants", name: "Shadow Trousers", desc: "Dark and quiet, worn by new adventurers.", color: "#23233a" },
   { id: "pants_royal", slot: "pants", name: "Royal Leggings", desc: "Regal blue for a rising star.", color: "#3a46b8" },
   { id: "pants_ember", slot: "pants", name: "Ember Breeches", desc: "Glowing red, like a week-long streak.", color: "#9a2d1c" },
   { id: "cape", slot: "back", name: "Hero's Cape", desc: "Flutters dramatically on morning walks." },
   { id: "goldcape", slot: "back", name: "Royal Mantle", desc: "Golden trim earned through consistency." },
-  { id: "cape_forest", slot: "back", name: "Ranger Cloak", desc: "Green and weathered, never thirsty." },
+  { id: "cape_forest", slot: "back", name: "Ranger Cloak", desc: "Green and weathered from fifty quests." },
   { id: "sword", slot: "hand", name: "Iron Sword", desc: "A trusty blade for your first dungeon." },
   { id: "staff", slot: "hand", name: "Arcane Staff", desc: "Topped with a glowing focus orb." },
   { id: "sword_gold", slot: "hand", name: "Golden Blade", desc: "Forged from a hundred finished quests." },
@@ -53,9 +53,9 @@ const CHALLENGES = [
   { id: "sweep", name: "Clean Sweep", goal: "Complete every quest in a single day", gear: "shield", prog: (c) => [c.clears, 1] },
   { id: "streak3", name: "Momentum", goal: "Reach a 3-day streak", gear: "cape", prog: (c) => [c.best, 3] },
   { id: "trained", name: "Trained", goal: "Spend 3 skill points", gear: "shield_steel", prog: (c) => [c.spent, 3] },
-  { id: "trail", name: "Trailblazer", goal: "Complete Exercise 10 times", gear: "shirt_forest", prog: (c) => [c.exercise, 10] },
-  { id: "owl", name: "Night Owl", goal: "Complete work or study 10 times", gear: "pants_shadow", prog: (c) => [c.study, 10] },
-  { id: "hydrated", name: "Hydrated", goal: "Drink 2.5L of water 14 times", gear: "cape_forest", prog: (c) => [c.water, 14] },
+  { id: "q10", name: "Getting Started", goal: "Complete 10 quests", gear: "pants_shadow", prog: (c) => [c.total, 10] },
+  { id: "clear3", name: "Hat Trick", goal: "Get 3 full clears", gear: "shirt_forest", prog: (c) => [c.clears, 3] },
+  { id: "q50", name: "Seasoned", goal: "Complete 50 quests", gear: "cape_forest", prog: (c) => [c.total, 50] },
   { id: "q25", name: "Quest Hunter", goal: "Complete 25 quests", gear: "dye_shadow", prog: (c) => [c.total, 25] },
   { id: "lv5", name: "Rising Star", goal: "Reach level 5", gear: "pants_royal", prog: (c) => [c.level, 5] },
   { id: "streak7", name: "Week Warden", goal: "Reach a 7-day streak", gear: "pants_ember", prog: (c) => [c.best, 7] },
@@ -219,18 +219,12 @@ function refundSkillPoints() {
   return undone;
 }
 function totalQuests() { return Object.values(S.days).reduce((n, d) => n + Object.keys(d).length, 0); }
-// how many times one of the three core quests (by position) has been completed
-function coreDone(i) {
-  const q = S.quests.filter((x) => x.core)[i];
-  return q ? Object.values(S.days).filter((d) => d[q.id]).length : 0;
-}
 function counts() {
   return {
     total: totalQuests(), clears: Object.keys(S.clears).length, best: bestStreak(),
     level: levelInfo(S.xp).level,
     STR: S.attr.STR, INT: S.attr.INT, HLT: S.attr.HLT,
     spent: Object.values(S.attr).reduce((n, l) => n + (l - 1), 0),
-    exercise: coreDone(0), water: coreDone(1), study: coreDone(2),
   };
 }
 // Unlocks are permanent: once a challenge is met, its gear stays yours even if a quest is later undone.
