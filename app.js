@@ -9,9 +9,9 @@ const STATS = {
 };
 const TUNIC = "#b8423a";
 const DIFF = {
-  easy: { name: "Easy", xp: 10, gold: 5 },
-  medium: { name: "Medium", xp: 25, gold: 12 },
-  hard: { name: "Hard", xp: 50, gold: 25 },
+  easy: { name: "Easy", xp: 10 },
+  medium: { name: "Medium", xp: 25 },
+  hard: { name: "Hard", xp: 50 },
 };
 const TITLES = [
   { lv: 1, t: "Novice" }, { lv: 3, t: "Habit Squire" }, { lv: 5, t: "Streak Knight" },
@@ -19,16 +19,29 @@ const TITLES = [
 ];
 const STREAK_TITLES = [{ d: 7, t: "Week Warden" }, { d: 30, t: "Moon Marathoner" }];
 const GEAR = [
-  { id: "sword", slot: "hand", name: "Iron Sword", cost: 40, lv: 1, desc: "A trusty blade for your first dungeon." },
-  { id: "shield", slot: "off", name: "Oak Shield", cost: 60, lv: 2, desc: "Blocks excuses. Mostly." },
-  { id: "cape", slot: "back", name: "Hero's Cape", cost: 100, lv: 3, desc: "Flutters dramatically on morning walks." },
-  { id: "hat", slot: "head", name: "Wizard Hat", cost: 150, lv: 4, desc: "Pointy. Increases perceived wisdom." },
-  { id: "staff", slot: "hand", name: "Arcane Staff", cost: 150, lv: 5, desc: "Topped with a glowing focus orb." },
-  { id: "helm", slot: "head", name: "Knight Helm", cost: 220, lv: 6, desc: "Steel visor for the hardest quests." },
-  { id: "goldcape", slot: "back", name: "Royal Mantle", cost: 300, lv: 8, desc: "Golden trim earned through consistency." },
-  { id: "crown", slot: "head", name: "Golden Crown", cost: 500, lv: 10, desc: "Ruler of your own routine." },
-  { id: "dye_shadow", slot: "dye", name: "Shadow Dye", cost: 30, lv: 2, desc: "Recolours your tunic midnight black.", color: "#2a2a3a" },
-  { id: "dye_gold", slot: "dye", name: "Sunlit Dye", cost: 80, lv: 5, desc: "Recolours your tunic warm gold.", color: "#d4a017" },
+  { id: "sword", slot: "hand", name: "Iron Sword", desc: "A trusty blade for your first dungeon." },
+  { id: "shield", slot: "off", name: "Oak Shield", desc: "Blocks excuses. Mostly." },
+  { id: "cape", slot: "back", name: "Hero's Cape", desc: "Flutters dramatically on morning walks." },
+  { id: "dye_shadow", slot: "dye", name: "Shadow Dye", desc: "Recolours your tunic midnight black.", color: "#2a2a3a" },
+  { id: "helm", slot: "head", name: "Knight Helm", desc: "Steel visor for the hardest quests." },
+  { id: "hat", slot: "head", name: "Wizard Hat", desc: "Pointy. Increases perceived wisdom." },
+  { id: "dye_gold", slot: "dye", name: "Sunlit Dye", desc: "Recolours your tunic warm gold.", color: "#d4a017" },
+  { id: "staff", slot: "hand", name: "Arcane Staff", desc: "Topped with a glowing focus orb." },
+  { id: "goldcape", slot: "back", name: "Royal Mantle", desc: "Golden trim earned through consistency." },
+  { id: "crown", slot: "head", name: "Golden Crown", desc: "Ruler of your own routine." },
+];
+// Each challenge unlocks one piece of gear. goal(c) returns [progress, target] from the player's counts.
+const CHALLENGES = [
+  { id: "first", name: "First Steps", goal: "Complete your first quest", gear: "sword", prog: (c) => [c.total, 1] },
+  { id: "sweep", name: "Clean Sweep", goal: "Complete every quest in a single day", gear: "shield", prog: (c) => [c.clears, 1] },
+  { id: "streak3", name: "Momentum", goal: "Reach a 3-day streak", gear: "cape", prog: (c) => [c.best, 3] },
+  { id: "q25", name: "Quest Hunter", goal: "Complete 25 quests", gear: "dye_shadow", prog: (c) => [c.total, 25] },
+  { id: "str5", name: "Iron Will", goal: "Reach Strength level 5", gear: "helm", prog: (c) => [c.STR, 5] },
+  { id: "int5", name: "Bookworm", goal: "Reach Intelligence level 5", gear: "hat", prog: (c) => [c.INT, 5] },
+  { id: "hlt5", name: "Glowing", goal: "Reach Health level 5", gear: "dye_gold", prog: (c) => [c.HLT, 5] },
+  { id: "hard20", name: "No Easy Way", goal: "Complete 20 Hard quests", gear: "staff", prog: (c) => [c.hard, 20] },
+  { id: "streak14", name: "Fortnight Hero", goal: "Reach a 14-day streak", gear: "goldcape", prog: (c) => [c.best, 14] },
+  { id: "lv10", name: "Ruler of Routine", goal: "Reach level 10", gear: "crown", prog: (c) => [c.level, 10] },
 ];
 const SLOTS = ["head", "back", "hand", "off", "dye"];
 
@@ -38,7 +51,7 @@ const uid = () => Math.random().toString(36).slice(2, 9);
 
 function freshState(name) {
   return {
-    v: 1, at: Date.now(), name: name || "Adventurer", xp: 0, gold: 0,
+    v: 1, at: Date.now(), name: name || "Adventurer", xp: 0,
     statXp: { STR: 0, INT: 0, HLT: 0 },
     quests: [
       { id: uid(), name: "Walk for 20 minutes", stat: "STR", diff: "medium" },
@@ -49,12 +62,12 @@ function freshState(name) {
       { id: uid(), name: "Gym session", stat: "STR", diff: "hard" },
     ],
     treasures: [
-      { id: uid(), name: "One episode of a show", cost: 40 },
-      { id: uid(), name: "A fancy coffee", cost: 60 },
-      { id: uid(), name: "Weekend lie-in", cost: 120 },
-      { id: uid(), name: "Takeaway night", cost: 250 },
+      { id: uid(), name: "One episode of a show", every: 5, base: 0 },
+      { id: uid(), name: "A fancy coffee", every: 8, base: 0 },
+      { id: uid(), name: "Weekend lie-in", every: 15, base: 0 },
+      { id: uid(), name: "Takeaway night", every: 30, base: 0 },
     ],
-    owned: [], equip: {}, title: "Novice", days: {}, clears: {}, log: [],
+    unlocked: [], equip: {}, title: "Novice", days: {}, clears: {}, clearXp: {}, log: [],
   };
 }
 
@@ -66,6 +79,13 @@ function migrate(st) {
   const sx = st.statXp || {};
   if (!("HLT" in sx)) st.statXp = { STR: sx.STR || 0, INT: sx.INT || 0, HLT: (sx.VIT || 0) + (sx.SPI || 0) };
   delete st.cls;
+  // Gold economy replaced by challenges: keep anything already bought, convert gold-priced rewards to quest counts.
+  if (!st.unlocked) st.unlocked = (st.owned || []).slice();
+  if (!st.clearXp) st.clearXp = {};
+  const total = Object.values(st.days || {}).reduce((n, d) => n + Object.keys(d).length, 0);
+  (st.treasures || []).forEach((t) => {
+    if (t.every == null) { t.every = Math.max(3, Math.round((t.cost || 40) / 8)); t.base = total; delete t.cost; }
+  });
   return st;
 }
 
@@ -103,7 +123,19 @@ function drawSprite(canvas, cls, equip) {
   paint(Object.fromEntries(BASE.map((r, i) => [i, r])), pal);
   layers.filter((l) => l.z === 1).forEach((l) => paint(l.rows, { ...pal, ...l.pal }));
 }
+// Gear icons: draw the item at its spot on the hero, then crop to the item and centre it in a square.
 function gearIcon(g) {
+  const raw = gearIconRaw(g), rctx = raw.getContext("2d");
+  const px = rctx.getImageData(0, 0, 16, 20).data;
+  let x0 = 16, y0 = 20, x1 = -1, y1 = -1;
+  for (let y = 0; y < 20; y++) for (let x = 0; x < 16; x++) if (px[(y * 16 + x) * 4 + 3]) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+  if (x1 < 0) return raw;
+  const w = x1 - x0 + 1, h = y1 - y0 + 1, size = Math.max(w, h) + 2;
+  const c = document.createElement("canvas"); c.width = size; c.height = size;
+  c.getContext("2d").drawImage(raw, x0, y0, w, h, Math.floor((size - w) / 2), Math.floor((size - h) / 2), w, h);
+  return c;
+}
+function gearIconRaw(g) {
   const c = document.createElement("canvas"); c.width = 16; c.height = 20;
   const ctx = c.getContext("2d");
   if (g.slot === "dye") {
@@ -142,6 +174,28 @@ function bestStreak() {
   let best = 0, run = 0, prev = null;
   for (const k of keys) { const d = new Date(k + "T12:00:00"); run = prev && (d - prev) / 864e5 < 1.5 ? run + 1 : 1; best = Math.max(best, run); prev = d; }
   return best;
+}
+function totalQuests() { return Object.values(S.days).reduce((n, d) => n + Object.keys(d).length, 0); }
+function counts() {
+  let hard = 0;
+  Object.values(S.days).forEach((d) => Object.values(d).forEach((r) => { if (r && r.xp >= 50) hard++; }));
+  return {
+    total: totalQuests(), clears: Object.keys(S.clears).length, best: bestStreak(), hard,
+    level: levelInfo(S.xp).level,
+    STR: statLevel(S.statXp.STR || 0).level, INT: statLevel(S.statXp.INT || 0).level, HLT: statLevel(S.statXp.HLT || 0).level,
+  };
+}
+// Unlocks are permanent: once a challenge is met, its gear stays yours even if a quest is later undone.
+function checkUnlocks() {
+  const c = counts(), fresh = [];
+  CHALLENGES.forEach((ch) => {
+    const [have, need] = ch.prog(c);
+    if (have >= need && !S.unlocked.includes(ch.gear)) {
+      S.unlocked.push(ch.gear); fresh.push(ch);
+      logEvent("Challenge complete: " + ch.name + ". Unlocked " + GEAR.find((g) => g.id === ch.gear).name);
+    }
+  });
+  return fresh;
 }
 function unlockedTitles() {
   const L = levelInfo(S.xp).level, bs = bestStreak();
@@ -186,50 +240,75 @@ function toggleQuest(q, ev) {
   const before = levelInfo(S.xp).level;
   if (S.days[k][q.id]) {
     const r = S.days[k][q.id]; delete S.days[k][q.id];
-    S.xp = Math.max(0, S.xp - r.xp); S.gold = Math.max(0, S.gold - r.gold); S.statXp[q.stat] = Math.max(0, (S.statXp[q.stat] || 0) - r.xp);
-    if (S.clears[k]) { S.gold = Math.max(0, S.gold - S.clears[k]); delete S.clears[k]; }
+    S.xp = Math.max(0, S.xp - r.xp); S.statXp[q.stat] = Math.max(0, (S.statXp[q.stat] || 0) - r.xp);
+    if (S.clears[k]) { delete S.clears[k]; if (S.clearXp[k]) { S.xp = Math.max(0, S.xp - S.clearXp[k]); delete S.clearXp[k]; } }
     toast("Quest undone");
   } else {
     const d = DIFF[q.diff];
-    const xp = d.xp, gold = d.gold;
-    S.days[k][q.id] = { xp, gold }; S.xp += xp; S.gold += gold; S.statXp[q.stat] = (S.statXp[q.stat] || 0) + xp;
-    logEvent("Completed “" + q.name + "” (+" + xp + " XP, +" + gold + " gold)");
+    const xp = d.xp;
+    S.days[k][q.id] = { xp }; S.xp += xp; S.statXp[q.stat] = (S.statXp[q.stat] || 0) + xp;
+    logEvent("Completed “" + q.name + "” (+" + xp + " XP)");
     if (ev) floatText(ev, "+" + xp + " XP");
     if (S.quests.length && S.quests.every((x) => S.days[k][x.id]) && !S.clears[k]) {
-      const b = Math.max(10, S.quests.length * 4); S.clears[k] = b; S.gold += b;
-      logEvent("Full clear bonus! +" + b + " gold"); toast("Full clear! +" + b + " bonus gold");
+      const b = Math.max(10, S.quests.length * 5); S.clears[k] = 1; S.clearXp[k] = b; S.xp += b;
+      logEvent("Full clear! +" + b + " bonus XP"); toast("Full clear! +" + b + " bonus XP");
     }
   }
   const after = levelInfo(S.xp).level;
   if (after > before) logEvent("Reached level " + after);
+  const fresh = checkUnlocks();
   save(); render();
   if (after > before) levelUp(after);
+  fresh.forEach(showUnlock);
+}
+// Pop-up cards (level up, challenge complete) queue so several can show one after another.
+const modalQueue = [];
+function queueModal(build) {
+  modalQueue.push(build);
+  if ($("#lvlup").hidden) nextModal();
+}
+function nextModal() {
+  const el = $("#lvlup");
+  const build = modalQueue.shift();
+  if (!build) { el.hidden = true; return; }
+  el.innerHTML = "";
+  const w = document.createElement("div"); w.className = "win";
+  el.appendChild(w); build(w, nextModal); el.hidden = false;
+  const b = w.querySelector("button"); if (b) b.focus();
 }
 function levelUp(L) {
-  const newGear = GEAR.filter((g) => g.lv === L).map((g) => g.name);
   const newTitle = TITLES.filter((t) => t.lv === L).map((t) => t.t);
-  const el = $("#lvlup"); el.innerHTML = "";
-  const w = document.createElement("div"); w.className = "win";
-  w.innerHTML = '<div class="title-tag">LEVEL UP</div><h1></h1><canvas width="16" height="20" class="sprite"></canvas><p class="muted" style="margin:0"></p><button class="btn gold">Onward</button>';
-  w.querySelector("h1").textContent = "Level " + L;
-  drawSprite(w.querySelector("canvas"), S.cls, S.equip);
-  const parts = [];
-  if (newTitle.length) parts.push("New title: " + newTitle.join(", "));
-  if (newGear.length) parts.push("Unlocked in the shop: " + newGear.join(", "));
-  w.querySelector("p").textContent = parts.join(". ") || "Your attributes grow stronger.";
-  el.appendChild(w); el.hidden = false;
-  const ok = w.querySelector("button"); ok.focus(); ok.onclick = () => { el.hidden = true; };
+  queueModal((w, done) => {
+    w.innerHTML = '<div class="title-tag">LEVEL UP</div><h1></h1><canvas width="16" height="20" class="sprite"></canvas><p class="muted" style="margin:0"></p><button class="btn gold">Onward</button>';
+    w.querySelector("h1").textContent = "Level " + L;
+    drawSprite(w.querySelector("canvas"), null, S.equip);
+    w.querySelector("p").textContent = newTitle.length ? "New title unlocked: " + newTitle.join(", ") : "Your hero grows stronger.";
+    w.querySelector("button").onclick = done;
+  });
 }
-function buyGear(g) {
-  if (S.owned.includes(g.id)) { S.equip[g.slot] = S.equip[g.slot] === g.id ? null : g.id; save(); render(); return; }
-  if (S.gold < g.cost) { toast("You need " + (g.cost - S.gold) + " more gold"); return; }
-  S.gold -= g.cost; S.owned.push(g.id); S.equip[g.slot] = g.id;
-  logEvent("Bought " + g.name + " for " + g.cost + " gold");
-  save(); render(); toast(g.name + " equipped");
+function showUnlock(ch) {
+  const g = GEAR.find((x) => x.id === ch.gear);
+  queueModal((w, done) => {
+    w.innerHTML = '<div class="title-tag">CHALLENGE COMPLETE</div><h1></h1><p class="muted" style="margin:0"></p><canvas class="unlock-icon"></canvas><p style="margin:0"></p><div class="actions" style="justify-content:center"><button class="btn gold">Equip now</button><button class="btn ghost">Later</button></div>';
+    w.querySelector("h1").textContent = ch.name;
+    w.querySelectorAll("p")[0].textContent = ch.goal;
+    const icon = gearIcon(g); icon.className = "unlock-icon";
+    w.querySelector("canvas").replaceWith(icon);
+    w.querySelectorAll("p")[1].textContent = "Unlocked: " + g.name;
+    const [equipBtn, laterBtn] = w.querySelectorAll("button");
+    equipBtn.onclick = () => { S.equip[g.slot] = g.id; save(); render(); done(); };
+    laterBtn.onclick = done;
+  });
+}
+function toggleGear(g) {
+  if (!S.unlocked.includes(g.id)) return;
+  S.equip[g.slot] = S.equip[g.slot] === g.id ? null : g.id; save(); render();
 }
 function claim(t) {
-  if (S.gold < t.cost) { toast("You need " + (t.cost - S.gold) + " more gold"); return; }
-  S.gold -= t.cost; logEvent("Claimed treasure: " + t.name + " (−" + t.cost + " gold)");
+  const have = totalQuests() - (t.base || 0);
+  if (have < t.every) { toast((t.every - have) + " more quests to unlock this"); return; }
+  t.base = (t.base || 0) + t.every;
+  logEvent("Claimed reward: " + t.name);
   save(); render(); toast("Enjoy it: " + t.name);
 }
 
@@ -289,10 +368,10 @@ function questForm(q) {
   });
 }
 function treasureForm(t) {
-  const isNew = !t; t = t || { id: uid(), name: "", cost: 50 };
+  const isNew = !t; t = t || { id: uid(), name: "", every: 10, base: totalQuests() };
   openSheet((w, close) => {
-    w.innerHTML = "<h2>" + (isNew ? "New treasure" : "Edit treasure") + '</h2><label for="tn">Reward<input id="tn" maxlength="60" placeholder="e.g. Cinema trip" autocomplete="off"></label><label for="tc">Cost in gold<input id="tc" type="number" min="1" max="99999" inputmode="numeric"></label><div class="actions"></div>';
-    w.querySelector("#tn").value = t.name; w.querySelector("#tc").value = t.cost;
+    w.innerHTML = "<h2>" + (isNew ? "New reward" : "Edit reward") + '</h2><label for="tn">Reward<input id="tn" maxlength="60" placeholder="e.g. Cinema trip" autocomplete="off"></label><label for="tc">Unlocks after this many completed quests<input id="tc" type="number" min="1" max="999" inputmode="numeric"></label><div class="actions"></div>';
+    w.querySelector("#tn").value = t.name; w.querySelector("#tc").value = t.every;
     const a = w.querySelector(".actions");
     if (!isNew) {
       const del = document.createElement("button"); del.className = "btn ghost"; del.textContent = "Delete";
@@ -300,11 +379,11 @@ function treasureForm(t) {
       a.appendChild(del);
     }
     const c = document.createElement("button"); c.className = "btn ghost"; c.textContent = "Cancel"; c.onclick = close; a.appendChild(c);
-    const ok = document.createElement("button"); ok.className = "btn gold"; ok.textContent = isNew ? "Add treasure" : "Save";
+    const ok = document.createElement("button"); ok.className = "btn gold"; ok.textContent = isNew ? "Add reward" : "Save";
     ok.onclick = () => {
-      const n = w.querySelector("#tn").value.trim(); const cost = Math.max(1, parseInt(w.querySelector("#tc").value, 10) || 0);
+      const n = w.querySelector("#tn").value.trim(); const every = Math.max(1, Math.min(999, parseInt(w.querySelector("#tc").value, 10) || 0));
       if (!n) { w.querySelector("#tn").focus(); return; }
-      Object.assign(t, { name: n, cost }); if (isNew) S.treasures.push(t);
+      Object.assign(t, { name: n, every }); if (isNew) S.treasures.push(t);
       save(); render(); close();
     };
     a.appendChild(ok);
@@ -322,9 +401,9 @@ function render() {
   $("#xpbar i").style.width = (L.into / L.need) * 100 + "%";
   $("#xpbar").setAttribute("aria-valuenow", L.into); $("#xpbar").setAttribute("aria-valuemax", L.need);
   $("#xptext").textContent = L.into + " / " + L.need + " XP to LV " + (L.level + 1);
-  $("#gold").textContent = S.gold; document.querySelectorAll(".goldmirror").forEach((e) => (e.textContent = S.gold));
+  const tq = totalQuests(); $("#qtotal").textContent = tq + (tq === 1 ? " quest done" : " quests done");
   $("#streak").textContent = dayStreak() + "-day streak";
-  drawSprite($("#sprite"), S.cls, S.equip);
+  drawSprite($("#sprite"), null, S.equip);
 
   // quests
   $("#today").textContent = new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "short" });
@@ -333,7 +412,7 @@ function render() {
   S.quests.forEach((q) => {
     const li = document.createElement("li"); li.className = "q" + (done[q.id] ? " done" : "");
     const d = DIFF[q.diff], st = questStreak(q.id);
-    li.innerHTML = '<button class="check"></button><div class="qmain"><div class="qname"></div><div class="qmeta"><span class="chip ' + q.stat + '">' + q.stat + '</span><span class="num">' + d.xp + " XP · " + d.gold + "g</span>" + (st > 1 ? '<span class="flame num">' + st + "d streak</span>" : "") + '</div></div><button class="iconbtn">Edit</button>';
+    li.innerHTML = '<button class="check"></button><div class="qmain"><div class="qname"></div><div class="qmeta"><span class="chip ' + q.stat + '">' + q.stat + '</span><span class="num">' + d.xp + " XP</span>" + (st > 1 ? '<span class="flame num">' + st + "d streak</span>" : "") + '</div></div><button class="iconbtn">Edit</button>';
     li.querySelector(".qname").textContent = q.name;
     const chk = li.querySelector(".check");
     chk.textContent = done[q.id] ? "✓" : "";
@@ -344,7 +423,7 @@ function render() {
     ql.appendChild(li);
   });
   const n = S.quests.filter((q) => done[q.id]).length;
-  $("#clearmsg").textContent = S.clears[today()] ? "★ Full clear today" : S.quests.length ? n + " of " + S.quests.length + " done · clear all for bonus gold" : "";
+  $("#clearmsg").textContent = S.clears[today()] ? "★ Full clear today" : S.quests.length ? n + " of " + S.quests.length + " done · clear all for bonus XP" : "";
 
   // attributes
   const sg = $("#stats"); sg.innerHTML = "";
@@ -370,29 +449,45 @@ function render() {
   if (document.activeElement !== $("#nameIn")) $("#nameIn").value = S.name;
   $("#acct").textContent = me ? "Signed in as " + (me.email || me.displayName || "Google user") + ". Your progress syncs to every device you sign in on." : "";
 
-  // gear
-  const gg = $("#gear"); gg.innerHTML = "";
-  GEAR.forEach((g) => {
-    const own = S.owned.includes(g.id), eq = S.equip[g.slot] === g.id, locked = L.level < g.lv;
-    const el = document.createElement("div"); el.className = "item" + (locked ? " locked" : "") + (eq ? " equipped" : "");
-    el.appendChild(gearIcon(g));
-    const h = document.createElement("span"); h.className = "px"; h.textContent = g.name;
-    const p = document.createElement("p"); p.textContent = locked ? "Unlocks at level " + g.lv : g.desc;
-    const b = document.createElement("button"); b.className = "btn" + (eq ? " gold" : own ? " ghost" : "");
-    b.innerHTML = locked ? "LV " + g.lv : own ? (eq ? "Unequip" : "Equip") : '<i class="coin"></i>' + g.cost;
-    b.disabled = locked; b.onclick = () => buyGear(g);
-    el.append(h, p, b); gg.appendChild(el);
+  // challenges → gear
+  const c = counts(); const gg = $("#gear"); gg.innerHTML = "";
+  let doneCount = 0;
+  CHALLENGES.forEach((ch) => {
+    const g = GEAR.find((x) => x.id === ch.gear);
+    const [have, need] = ch.prog(c);
+    const own = S.unlocked.includes(g.id), eq = S.equip[g.slot] === g.id;
+    if (own) doneCount++;
+    const li = document.createElement("li"); li.className = "ch" + (own ? " done" : " locked") + (eq ? " equipped" : "");
+    li.appendChild(gearIcon(g));
+    const info = document.createElement("div"); info.style.minWidth = "0";
+    const nm = document.createElement("div"); nm.className = "ch-name"; nm.textContent = g.name;
+    const goal = document.createElement("div"); goal.className = "ch-goal"; goal.textContent = ch.name + ": " + ch.goal;
+    info.append(nm, goal);
+    if (!own) {
+      const bar = document.createElement("div"); bar.className = "bar"; bar.innerHTML = '<i style="width:' + Math.min(100, (have / need) * 100) + '%"></i>';
+      const pr = document.createElement("div"); pr.className = "ch-prog num"; pr.textContent = Math.min(have, need) + " / " + need;
+      info.append(bar, pr);
+    }
+    const b = document.createElement("button"); b.className = "btn" + (eq ? " gold" : " ghost");
+    b.textContent = own ? (eq ? "Unequip" : "Equip") : "Locked"; b.disabled = !own;
+    b.setAttribute("aria-label", (own ? (eq ? "Unequip " : "Equip ") : "Locked: ") + g.name);
+    b.onclick = () => toggleGear(g);
+    li.append(info, b); gg.appendChild(li);
   });
+  $("#chcount").textContent = doneCount + " / " + CHALLENGES.length + " complete";
 
   // treasures
   const tl = $("#tlist"); tl.innerHTML = "";
-  if (!S.treasures.length) tl.innerHTML = '<li class="muted">Add a reward you would genuinely look forward to.</li>';
+  if (!S.treasures.length) tl.innerHTML = '<li class="muted">Add a treat you would genuinely look forward to.</li>';
   S.treasures.forEach((t) => {
-    const li = document.createElement("li"); li.className = "t";
-    li.innerHTML = '<span class="tname"></span><button class="iconbtn">Edit</button><button class="btn gold"><i class="coin"></i>' + t.cost + "</button>";
+    const have = Math.max(0, tq - (t.base || 0)), ready = have >= t.every;
+    const li = document.createElement("li"); li.className = "t" + (ready ? " ready" : "");
+    li.innerHTML = '<div style="min-width:0"><span class="tname"></span><div class="bar"><i style="width:' + Math.min(100, (have / t.every) * 100) + '%"></i></div><small class="num"></small></div><button class="iconbtn">Edit</button><button class="btn"></button>';
     li.querySelector(".tname").textContent = t.name;
+    li.querySelector("small").textContent = ready ? "Ready to claim" : Math.min(have, t.every) + " / " + t.every + " quests";
     li.querySelector(".iconbtn").onclick = () => treasureForm(t);
-    const b = li.querySelector(".btn"); b.setAttribute("aria-label", "Claim " + t.name + " for " + t.cost + " gold"); b.onclick = () => claim(t);
+    const b = li.querySelector(".btn"); b.className = "btn" + (ready ? " gold" : " ghost"); b.textContent = ready ? "Claim" : "Locked";
+    b.disabled = !ready; b.setAttribute("aria-label", "Claim " + t.name); b.onclick = () => claim(t);
     tl.appendChild(li);
   });
 
@@ -521,7 +616,7 @@ $("#chatForm").addEventListener("submit", async (e) => {
 });
 
 /* ================= navigation ================= */
-const TABS = ["quests", "hero", "shop", "guild", "log"];
+const TABS = ["quests", "hero", "rewards", "guild", "log"];
 function showTab(t) {
   document.querySelectorAll(".nav button").forEach((x) => x.setAttribute("aria-current", String(x.dataset.tab === t)));
   TABS.forEach((p) => ($("#p-" + p).hidden = p !== t));
@@ -547,7 +642,7 @@ $("#invite").onclick = async () => {
   try { await navigator.clipboard.writeText(link); toast("Invite link copied"); }
   catch (e) { toast(link); }
 };
-document.addEventListener("keydown", (e) => { if (e.key === "Escape") { $("#sheet").hidden = true; $("#lvlup").hidden = true; } });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") { $("#sheet").hidden = true; if (!$("#lvlup").hidden) nextModal(); } });
 let lastDay = today();
 const rollover = () => { if (today() !== lastDay) { lastDay = today(); render(); } };
 setInterval(rollover, 60000);
@@ -667,7 +762,10 @@ async function startFirebase() {
 let entered = false;
 function enterGame() {
   $("#screen-title").hidden = true; $("#screen-game").hidden = false;
+  // Challenges count past progress too, so check for anything already earned.
+  const fresh = checkUnlocks();
   render();
+  if (fresh.length) { save(); fresh.forEach(showUnlock); }
   if (!entered) {
     entered = true;
     const h = location.hash.slice(1); if (TABS.includes(h)) showTab(h);

@@ -136,6 +136,25 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
 .g .lv{font-family:var(--display);text-align:right;font-size:14px}
 .g .lv small{display:block;color:#ff9f43;font-size:12px}
 
+/* challenges */
+.clist{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.ch{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px;border:2px solid var(--line);border-radius:6px;background:var(--well)}
+.ch canvas{width:44px;height:44px;image-rendering:pixelated}
+.ch.locked canvas{filter:brightness(0) opacity(.45)}
+.ch.equipped{border-color:var(--gold)}
+.ch-name{font-family:var(--display);font-size:15px}
+.ch-goal{font-size:13px;color:var(--muted)}
+.ch .bar{height:8px;border-width:1.5px;margin-top:6px}
+.ch .bar>i{background:var(--gold)}
+.ch-prog{font-size:12px;color:var(--muted);margin-top:2px}
+.ch.done .ch-goal::before{content:"✓ ";color:var(--xp)}
+.t{grid-template-columns:minmax(0,1fr) auto auto}
+.t .bar{height:8px;border-width:1.5px;margin-top:6px}
+.t .bar>i{background:var(--gold)}
+.t small{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+.t.ready{border-color:var(--gold)}
+.unlock-icon{width:96px;height:96px;image-rendering:pixelated}
+
 /* chat */
 .chatlog{margin-top:10px;height:min(52vh,420px);overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:6px;padding:10px;background:var(--deep);border:2px solid var(--line);border-radius:6px}
 .chatlog>:first-child{margin-top:auto}
@@ -207,7 +226,7 @@ input{font:inherit;font-size:16px;color:var(--ink);background:var(--deep);border
       <h1 class="hero-name" id="hname">Adventurer</h1>
       <div class="bar" role="progressbar" aria-label="Experience" id="xpbar"><i style="width:0"></i></div>
       <div class="row muted num" style="justify-content:space-between;font-size:12px"><span id="xptext">0 / 100 XP</span></div>
-      <div class="purse num"><span><i class="coin"></i><span id="gold">0</span> gold</span><span class="flame" id="streak">0-day streak</span></div>
+      <div class="purse num"><span id="qtotal">0 quests done</span><span class="flame" id="streak">0-day streak</span></div>
       <span class="sync" id="sync">Saved</span>
     </div>
   </section>
@@ -229,10 +248,6 @@ input{font:inherit;font-size:16px;color:var(--ink);background:var(--deep);border
       <div class="stats" id="stats"></div>
       <p class="note" style="margin-top:10px">Each quest trains Strength, Intelligence or Health.</p>
     </div>
-    <div class="win">
-      <h2>Titles</h2>
-      <div class="grid" id="titles"></div>
-    </div>
     <div class="win stack" style="gap:10px">
       <h2>Character</h2>
       <label for="nameIn">Hero name (your guild sees this)<input id="nameIn" maxlength="24" autocomplete="off"></label>
@@ -249,15 +264,19 @@ input{font:inherit;font-size:16px;color:var(--ink);background:var(--deep);border
     </div>
   </section>
 
-  <section class="panel stack" id="p-shop" hidden>
+  <section class="panel stack" id="p-rewards" hidden>
     <div class="win">
-      <div class="spread"><h2>Armoury</h2><span class="purse num"><span><i class="coin"></i><span class="goldmirror">0</span></span></span></div>
-      <p class="note" style="margin-top:6px">Gear unlocks at higher levels. Buy once, equip any time. Your guild sees what you wear.</p>
-      <div class="grid" id="gear"></div>
+      <div class="spread"><h2>Challenges</h2><span class="date num" id="chcount"></span></div>
+      <p class="note" style="margin-top:6px">Complete a challenge to unlock its gear. Unlocked gear is yours to keep, and your guild sees what you wear.</p>
+      <ul class="clist" id="gear"></ul>
     </div>
     <div class="win">
-      <div class="spread"><h2>Real-life treasures</h2><button class="btn" id="addt">+ Treasure</button></div>
-      <p class="note" style="margin-top:6px">Rewards you give yourself in real life. Spend gold to claim one.</p>
+      <h2>Titles</h2>
+      <div class="grid" id="titles"></div>
+    </div>
+    <div class="win">
+      <div class="spread"><h2>Real-life rewards</h2><button class="btn" id="addt">+ Reward</button></div>
+      <p class="note" style="margin-top:6px">Treats you give yourself. Each one unlocks after a set number of completed quests, then starts counting again.</p>
       <ul class="tlist" id="tlist"></ul>
     </div>
   </section>
@@ -295,7 +314,7 @@ input{font:inherit;font-size:16px;color:var(--ink);background:var(--deep);border
   <nav class="nav" aria-label="Menu"><div class="nav-in">
     <button data-tab="quests" aria-current="true">Quests</button>
     <button data-tab="hero">Hero</button>
-    <button data-tab="shop">Shop</button>
+    <button data-tab="rewards">Rewards</button>
     <button data-tab="guild">Guild<span class="dot" id="guildDot" hidden aria-label="New messages"></span></button>
     <button data-tab="log">Log</button>
   </div></nav>
