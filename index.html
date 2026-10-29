@@ -192,6 +192,7 @@ label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mute
 input{font:inherit;font-size:16px;color:var(--ink);background:var(--deep);border:2px solid var(--line);border-radius:4px;padding:9px 10px;width:100%}
 .seg{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 .seg.three{grid-template-columns:repeat(3,1fr)}
+.seg.two{grid-template-columns:repeat(2,1fr)}
 .seg button{background:var(--deep);border:2px solid var(--line);border-radius:4px;padding:8px 4px;font-family:var(--display);font-size:13px}
 .seg button[aria-pressed="true"]{border-color:currentColor;background:#ffffff12}
 .actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
@@ -251,6 +252,7 @@ input{font:inherit;font-size:16px;color:var(--ink);background:var(--deep);border
     <div class="win stack" style="gap:10px">
       <h2>Character</h2>
       <label for="nameIn">Hero name (your guild sees this)<input id="nameIn" maxlength="24" autocomplete="off"></label>
+      <div><div class="note" style="margin-bottom:4px">Hero</div><div class="seg two" id="lookSeg" role="group" aria-label="Hero"></div></div>
       <div class="actions"><button class="btn ghost" id="resetBtn">Start a new save</button></div>
     </div>
     <div class="win stack" style="gap:10px">

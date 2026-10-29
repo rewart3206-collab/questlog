@@ -101,6 +101,13 @@ const BASE = [
   ".....oSSSSo.....", "...ooTTTTTToo...", "..oSoTTTTTToSo..", "..oSoTTTTTToSo..", "..ooobbbbbbooo..",
   "....oPPPPPPo....", "....oPPooPPo....", "....oPPooPPo....", "...oBBBooBBBo...", "...oooo..oooo...",
 ];
+// Female hero: hair falls to the shoulders, a skirted tunic, rosy cheeks.
+const BASE_F = [
+  "................", "................", "................", "................", "................",
+  ".....oooooo.....", "....oHHHHHHo....", "...oHHSSSSHHo...", "...oHSeSSeSHo...", "...oHcSSSScHo...",
+  "...oHoSSSSoHo...", "...ooTTTTTToo...", "..oSoTTTTTToSo..", "..oSoTTTTTToSo..", "..ooobbbbbbooo..",
+  "...oTTTTTTTTo...", "...oTTTTTTTTo...", "....oSSooSSo....", "...oBBBooBBBo...", "...oooo..oooo...",
+];
 const OVER = {
   cape: { z: 0, rows: { 14: "..CC........CC..", 15: "..CC........CC..", 16: "..CC........CC..", 17: "...C........C...", 18: "...C........C..." }, pal: { C: "#c0392b" } },
   goldcape: { z: 0, rows: { 14: "..CC........CC..", 15: "..CC........CC..", 16: "..CC........CC..", 17: "..CY........YC..", 18: "..YY........YY.." }, pal: { C: "#6b2fa0", Y: "#f4c542" } },
@@ -116,11 +123,11 @@ function drawSprite(canvas, cls, equip) {
   ctx.clearRect(0, 0, 16, 20);
   equip = equip || {};
   const dye = equip.dye ? GEAR.find((g) => g.id === equip.dye) : null;
-  const pal = { o: "#0b0d1f", H: "#5a3a22", S: "#f1c9a0", e: "#0b0d1f", T: dye ? dye.color : TUNIC, b: "#6b4a2a", P: "#3a3f63", B: "#4a2f1e" };
+  const pal = { o: "#0b0d1f", H: "#5a3a22", S: "#f1c9a0", e: "#0b0d1f", T: dye ? dye.color : TUNIC, b: "#6b4a2a", P: "#3a3f63", B: "#4a2f1e", c: "#ec9a8c" };
   const layers = SLOTS.filter((s) => s !== "dye").map((s) => OVER[equip[s]]).filter(Boolean);
   const paint = (rows, p) => { for (const y in rows) { const r = rows[y]; for (let x = 0; x < 16; x++) { const c = r[x]; if (c && c !== "." && p[c]) { ctx.fillStyle = p[c]; ctx.fillRect(x, +y, 1, 1); } } } };
   layers.filter((l) => l.z === 0).forEach((l) => paint(l.rows, l.pal));
-  paint(Object.fromEntries(BASE.map((r, i) => [i, r])), pal);
+  paint(Object.fromEntries((equip.look === "f" ? BASE_F : BASE).map((r, i) => [i, r])), pal);
   layers.filter((l) => l.z === 1).forEach((l) => paint(l.rows, { ...pal, ...l.pal }));
 }
 // Gear icons: draw the item at its spot on the hero, then crop to the item and centre it in a square.
@@ -148,6 +155,8 @@ function gearIconRaw(g) {
 }
 
 /* ================= state ================= */
+// The hero's look travels inside the gear map so friends' Guild sprites show it too.
+const heroLook = () => ({ ...S.equip, look: S.look === "f" ? "f" : "m" });
 let S = null;
 let me = null;          // Firebase user
 let userRef = null, profileRef = null;
@@ -215,7 +224,7 @@ function save() {
 async function pushToCloud() {
   if (!userRef || !fb) return;
   const L = levelInfo(S.xp);
-  const equip = {}; SLOTS.forEach((s) => { equip[s] = S.equip[s] || null; });
+  const equip = {}; SLOTS.forEach((s) => { equip[s] = S.equip[s] || null; }); equip.look = S.look === "f" ? "f" : "m";
   try {
     await Promise.all([
       fb.setDoc(userRef, { save: JSON.stringify(S), at: S.at }),
@@ -281,7 +290,7 @@ function levelUp(L) {
   queueModal((w, done) => {
     w.innerHTML = '<div class="title-tag">LEVEL UP</div><h1></h1><canvas width="16" height="20" class="sprite"></canvas><p class="muted" style="margin:0"></p><button class="btn gold">Onward</button>';
     w.querySelector("h1").textContent = "Level " + L;
-    drawSprite(w.querySelector("canvas"), null, S.equip);
+    drawSprite(w.querySelector("canvas"), null, heroLook());
     w.querySelector("p").textContent = newTitle.length ? "New title unlocked: " + newTitle.join(", ") : "Your hero grows stronger.";
     w.querySelector("button").onclick = done;
   });
@@ -403,7 +412,7 @@ function render() {
   $("#xptext").textContent = L.into + " / " + L.need + " XP to LV " + (L.level + 1);
   const tq = totalQuests(); $("#qtotal").textContent = tq + (tq === 1 ? " quest done" : " quests done");
   $("#streak").textContent = dayStreak() + "-day streak";
-  drawSprite($("#sprite"), null, S.equip);
+  drawSprite($("#sprite"), null, heroLook());
 
   // quests
   $("#today").textContent = new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "short" });
@@ -447,6 +456,7 @@ function render() {
     el.append(h, p, b); tg.appendChild(el);
   });
   if (document.activeElement !== $("#nameIn")) $("#nameIn").value = S.name;
+  segment($("#lookSeg"), { m: { label: "Male" }, f: { label: "Female" } }, S.look === "f" ? "f" : "m", (k) => { S.look = k; save(); render(); });
   $("#acct").textContent = me ? "Signed in as " + (me.email || me.displayName || "Google user") + ". Your progress syncs to every device you sign in on." : "";
 
   // challenges → gear
@@ -635,7 +645,7 @@ $("#resetBtn").onclick = () => {
     setTimeout(() => { resetArmed = false; b.textContent = "Start a new save"; b.className = "btn ghost"; }, 4000);
     return;
   }
-  S = freshState(S.name); save(); render(); resetArmed = false; b.textContent = "Start a new save"; b.className = "btn ghost"; toast("New save started");
+  const look = S.look; S = freshState(S.name); S.look = look; save(); render(); resetArmed = false; b.textContent = "Start a new save"; b.className = "btn ghost"; toast("New save started");
 };
 $("#invite").onclick = async () => {
   const link = location.origin + location.pathname;
