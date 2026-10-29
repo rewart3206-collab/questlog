@@ -1,5 +1,5 @@
 import { firebaseConfig } from "./firebase-config.js";
-import { heroSVG, itemSVG, flameSVG } from "./art.js";
+import { heroSVG, itemSVG, flameSVG, POSES } from "./art.js";
 const SDK = "https://www.gstatic.com/firebasejs/10.12.2/";
 
 /* ================= game data ================= */
@@ -108,7 +108,7 @@ const HAIRSTYLES = {
 };
 const HAIR_COLOURS = { brown: "#5a3a22", black: "#1f1a24", blonde: "#e0b84c", ginger: "#c2582a", silver: "#c9ccd6", pink: "#e27fb5", blue: "#4c78d6" };
 const SKIN_TONES = { s1: "#f6d7b8", s2: "#f1c9a0", s3: "#d9a77c", s4: "#b07a50", s5: "#7d5235", s6: "#5a3824" };
-const DEFAULT_LOOK = { body: "m", hair: "short", hc: "brown", skin: "s2" };
+const DEFAULT_LOOK = { body: "m", hair: "short", hc: "brown", skin: "s2", pose: "stand" };
 // Works with old saves/profiles that only stored "m"/"f".
 function normLook(l) {
   if (l && typeof l === "object") {
@@ -117,6 +117,7 @@ function normLook(l) {
       hair: HAIRSTYLES[l.hair] ? l.hair : "short",
       hc: HAIR_COLOURS[l.hc] ? l.hc : "brown",
       skin: SKIN_TONES[l.skin] ? l.skin : "s2",
+      pose: POSES[l.pose] ? l.pose : "stand",
     };
   }
   return l === "f" ? { ...DEFAULT_LOOK, body: "f", hair: "long" } : { ...DEFAULT_LOOK };
@@ -124,11 +125,11 @@ function normLook(l) {
 // Turn saved gear + look into what the art needs, then draw the cartoon hero into an element.
 function heroParts(equip) {
   equip = equip || {};
-  const look = normLook(equip.body ? { body: equip.body, hair: equip.hair, hc: equip.hc, skin: equip.skin } : equip.look);
+  const look = normLook(equip.body ? { body: equip.body, hair: equip.hair, hc: equip.hc, skin: equip.skin, pose: equip.pose } : equip.look);
   const dye = equip.dye ? GEAR.find((g) => g.id === equip.dye) : null;
   return {
     body: look.body, hair: look.hair, hairColor: HAIR_COLOURS[look.hc], skin: SKIN_TONES[look.skin],
-    tunic: dye ? dye.color : TUNIC, head: equip.head, back: equip.back, hand: equip.hand, off: equip.off,
+    tunic: dye ? dye.color : TUNIC, pose: look.pose, head: equip.head, back: equip.back, hand: equip.hand, off: equip.off,
   };
 }
 function drawSprite(el, cls, equip, opts) { el.innerHTML = heroSVG(heroParts(equip), opts || {}); }
@@ -282,7 +283,7 @@ function nextModal() {
 function levelUp(L) {
   const newTitle = TITLES.filter((t) => t.lv === L).map((t) => t.t);
   queueModal((w, done) => {
-    w.innerHTML = '<div class="title-tag">LEVEL UP</div><h1></h1><div class="sprite walking"></div><p class="muted" style="margin:0"></p><button class="btn gold">Onward</button>';
+    w.innerHTML = '<div class="title-tag">LEVEL UP</div><h1></h1><div class="sprite"></div><p class="muted" style="margin:0"></p><button class="btn gold">Onward</button>';
     w.querySelector("h1").textContent = "Level " + L;
     drawSprite(w.querySelector(".sprite"), null, heroLook());
     w.querySelector("p").textContent = newTitle.length ? "New title unlocked: " + newTitle.join(", ") : "Your hero grows stronger.";
@@ -426,6 +427,13 @@ function renderAppearance() {
     const c = document.createElement("div"); c.className = "style-head"; drawSprite(c, null, { ...lk, hair: k }, { head: true });
     const t = document.createElement("span"); t.textContent = h.name;
     b.append(c, t); b.onclick = () => setLook({ hair: k }); st.appendChild(b);
+  });
+  const ps = $("#poses"); ps.innerHTML = "";
+  Object.entries(POSES).forEach(([k, name]) => {
+    const b = document.createElement("button"); b.type = "button"; b.className = "style-btn pose-btn"; b.setAttribute("aria-pressed", String(k === lk.pose));
+    const c = document.createElement("div"); c.className = "pose-fig"; drawSprite(c, null, { ...S.equip, ...lk, pose: k });
+    const t = document.createElement("span"); t.textContent = name;
+    b.append(c, t); b.onclick = () => setLook({ pose: k }); ps.appendChild(b);
   });
   swatches($("#hairColours"), HAIR_COLOURS, lk.hc, (k) => setLook({ hc: k }), ["Brown", "Black", "Blonde", "Ginger", "Silver", "Pink", "Blue"]);
   swatches($("#skinTones"), SKIN_TONES, lk.skin, (k) => setLook({ skin: k }), ["Skin tone 1", "Skin tone 2", "Skin tone 3", "Skin tone 4", "Skin tone 5", "Skin tone 6"]);

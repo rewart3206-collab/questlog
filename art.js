@@ -84,6 +84,12 @@ function hairFront(style, c) {
   }
 }
 
+/* ---------- poses ---------- */
+export const POSES = {
+  stand: "Standing", crossed: "Arms crossed", behind: "Behind back",
+  hips: "Hands on hips", fist: "Fist pump", think: "Thinking",
+};
+
 /* ---------- the hero ---------- */
 // p: { body:"m"|"f", hair, hairColor, skin, tunic, head, back, hand, off }
 export function heroSVG(p, opts = {}) {
@@ -115,8 +121,48 @@ export function heroSVG(p, opts = {}) {
   const belt = `<path d="M37 ${by} L83 ${by} L83 ${by + 8} L37 ${by + 8} Z" ${st("#5a3820")}/><rect x="64" y="${by - 1}" width="10" height="10" rx="1.5" ${st("#e8b33a")}/>`;
 
   // arms pivot at the shoulder
-  const armFar = `<g class="arm-f"><rect x="78" y="70" width="13" height="28" rx="6" ${st(tunicD)}/>${item(p.hand)}<circle cx="85" cy="102" r="6.5" ${st(skinD)}/></g>`;
-  const armNear = `<g class="arm-n"><rect x="42" y="70" width="14" height="30" rx="6.5" ${st(tunic)}/><circle cx="49" cy="103" r="7" ${st(skin)}/>${item(p.off)}</g>`;
+  // Arms by pose. A bent arm is a thick rounded stroke drawn twice: dark outline underneath, sleeve colour on top.
+  const limb = (d, fill, w = 13) => `<path d="${d}" fill="none" stroke="${INK}" stroke-width="${w + SW * 2}" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="${d}" fill="none" stroke="${fill}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
+  const hand = (x, y, c, r = 6.8) => `<circle cx="${x}" cy="${y}" r="${r}" ${st(c)}/>`;
+  const pose = POSES[p.pose] ? p.pose : "stand";
+  const holds = pose === "stand"; // only the plain standing pose holds gear; other poses carry it on the back
+  // gear carried on the back: weapon slung diagonally, shield flat against the back
+  // sword: hilt pokes up over the back shoulder; staff: orb above the back shoulder; shield: against the back
+  const slungWeapon = !holds && p.hand && ITEMS[p.hand]
+    ? (p.hand === "staff"
+      ? `<g transform="translate(-64 32) rotate(-30 85 27)">${ITEMS.staff()}</g>`
+      : `<g transform="translate(-63 -31) rotate(140 85 103)">${ITEMS[p.hand]()}</g>`)
+    : "";
+  const slungShield = !holds && p.off && ITEMS[p.off] ? `<g transform="translate(-12 -8)">${ITEMS[p.off]()}</g>` : "";
+  let armFar, armNear;
+  switch (pose) {
+    case "crossed":
+      armFar = limb("M84 74 L86 82", tunicD);
+      armNear = limb("M86 76 L84 84 L52 84", tunicD) + hand(52, 84, skinD) + limb("M48 74 L46 89 L78 91", tunic) + hand(80, 91, skin);
+      break;
+    case "behind":
+      armFar = limb("M84 74 L80 98", tunicD);
+      armNear = limb("M48 74 L43 90", tunic);
+      break;
+    case "hips":
+      armFar = limb("M84 74 L95 86 L84 95", tunicD) + hand(84, 95, skinD);
+      armNear = limb("M48 74 L35 85 L41 96", tunic) + hand(42, 96, skin);
+      break;
+    case "fist":
+      armFar = `<g class="arm-f"><rect x="78" y="70" width="13" height="28" rx="6" ${st(tunicD)}/>${hand(85, 102, skinD, 6.5)}</g>`;
+      armNear = limb("M48 74 L36 60 L40 44", tunic) + hand(40, 40, skin, 7.6) + `<path d="M36 37 L44 37 M36 41 L44 41" stroke="${INK}" stroke-width="1.8" stroke-linecap="round"/>`;
+      break;
+    case "think":
+      armFar = limb("M84 74 L86 84 L60 90", tunicD) + hand(58, 90, skinD);
+      armNear = limb("M48 74 L46 90 L66 70", tunic) + hand(68, 66, skin);
+      break;
+    default:
+      armFar = `<g class="arm-f"><rect x="78" y="70" width="13" height="28" rx="6" ${st(tunicD)}/>${item(p.hand)}<circle cx="85" cy="102" r="6.5" ${st(skinD)}/></g>`;
+      armNear = `<g class="arm-n"><rect x="42" y="70" width="14" height="30" rx="6.5" ${st(tunic)}/><circle cx="49" cy="103" r="7" ${st(skin)}/>${item(p.off)}</g>`;
+  }
+  // with hands behind the back, the near arm sits behind the torso too
+  const armBehind = pose === "behind" ? limb("M48 74 L40 98", tunic) + hand(44, 100, skin) : "";
 
   // boxy head turned to the right: ear on the left, both eyes on the right half
   const head = `
@@ -136,13 +182,14 @@ export function heroSVG(p, opts = {}) {
   const shadow = opts.head ? "" : `<ellipse cx="58" cy="128" rx="34" ry="5.5" fill="#000" opacity=".28"/>`;
   return `<svg viewBox="${box}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
     ${shadow}
-    <g class="upper">${item(p.back)}${hairBack(p.hair, p.hairColor)}${armFar}</g>
+    <g class="upper">${item(p.back)}${slungShield}${slungWeapon}${hairBack(p.hair, p.hairColor)}${pose === "crossed" || pose === "think" ? "" : armFar}${armBehind}</g>
     ${legs}
     <g class="upper">
       ${torso}${skirt}${belt}
       ${head}
       ${hairFront(p.hair, p.hairColor)}
       ${item(p.head)}
+      ${pose === "crossed" || pose === "think" ? armFar : ""}
       ${armNear}
     </g>
   </svg>`;
