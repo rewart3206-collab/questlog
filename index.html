@@ -49,10 +49,11 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 
 /* hero art */
 svg{display:block;width:100%;height:100%;overflow:visible}
+/* Opposite arm and leg move together: near leg back while near arm swings forward; far limbs run half a step later. */
 .walking .leg-n{transform-origin:52px 98px;animation:stride .6s ease-in-out infinite}
-.walking .leg-f{transform-origin:64px 98px;animation:stride .6s ease-in-out infinite reverse}
+.walking .leg-f{transform-origin:64px 98px;animation:stride .6s ease-in-out -.3s infinite}
 .walking .arm-n{transform-origin:49px 73px;animation:swing .6s ease-in-out infinite}
-.walking .arm-f{transform-origin:84px 73px;animation:swing .6s ease-in-out infinite reverse}
+.walking .arm-f{transform-origin:84px 73px;animation:swing .6s ease-in-out -.3s infinite}
 .walking .upper{animation:bob .3s ease-in-out infinite alternate}
 @keyframes stride{0%,100%{transform:rotate(24deg)}50%{transform:rotate(-24deg)}}
 @keyframes swing{0%,100%{transform:rotate(-26deg)}50%{transform:rotate(22deg)}}
