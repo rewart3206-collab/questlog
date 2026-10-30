@@ -527,6 +527,11 @@ input::placeholder{color:#7f8ccc}
 @keyframes shockA{to{transform:scale(9,4);opacity:0;left:24%;top:82%}}
 @keyframes koA{30%{transform:translateY(-8px) rotate(6deg)}100%{opacity:.3;transform:translateY(18px) rotate(-14deg);filter:grayscale(1)}}
 @media (max-height:700px){.dunit.you{height:38vh}.dunit.foe{height:140px;top:calc(44% - 124px)}.dinfo.foe{top:calc(64px + env(safe-area-inset-top,0px))}.dbox{min-height:56px}}
+
+/* No double-tap zoom anywhere in the app (pinch zoom still works). On the battle screen, fast
+   tapping also shouldn't select text or pop up the iOS press-and-hold menu. */
+*{touch-action:manipulation}
+.dungeon{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 </style>
 </head>
 <body>
