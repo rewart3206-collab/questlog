@@ -7,7 +7,7 @@
 //   Shield – take only a quarter of this turn's damage, less the shield's block bonus.
 // Monsters charge a special attack over several turns. The build-up shows only as a growing glow
 // around the monster, so the player has to read it and shield at the right moment.
-// Strength adds attack damage, Intelligence adds spell power and Health adds max HP.
+// Intelligence adds spell power; attack, HP and the rest come from gear. Dungeons give gold, not XP.
 
 import { itemSVG } from "./art.js";
 
@@ -103,7 +103,6 @@ const enemyName = (key, t) => key === "dragon" ? DUNGEONS[t].boss : (DUNGEONS[t]
 const armourOf = (t) => 3 + t;
 const breathOf = (t) => 15 + Math.round(3.6 * t);
 const goldFor = (floor, t) => 10 * floor * (1 + t) + (floor === FLOORS ? 25 * (1 + t) : 0);
-const xpFor = (floor, t) => Math.round(floor * 3 * (1 + 0.5 * t)) + (floor === FLOORS ? 15 : 0);
 function twistText(key, t) {
   if (key === "golem") return "Armoured: attacks deal " + armourOf(t) + " less. Spells ignore armour.";
   return ENEMIES[key].desc;
@@ -128,8 +127,8 @@ export function setupDungeon(ctx) {
     const S = ctx.getS(), a = S.attr, g = ctx.gearBonus();
     const spell = SPELLS[S.spell] ? S.spell : "fireball";
     return {
-      maxHp: 40 + 5 * (a.HLT - 1) + g.hp,
-      atk: 5 + (a.STR - 1) + g.dmg,
+      maxHp: 40 + g.hp,
+      atk: 5 + g.dmg,
       sp: a.INT - 1,
       crit: 5 + g.crit,
       def: g.def,
@@ -266,16 +265,14 @@ export function setupDungeon(ctx) {
   }
   function winFloor() {
     const r = run();
-    const t = r.tier || 0, xp = xpFor(r.floor, t), gold = goldFor(r.floor, t);
-    r.xp += xp; r.gold = (r.gold || 0) + gold; D().xp += xp;
+    const t = r.tier || 0, gold = goldFor(r.floor, t);
+    r.gold = (r.gold || 0) + gold;
     ctx.addGold(gold);
     if (r.floor === FLOORS) ctx.addChest();
-    r.gain = xp; r.goldGain = gold;
+    r.goldGain = gold;
     r.state = r.floor === FLOORS ? "cleared" : "won";
-    save(); paint();
-    // let the knockout play before any level-up card appears
-    const name = enemyName(r.enemy.key, t), floor = r.floor;
-    setTimeout(() => ctx.addXp(xp, "Defeated the " + name + " on floor " + floor + " (+" + gold + " gold)"), reduce() ? 0 : 900);
+    ctx.logEvent("Defeated the " + enemyName(r.enemy.key, t) + " on floor " + r.floor + " (+" + gold + " gold)");
+    save(); paint(); ctx.render();
   }
   function nextFloor() {
     const r = run(); if (!r || r.state !== "won") return;
@@ -413,9 +410,9 @@ export function setupDungeon(ctx) {
     if (go) go.onclick = () => (r.state === "won" ? nextFloor() : endRun(r.state === "cleared" ? "clear" : "lost"));
   }
   function resultCard(r) {
-    if (r.state === "won") return `<div class="dresult"><div class="win"><div class="title-tag">FLOOR CLEARED</div><h1>Victory!</h1><p class="gain"><span class="g-gold">+${r.goldGain} gold</span> <span>+${r.gain} XP</span></p><button class="btn gold big" id="dResult">Next floor</button></div></div>`;
-    if (r.state === "cleared") return `<div class="dresult"><div class="win"><div class="title-tag">DUNGEON CLEARED</div><h1>Champion!</h1><p>You beat all ${FLOORS} floors of the ${DUNGEONS[r.tier || 0].name}.</p><p class="gain"><span class="g-gold">+${r.gold} gold</span> <span>+${r.xp} XP</span></p><p class="g-chest">+1 free chest. Open it in the Shop.</p><button class="btn gold big" id="dResult">Claim and leave</button></div></div>`;
-    return `<div class="dresult"><div class="win"><div class="title-tag">DEFEATED</div><h1>Knocked out</h1><p>You fell on floor ${r.floor}. You keep the ${r.gold || 0} gold and ${r.xp} XP you earned.</p><button class="btn big" id="dResult">Leave dungeon</button></div></div>`;
+    if (r.state === "won") return `<div class="dresult"><div class="win"><div class="title-tag">FLOOR CLEARED</div><h1>Victory!</h1><p class="gain"><span class="g-gold">+${r.goldGain} gold</span></p><button class="btn gold big" id="dResult">Next floor</button></div></div>`;
+    if (r.state === "cleared") return `<div class="dresult"><div class="win"><div class="title-tag">DUNGEON CLEARED</div><h1>Champion!</h1><p>You beat all ${FLOORS} floors of the ${DUNGEONS[r.tier || 0].name}.</p><p class="gain"><span class="g-gold">+${r.gold} gold</span></p><p class="g-chest">+1 free chest. Open it in the Shop.</p><button class="btn gold big" id="dResult">Claim and leave</button></div></div>`;
+    return `<div class="dresult"><div class="win"><div class="title-tag">DEFEATED</div><h1>Knocked out</h1><p>You fell on floor ${r.floor}. You keep the ${r.gold || 0} gold you earned.</p><button class="btn big" id="dResult">Leave dungeon</button></div></div>`;
   }
 
   /* -------- dungeon tab -------- */
@@ -425,13 +422,13 @@ export function setupDungeon(ctx) {
     $("#dTickets").textContent = t;
     $("#dToday").textContent = t >= ctx.ticketMax ? "Tickets full (" + t + " / " + ctx.ticketMax + ")" : "Next ticket in " + fmtWait(wait) + " · " + t + " / " + ctx.ticketMax;
     $("#dStats").innerHTML = `
-      <div><b class="num">${h.maxHp}</b><span>Max HP</span><small>Health, helmet, pants</small></div>
-      <div><b class="num">${h.atk}</b><span>Attack</span><small>Strength, sword</small></div>
+      <div><b class="num">${h.maxHp}</b><span>Max HP</span><small>Helmet, pants</small></div>
+      <div><b class="num">${h.atk}</b><span>Attack</span><small>Sword</small></div>
       <div><b class="num">${h.crit}%</b><span>Crit chance</span><small>Cape</small></div>
       <div><b class="num">${h.def}</b><span>Defence</span><small>Armour</small></div>
       <div><b class="num">+${h.block}</b><span>Shield block</span><small>Shield</small></div>
       <div><b class="num">${h.spell === "poison" ? poisonStacks(h.sp) : fireDmg(h.sp)}</b><span>${sp.name}</span><small>Intelligence · ${h.spell === "poison" ? "poison" : "damage"}</small></div>`;
-    $("#dRecord").textContent = "Runs " + d.runs + " · Clears " + d.clears + " · " + d.xp + " XP earned";
+    $("#dRecord").textContent = "Runs " + d.runs + " · Clears " + d.clears + " · Best floor " + d.best + " / " + FLOORS;
     const cont = $("#dContinue");
     cont.hidden = !S.run;
     if (S.run) cont.querySelector("span").textContent = DUNGEONS[S.run.tier || 0].name + ", floor " + S.run.floor;

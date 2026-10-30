@@ -5,9 +5,7 @@ const SDK = "https://www.gstatic.com/firebasejs/10.12.2/";
 
 /* ================= game data ================= */
 const STATS = {
-  STR: { name: "Strength", hint: "Attack damage in the dungeon" },
   INT: { name: "Intelligence", hint: "Spell power in the dungeon" },
-  HLT: { name: "Health", hint: "Max HP in the dungeon" },
 };
 const QUEST_XP = 20;        // every quest is worth the same
 const MAX_EXTRA_QUESTS = 2; // on top of the 3 core quests
@@ -74,7 +72,7 @@ const TK_MAX = 6, TK_EVERY = 4 * 60 * 60 * 1000;
 function freshState(name) {
   return {
     v: 1, at: Date.now(), name: name || "Adventurer", xp: 0,
-    attr: { STR: 1, INT: 1, HLT: 1 }, qv: 2,
+    attr: { INT: 1 }, qv: 2,
     quests: defaultQuests(),
     treasures: [
       { id: uid(), name: "One episode of a show", every: 5, base: 0 },
@@ -90,7 +88,7 @@ function freshState(name) {
 function migrate(st) {
   if (!st || st.v !== 1) return st;
   const old = { VIT: "HLT", SPI: "HLT" };
-  (st.quests || []).forEach((q) => { if (old[q.stat]) q.stat = old[q.stat]; if (!STATS[q.stat]) q.stat = "HLT"; });
+  (st.quests || []).forEach((q) => { if (old[q.stat]) q.stat = old[q.stat]; });
   const sx = st.statXp || {};
   if (!("HLT" in sx)) st.statXp = { STR: sx.STR || 0, INT: sx.INT || 0, HLT: (sx.VIT || 0) + (sx.SPI || 0) };
   delete st.cls;
@@ -100,8 +98,13 @@ function migrate(st) {
   // v2 quests: three core quests worth the same XP, attributes raised with skill points.
   if (st.qv !== 2) {
     st.quests = defaultQuests();
-    st.attr = { STR: 1, INT: 1, HLT: 1 };
+    st.attr = { INT: 1 };
     st.qv = 2;
+  }
+  // Attributes v3: only Intelligence is left. Points spent on Strength or Health come back to spend again.
+  if (st.attr && Object.keys(st.attr).some((k) => k !== "INT")) {
+    st.attr = { INT: st.attr.INT || 1 };
+    st.attrLog = (st.attrLog || []).filter((k) => k === "INT");
   }
   // Gear v2: gear lives in an inventory with rarities. Anything already unlocked becomes a common copy
   // (worn items stay worn), and gear bought with gold in the first version too.
@@ -248,7 +251,7 @@ function counts() {
   return {
     total: totalQuests(), clears: Object.keys(S.clears).length, best: bestStreak(),
     level: levelInfo(S.xp).level,
-    STR: S.attr.STR, INT: S.attr.INT, HLT: S.attr.HLT,
+    INT: S.attr.INT,
     spent: Object.values(S.attr).reduce((n, l) => n + (l - 1), 0),
   };
 }
