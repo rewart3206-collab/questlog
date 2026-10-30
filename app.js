@@ -232,11 +232,8 @@ function gearBonus() {
   const b = { dmg: 0, block: 0, hp: 0, def: 0, crit: 0 };
   SLOTS.forEach((slot) => { const it = invItem(S.equip[slot]); if (it) b[SLOT_STATS[slot].key] += statVal(slot, it.r, it.p); });
   b.dodge = dodgeFor(celestialLevel());
-  const c = equippedCharm();
-  if (c === "slime") b.hp += 20;
-  if (c === "bone") b.def += 3;
-  if (c === "imp") b.dodge += 10;
-  b.charm = c;
+  // charms only work against their own kind of monster, so the dungeon applies them per fight
+  b.charm = equippedCharm();
   return b;
 }
 // Charms: one per dungeon, earned on its first clear. S.charms lists the ones you have.

@@ -33,13 +33,28 @@ const charmIcon = (col, emblem) => `<svg viewBox="0 0 40 44"><path d="M10 4 Q20 
   <circle cx="20" cy="27" r="13" ${st(col, 2.4)}/><circle cx="20" cy="27" r="9.5" fill="none" stroke="#fff" stroke-width="1.4" opacity=".45"/>${emblem}
   <rect x="17" y="11" width="6" height="5" rx="1.5" ${st("#f2b631", 1.8)}/></svg>`;
 export const CHARMS = {
-  slime: { name: "Slime Charm", from: 0, desc: "+20 max HP", icon: charmIcon("#5fd36a", `<path d="M20 19 Q27 27 26 31 A6 6 0 0 1 14 31 Q13 27 20 19 Z" ${st("#b5f5a0", 1.8)}/>`) },
-  bone: { name: "Bone Charm", from: 1, desc: "+3 defence", icon: charmIcon("#d9d2bf", `<path d="M14 23 L26 31 M14 31 L26 23" stroke="${INK}" stroke-width="4" stroke-linecap="round"/><path d="M14 23 L26 31 M14 31 L26 23" stroke="#fff8e6" stroke-width="2" stroke-linecap="round"/>`) },
-  imp: { name: "Imp Charm", from: 2, desc: "+10% chance to dodge a hit", icon: charmIcon("#8a4fd6", `<path d="M13 22 L16 30 L20 24 L24 30 L27 22" fill="none" stroke="#ffe14a" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="20" cy="33" r="2" fill="#ffe14a"/>`) },
-  golem: { name: "Golem Charm", from: 3, desc: "Your shield blocks 90% of a hit instead of 75%", icon: charmIcon("#a3a6b5", `<rect x="14" y="21" width="12" height="12" rx="2" ${st("#7d8090", 1.8)}/><rect x="16.5" y="25" width="2.6" height="2" fill="#5ff0ff"/><rect x="21" y="25" width="2.6" height="2" fill="#5ff0ff"/>`) },
-  dragon: { name: "Dragon Charm", from: 4, desc: "Spells are 50% stronger", icon: charmIcon("#e2443f", `<path d="M20 18 C23 23 27 24 27 29 A7 7 0 0 1 13 29 C13 26 15 25 16 22 C18 25 19 24 20 18 Z" ${st("#ffcf4a", 1.8)}/>`) },
+  slime: { name: "Slime Charm", from: 0, desc: "+20 max HP against slimes", icon: charmIcon("#5fd36a", `<path d="M20 19 Q27 27 26 31 A6 6 0 0 1 14 31 Q13 27 20 19 Z" ${st("#b5f5a0", 1.8)}/>`) },
+  bone: { name: "Bone Charm", from: 1, desc: "+3 defence against skeletons", icon: charmIcon("#d9d2bf", `<path d="M14 23 L26 31 M14 31 L26 23" stroke="${INK}" stroke-width="4" stroke-linecap="round"/><path d="M14 23 L26 31 M14 31 L26 23" stroke="#fff8e6" stroke-width="2" stroke-linecap="round"/>`) },
+  imp: { name: "Imp Charm", from: 2, desc: "+10% chance to dodge imps", icon: charmIcon("#8a4fd6", `<path d="M13 22 L16 30 L20 24 L24 30 L27 22" fill="none" stroke="#ffe14a" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="20" cy="33" r="2" fill="#ffe14a"/>`) },
+  golem: { name: "Golem Charm", from: 3, desc: "Your shield blocks 90% of a golem's hit instead of 75%", icon: charmIcon("#a3a6b5", `<rect x="14" y="21" width="12" height="12" rx="2" ${st("#7d8090", 1.8)}/><rect x="16.5" y="25" width="2.6" height="2" fill="#5ff0ff"/><rect x="21" y="25" width="2.6" height="2" fill="#5ff0ff"/>`) },
+  dragon: { name: "Dragon Charm", from: 4, desc: "Spells are 50% stronger against dragons", icon: charmIcon("#e2443f", `<path d="M20 18 C23 23 27 24 27 29 A7 7 0 0 1 13 29 C13 26 15 25 16 22 C18 25 19 24 20 18 Z" ${st("#ffcf4a", 1.8)}/>`) },
 };
 export const CHARM_OF = ["slime", "bone", "imp", "golem", "dragon"];
+// which charm works against which monster: a charm only helps against its own kind
+const FAMILY = { slime: "slime", king_slime: "slime", skeleton: "bone", skeleton_king: "bone", imp: "imp", imp_queen: "imp",
+  golem: "golem", golem_titan: "golem", whelp: "dragon", dragon: "dragon" };
+const charmOn = (r) => !!(r && r.charm && r.enemy && FAMILY[r.enemy.key] === r.charm);
+// the hero's numbers for the current fight, with the charm counted only against its kind of monster
+function fightStats(r) {
+  const on = charmOn(r) ? r.charm : null;
+  return {
+    def: (r.def || 0) + (on === "bone" ? 3 : 0),
+    dodge: (r.dodge || 0) + (on === "imp" ? 10 : 0),
+    shieldTake: on === "golem" ? 0.1 : 0.25,
+    spellMul: on === "dragon" ? 1.5 : 1,
+    on,
+  };
+}
 const poisonStacks = (sp) => 5 + 2 * sp;
 
 /* ---------------- monsters ---------------- */
@@ -191,8 +206,6 @@ export function setupDungeon(ctx) {
       // level gives a little (2 HP a level, +1 attack every 4 levels); gear does most of the work
       maxHp: 40 + 2 * (L - 1) + g.hp,
       atk: 5 + Math.floor((L - 1) / 4) + g.dmg,
-      shieldTake: g.charm === "golem" ? 0.1 : 0.25,
-      spellMul: g.charm === "dragon" ? 1.5 : 1,
       charm: g.charm || null,
       sp: a.INT - 1,
       crit: 5 + g.crit,
@@ -219,6 +232,10 @@ export function setupDungeon(ctx) {
   }
   function startFloor(run) {
     run.enemy = makeEnemy(run.floor, run.tier || 0);
+    // Slime Charm: +20 max HP (and 20 HP) while you're up against slimes
+    const base = run.baseMax || run.maxHp, want = base + (charmOn(run) && run.charm === "slime" ? 20 : 0);
+    if (want > run.maxHp) run.hp += want - run.maxHp;
+    run.maxHp = want; run.hp = Math.min(run.hp, run.maxHp);
     run.turn = 1; run.state = "fight";
     run.msg = "Floor " + run.floor + ": " + (run.floor === FLOORS ? "the boss, " : "a ") + enemyName(run.enemy) + (run.floor === FLOORS ? ", blocks the way!" : " appears!");
   }
@@ -232,7 +249,7 @@ export function setupDungeon(ctx) {
     if (!ctx.spendTicket()) { ctx.toast("No tickets left. Next one in " + fmtWait(ctx.nextTicketIn())); return; }
     const h = hero(), d = D();
     d.runs++;
-    S.run = { tier: t, floor: 1, hp: h.maxHp, maxHp: h.maxHp, atk: h.atk, sp: h.sp, crit: h.crit, def: h.def, blockBonus: h.block, dodge: h.dodge, shieldTake: h.shieldTake, spellMul: h.spellMul,
+    S.run = { tier: t, floor: 1, hp: h.maxHp, maxHp: h.maxHp, atk: h.atk, sp: h.sp, crit: h.crit, def: h.def, blockBonus: h.block, dodge: h.dodge, charm: h.charm, baseMax: h.maxHp,
       spell: h.spell, charge: 0, xp: 0, gold: 0 };
     startFloor(S.run);
     ctx.logEvent("Entered the " + dg.name);
@@ -282,11 +299,11 @@ export function setupDungeon(ctx) {
       if (r.spell === "poison") {
         await play("poison");
         if (E.twist === "nopoison") { pop("enemy", "Immune", "block"); msg = "Poison does nothing to the " + name + "."; }
-        else { const n = Math.round(poisonStacks(r.sp) * (r.spellMul || 1)); en.poison += n; pop("enemy", "+" + n + " poison", "poison"); msg = "Poison Cloud! The " + name + " has " + en.poison + " poison."; }
+        else { const n = Math.round(poisonStacks(r.sp) * fightStats(r).spellMul); en.poison += n; pop("enemy", "+" + n + " poison", "poison"); msg = "Poison Cloud! The " + name + " has " + en.poison + " poison."; }
       } else {
         const crit = Math.random() * 100 < r.crit;
         await play("fireball");
-        const dmg = Math.round(fireDmg(r.sp) * (r.spellMul || 1)) * (crit ? 2 : 1);
+        const dmg = Math.round(fireDmg(r.sp) * fightStats(r).spellMul) * (crit ? 2 : 1);
         en.hp = Math.max(0, en.hp - dmg);
         pop("enemy", (crit ? "CRIT -" : "-") + dmg, crit ? "crit" : "hit");
         msg = (crit ? "Critical Fireball for " : "Fireball blasts for ") + dmg + "!";
@@ -310,17 +327,17 @@ export function setupDungeon(ctx) {
     const special = en.charge >= E.charge;
     let dmg = special ? specialDmg(r) : rnd(en.atk[0], en.atk[1]);
     // Celestial set: a chance to slip out of the way of any hit, specials included
-    const evade = (r.dodge || 0) > 0 && Math.random() * 100 < r.dodge;
+    const fs = fightStats(r), evade = fs.dodge > 0 && Math.random() * 100 < fs.dodge;
     await play(special ? (en.key === "dragon" ? "breath" : "special") : "enemy", shielding && !evade);
     let line;
     if (evade) {
       dmg = 0; line = "You vanish in a flash of light and dodge it!";
       const h = document.getElementById("dHero"); if (h && !reduce()) restart(h, "blink");
     } else if (shielding) {
-      dmg = Math.max(0, Math.round(dmg * (r.shieldTake || 0.25)) - (r.blockBonus || 0));
+      dmg = Math.max(0, Math.round(dmg * fightStats(r).shieldTake) - (r.blockBonus || 0));
       line = dmg ? "You block most of it and take " + dmg + "." : "Your shield blocks it all!";
     } else {
-      dmg = Math.max(1, dmg - (r.def || 0));
+      dmg = Math.max(1, dmg - fs.def);
       line = "You take " + dmg + ".";
     }
     r.hp = Math.max(0, r.hp - dmg); shieldUp = false;
@@ -444,14 +461,14 @@ export function setupDungeon(ctx) {
         <div class="dpad you"></div>
         <div class="dunit you" id="dHero">${r.dodge ? '<div class="holo l"></div><div class="holo r"></div>' : ""}<div class="dhero"></div></div>
         <div class="dinfo you">
-          <div class="dinfo-name"><b>You</b><small class="num">Lv ${ctx.level()}</small></div>
+          <div class="dinfo-name"><b>You</b><small class="num">Lv ${ctx.level()}</small>${fightStats(r).on ? `<span class="dcharm" title="Charm active">✦ ${CHARMS[r.charm].name}</span>` : ""}</div>
           ${bar(r.hp, r.maxHp, "hp")}
         </div>
       </div>
       <div class="dpanel">
         <div class="dbox"><p class="dmsg" aria-live="polite"></p><p class="dtwist">${twistText(en.key, t)}</p></div>
         <div class="dacts">
-          <button class="dact shd" id="dShield" type="button"><span class="dact-ic">${SHIELD_ICON}</span><b>Shield</b><small>Block ${(r.shieldTake || 0.25) < 0.25 ? "90%" : "¾"}${r.blockBonus ? " +" + r.blockBonus : ""}</small></button>
+          <button class="dact shd" id="dShield" type="button"><span class="dact-ic">${SHIELD_ICON}</span><b>Shield</b><small>Block ${fightStats(r).on === "golem" ? "90%" : "¾"}${r.blockBonus ? " +" + r.blockBonus : ""}</small></button>
           <button class="dact spl${ready ? " ready" : ""}" id="dSpell" type="button"${ready ? "" : ' aria-disabled="true"'}><span class="dact-ic">${sp.icon}</span><b></b><span class="pips">${pips}</span></button>
           <button class="dact atk" id="dAttack" type="button"><span class="dact-ic">${SWORD_ICON}</span><b>Attack</b><small class="num">${r.atk - 1}–${r.atk + 1} dmg · ${r.crit}% crit</small></button>
         </div>
@@ -491,14 +508,14 @@ export function setupDungeon(ctx) {
     $("#dTickets").textContent = ctx.unlimited ? "∞" : t;
     $("#dToday").textContent = ctx.unlimited ? "Unlimited tickets for now" : t >= ctx.ticketMax ? "Tickets full (" + t + " / " + ctx.ticketMax + ")" : "Next ticket in " + fmtWait(wait) + " · " + t + " / " + ctx.ticketMax;
     $("#dStats").innerHTML = `
-      <div><b class="num">${h.maxHp}</b><span>Max HP</span><small>Level, helmet, pants${h.charm === "slime" ? ", charm" : ""}</small></div>
+      <div><b class="num">${h.maxHp}</b><span>Max HP</span><small>Level, helmet, pants</small></div>
       <div><b class="num">${h.atk}</b><span>Attack</span><small>Level, sword</small></div>
       <div><b class="num">${h.crit}%</b><span>Crit chance</span><small>Cape</small></div>
-      ${h.dodge ? `<div><b class="num">${h.dodge}%</b><span>Dodge</span><small>${h.charm === "imp" ? "Charm" : ""}${h.charm === "imp" && h.dodge > 10 ? ", " : ""}${h.dodge > (h.charm === "imp" ? 10 : 0) ? "Celestial set" : ""}</small></div>` : ""}
-      <div><b class="num">${h.def}</b><span>Defence</span><small>Armour${h.charm === "bone" ? ", charm" : ""}</small></div>
+      ${h.dodge ? `<div><b class="num">${h.dodge}%</b><span>Dodge</span><small>Celestial set</small></div>` : ""}
+      <div><b class="num">${h.def}</b><span>Defence</span><small>Armour</small></div>
       <div><b class="num">+${h.block}</b><span>Shield block</span><small>Shield</small></div>
       ${h.charm ? `<div><b class="num">✦</b><span>${CHARMS[h.charm].name}</span><small>${CHARMS[h.charm].desc}</small></div>` : ""}
-      <div><b class="num">${Math.round((h.spell === "poison" ? poisonStacks(h.sp) : fireDmg(h.sp)) * h.spellMul)}</b><span>${sp.name}</span><small>Intelligence · ${h.spell === "poison" ? "poison" : "damage"}</small></div>`;
+      <div><b class="num">${h.spell === "poison" ? poisonStacks(h.sp) : fireDmg(h.sp)}</b><span>${sp.name}</span><small>Intelligence · ${h.spell === "poison" ? "poison" : "damage"}</small></div>`;
     $("#dRecord").textContent = "Runs " + d.runs + " · Clears " + d.clears + " · Best floor " + d.best + " / " + FLOORS;
     const cont = $("#dContinue");
     cont.hidden = !S.run;
