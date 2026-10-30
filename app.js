@@ -153,7 +153,11 @@ function migrate(st) {
   if (!st.spells) { st.spells = ["fireball"]; st.spell = "fireball"; }
   // Starter spells: everyone has Fireball and Poison Cloud from day one.
   if (!st.spells.includes("poison")) st.spells.push("poison");
-  if (st.research && st.research.key === "poison") { if (!GOLD_UNLIMITED) st.gold = (st.gold || 0) + 300; st.research = null; }
+  // Spell chests replaced research: anything being researched is cancelled and its gold refunded.
+  const RCOST = { heal: 200, poison: 300, frost: 600, ward: 900, lightning: 1200, drain: 2000 };
+  if (st.research) { if (!GOLD_UNLIMITED) st.gold = (st.gold || 0) + (RCOST[st.research.key] || 0); delete st.research; }
+  if (st.spellChests == null) st.spellChests = 0;
+  if (!st.frags) st.frags = {};
   if (st.run && st.run.dice) { delete st.run; if (st.dungeon && st.dungeon.spent) st.dungeon.spent--; }
   if (st.look) delete st.look.outfit;
   // Tickets v2: a timer instead of quests. Everyone starts with a full stack.
@@ -497,69 +501,33 @@ function openChest(bought) {
   save(); render();
   revealItem("CHEST OPENED", item, true);
 }
-// Research: learn new spells with gold and time. One at a time; it keeps going while the app is closed.
-// S.research = { key, ends, started } while a spell is being researched.
-const fmtLeft = (ms) => { const m = Math.max(1, Math.ceil(ms / 60000)), h = Math.floor(m / 60); return h ? h + "h " + (m % 60) + "m" : m + "m"; };
-function startResearch(k) {
-  const sp = SPELLS[k], R = sp && sp.research; if (!R || S.spells.includes(k) || S.research) return;
-  if (levelInfo(S.xp).level < R.lv) { toast("Reach level " + R.lv + " to research " + sp.name); return; }
-  if (!GOLD_UNLIMITED) {
-    if ((S.gold || 0) < R.gold) { toast("You need " + (R.gold - (S.gold || 0)) + " more gold"); return; }
-    S.gold -= R.gold;
+// Spell chests: clearing a dungeon gives one. Each holds a fragment of a spell you don't know yet;
+// 5 fragments of a spell teach it to you. S.frags = { spell: fragments }, S.spellChests = unopened.
+const FRAGS_NEEDED = 5;
+function openSpellChest() {
+  if ((S.spellChests || 0) < 1) return;
+  S.spellChests--;
+  const pool = Object.keys(SPELLS).filter((k) => !S.spells.includes(k));
+  if (!pool.length) {
+    S.gold = (S.gold || 0) + 150; logEvent("Opened a spell chest: you know every spell, so it held 150 gold");
+    save(); render(); toast("You know every spell. +150 gold instead"); return;
   }
-  S.research = { key: k, started: Date.now(), ends: Date.now() + R.hours * 3600000 };
-  logEvent("Started researching " + sp.name + (GOLD_UNLIMITED ? "" : " (-" + R.gold + " gold)"));
+  const k = pool[Math.floor(Math.random() * pool.length)];
+  S.frags = S.frags || {};
+  const n = (S.frags[k] || 0) + 1, learned = n >= FRAGS_NEEDED;
+  if (learned) { delete S.frags[k]; S.spells.push(k); logEvent("Collected 5 fragments: learned " + SPELLS[k].name); }
+  else { S.frags[k] = n; logEvent("Opened a spell chest: " + SPELLS[k].name + " fragment (" + n + "/" + FRAGS_NEEDED + ")"); }
   save(); render();
-}
-function cancelResearch() {
-  const r = S.research; if (!r) return;
-  const R = SPELLS[r.key].research;
-  if (!GOLD_UNLIMITED) S.gold = (S.gold || 0) + R.gold;
-  S.research = null; logEvent("Cancelled researching " + SPELLS[r.key].name + " (gold refunded)");
-  save(); render();
-}
-function checkResearch() {
-  const r = S && S.research;
-  if (!r || Date.now() < r.ends) return;
-  S.research = null;
-  if (SPELLS[r.key] && !S.spells.includes(r.key)) { S.spells.push(r.key); logEvent("Research complete: learned " + SPELLS[r.key].name); }
-  save(); revealSpell(r.key, "RESEARCH COMPLETE");
-}
-function renderResearch() {
-  const box = $("#researchList"); if (!box) return; box.innerHTML = "";
-  const L = levelInfo(S.xp).level, cur = S.research;
-  const todo = Object.entries(SPELLS).filter(([k, sp]) => sp.research && !S.spells.includes(k));
-  todo.forEach(([k, sp]) => {
-    const R = sp.research, active = cur && cur.key === k;
-    const li = document.createElement("li"); li.className = "ch research" + (active ? " equipped" : L < R.lv ? " locked" : " done");
-    const ic = document.createElement("div"); ic.className = "gear-icon"; ic.innerHTML = sp.icon; li.appendChild(ic);
-    const mid = document.createElement("div"); mid.style.minWidth = "0";
-    const nm = document.createElement("div"); nm.className = "ch-name"; nm.textContent = sp.name;
-    const sub = document.createElement("div"); sub.className = "ch-goal"; sub.textContent = sp.desc;
-    const req = document.createElement("div"); req.className = "res-req num";
-    req.textContent = "Level " + R.lv + " · " + (GOLD_UNLIMITED ? "free for now" : R.gold + " gold") + " · " + R.hours + (R.hours === 1 ? " hour" : " hours");
-    mid.append(nm, sub, req);
-    if (active) {
-      const total = cur.ends - cur.started, done = Math.min(1, (Date.now() - cur.started) / total);
-      const bar = document.createElement("div"); bar.className = "res-bar"; bar.innerHTML = "<i></i><span class=\"num\"></span>";
-      bar.firstChild.style.width = Math.round(done * 100) + "%"; bar.lastChild.textContent = fmtLeft(cur.ends - Date.now()) + " left";
-      mid.appendChild(bar);
-    }
-    let b;
-    if (active) { b = document.createElement("button"); b.className = "btn ghost"; b.textContent = "Cancel"; b.onclick = cancelResearch; }
-    else {
-      b = document.createElement("button"); b.className = "btn" + (L >= R.lv && !cur ? " gold" : " ghost");
-      b.textContent = L < R.lv ? "Lv " + R.lv : cur ? "Busy" : "Research";
-      b.disabled = L < R.lv || !!cur;
-      b.setAttribute("aria-label", "Research " + sp.name);
-      b.onclick = () => startResearch(k);
-    }
-    li.append(mid, b); box.appendChild(li);
+  if (learned) { revealSpell(k, "SPELL LEARNED"); return; }
+  queueModal((w, done) => {
+    w.innerHTML = '<div class="title-tag">SPELL CHEST</div><div class="chest-reveal"><div class="chest-burst" style="background:radial-gradient(circle,#b46cffaa 0,transparent 65%)"></div><div class="gear-icon unlock-icon frag-icon"></div></div><h1></h1><p class="muted" style="margin:0"></p><div class="frag-bar"><i></i><span class="num"></span></div><button class="btn gold">Nice</button>';
+    w.querySelector(".gear-icon").innerHTML = SPELLS[k].icon;
+    w.querySelector("h1").textContent = SPELLS[k].name + " fragment";
+    w.querySelector("p").textContent = SPELLS[k].desc;
+    w.querySelector(".frag-bar i").style.width = (n / FRAGS_NEEDED) * 100 + "%";
+    w.querySelector(".frag-bar span").textContent = n + " / " + FRAGS_NEEDED + " fragments";
+    w.querySelector("button").onclick = done;
   });
-  const more = document.createElement("li"); more.className = "ch locked";
-  more.innerHTML = '<div class="gear-icon"></div><div><div class="ch-name">More spells</div><div class="ch-goal">New spells will appear here to research.</div></div><span></span>';
-  box.appendChild(more);
-  $("#researchNote").textContent = cur ? "Researching " + SPELLS[cur.key].name + ". It carries on while the app is closed." : todo.length ? "Pick a spell to research. One at a time; it carries on while the app is closed." : "You've learned every spell so far.";
 }
 function revealSpell(k, tag) {
   const sp = SPELLS[k];
@@ -575,7 +543,18 @@ function revealSpell(k, tag) {
   });
 }
 function renderSpells() {
-  const box = $("#spellList"); box.innerHTML = "";
+  const box = $("#spellList"); box.innerHTML = ""; const unknown = [];
+  Object.entries(SPELLS).filter(([k]) => !S.spells.includes(k)).forEach(([k, sp]) => {
+    const n = (S.frags || {})[k] || 0;
+    const li = document.createElement("li"); li.className = "ch locked frag-row";
+    const ic = document.createElement("div"); ic.className = "gear-icon"; ic.innerHTML = sp.icon; li.appendChild(ic);
+    const mid = document.createElement("div"); mid.style.minWidth = "0";
+    const nm = document.createElement("div"); nm.className = "ch-name"; nm.textContent = sp.name;
+    const sub = document.createElement("div"); sub.className = "ch-goal"; sub.textContent = sp.desc;
+    const bar = document.createElement("div"); bar.className = "frag-bar"; bar.innerHTML = '<i></i><span class="num"></span>';
+    bar.firstChild.style.width = (n / FRAGS_NEEDED) * 100 + "%"; bar.lastChild.textContent = n + " / " + FRAGS_NEEDED + " fragments";
+    mid.append(nm, sub, bar); li.append(mid, document.createElement("span")); unknown.push(li);
+  });
   Object.entries(SPELLS).filter(([k]) => S.spells.includes(k)).forEach(([k, sp]) => {
     const own = S.spells.includes(k), eq = S.spell === k;
     const li = document.createElement("li"); li.className = "ch" + (own ? " done" : " locked") + (eq ? " equipped" : "");
@@ -589,6 +568,7 @@ function renderSpells() {
     b.onclick = () => { S.spell = k; save(); render(); };
     li.append(mid, b); box.appendChild(li);
   });
+  unknown.forEach((li) => box.appendChild(li));
 }
 function revealItem(tagText, item, offerEquip) {
   queueModal((w, done) => {
@@ -683,7 +663,7 @@ const dungeon = setupDungeon({
   addXp, dayStreak: () => dayStreak(), tickets: ticketsLeft, spendTicket, nextTicketIn, ticketMax: TK_MAX, unlimited: TK_UNLIMITED,
   gearBonus: (fam) => gearBonus(fam || null), wearsRelic: () => SLOTS.some((s) => { const it = invItem(S.equip[s]); return it && it.relic; }), level: () => levelInfo(S.xp).level,
   addGold: (n) => { S.gold = (S.gold || 0) + n; },
-  addChest: () => { S.chests = (S.chests || 0) + 1; },
+  addChest: () => { S.spellChests = (S.spellChests || 0) + 1; },
   earnReward: (n) => earnReward(n), hasReward: (n) => hasReward(n),
   relicBonus: () => relicBonus(), dungeonCount: () => dungeonCount(),
   drawHero: (el, o) => { el.innerHTML = o && o.back ? heroBackSVG(heroParts(heroLook()), o) : heroSVG(heroParts(heroLook()), {}); },
@@ -1012,16 +992,20 @@ function render() {
   // shop
   $("#shopGold").textContent = GOLD_UNLIMITED ? "∞" : S.gold;
   $("#buyChest").classList.toggle("short", !GOLD_UNLIMITED && S.gold < CHEST_PRICE);
-  $("#chestCount").textContent = S.chests + (S.chests === 1 ? " chest" : " chests");
-  $("#openChest").disabled = S.chests < 1;
-  $("#openChest").textContent = S.chests ? "Open a chest" : "No chests to open";
-  $("#shopDot").hidden = S.chests < 1;
+  const sc = S.spellChests || 0;
+  $("#chestCount").textContent = sc + (sc === 1 ? " spell chest" : " spell chests");
+  $("#openSpellChest").disabled = sc < 1;
+  $("#openSpellChest").textContent = sc ? "Open a spell chest" : "No spell chests to open";
+  $("#openChest").hidden = S.chests < 1;
+  $("#openChest").textContent = "Open a gear chest (" + S.chests + ")";
+  $("#shopDot").hidden = sc + S.chests < 1;
   // short status lines under the main menu buttons
   { const doneN = S.quests.filter((q) => (S.days[today()] || {})[q.id]).length;
     $("#questsSub").textContent = doneN + " / " + S.quests.length + " done today";
     $("#heroSub").textContent = "Gear, spells, looks";
     $("#dungeonSub").textContent = canPrestige() ? "Prestige ready!" : TK_UNLIMITED ? "Unlimited tickets" : ticketsLeft() + " tickets";
-    $("#shopSub").textContent = S.chests ? S.chests + (S.chests === 1 ? " chest to open" : " chests to open") : "Chests";
+    const nc = S.chests + (S.spellChests || 0);
+    $("#shopSub").textContent = nc ? nc + (nc === 1 ? " chest to open" : " chests to open") : "Chests";
     $("#guildSub").textContent = "Friends and chat";
     $("#logSub").textContent = "Your history"; }
   const rl = $("#rarityList"); rl.innerHTML = "";
@@ -1096,9 +1080,7 @@ function render() {
   if (document.activeElement !== $("#nameIn")) $("#nameIn").value = S.name;
   renderAppearance();
   renderGearSlots();
-  checkResearch();
   renderSpells();
-  renderResearch();
   const uname = usernameOf(me);
   $("#acct").textContent = me ? "Signed in as " + (uname || me.email || me.displayName || "Google user") + ". Your progress syncs to every device you sign in on." : "";
   $("#linkForm").hidden = !me || !!uname;
@@ -1257,6 +1239,7 @@ $("#addq").onclick = () => questForm(null);
 $("#buyChest").onclick = () => buyChest();
 $("#prestigeBtn").onclick = () => openPrestige();
 $("#openChest").onclick = () => openChest(false);
+$("#openSpellChest").onclick = () => openSpellChest();
 $("#nameIn").addEventListener("input", (e) => { S.name = e.target.value.trim() || "Adventurer"; $("#hname").textContent = S.name; save(); });
 let resetArmed = false;
 $("#resetBtn").onclick = () => {
@@ -1283,7 +1266,7 @@ const rollover = () => {
   const n = ticketsLeft();
   if (n !== lastTk) { lastTk = n; save(); }
   $("#tkTop").textContent = TK_UNLIMITED ? "∞" : n; dungeon.renderTab();
-  if (S.research) { checkResearch(); renderResearch(); }
+
 };
 setInterval(rollover, 60000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) rollover(); });

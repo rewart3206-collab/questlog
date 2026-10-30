@@ -621,6 +621,15 @@ body{padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))}
 .screen-head::after{content:"";width:70px}
 .screen-title{text-align:center;font-size:26px;color:var(--gold);text-shadow:var(--stroke)}
 .iconbtn.back{font-size:15px}
+
+/* spell fragments */
+.frag-bar{position:relative;margin-top:6px;height:16px;border-radius:8px;background:var(--deep);border:2px solid var(--deep);overflow:hidden;width:100%}
+.frag-bar i{display:block;height:100%;background:linear-gradient(#d39bff,#8a3fd6);transition:width .5s}
+.frag-bar span{position:absolute;inset:0;display:grid;place-items:center;font-size:11px;font-weight:800;text-shadow:var(--stroke)}
+.lvlup .frag-bar{max-width:240px;height:20px;margin:0 auto}
+.ch.frag-row .gear-icon svg{filter:grayscale(.85) brightness(.75)}
+.ch.frag-row .ch-name{color:#fff}
+.btn.spellchest{background:linear-gradient(#d39bff,#8a3fd6);border-color:#3a1f5e;color:#fff;text-shadow:0 2px 0 #3a1f5e,2px 0 0 #3a1f5e,-2px 0 0 #3a1f5e,0 -2px 0 #3a1f5e}
 </style>
 </head>
 <body>
@@ -724,13 +733,8 @@ body{padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))}
     </div>
     <div class="win">
       <h2>Spells</h2>
-      <p class="note" style="margin-top:10px">Your equipped spell charges up as you attack in the dungeon. Learn new spells in Research.</p>
+      <p class="note" style="margin-top:10px">Your equipped spell charges up as you attack in the dungeon. Clear dungeons for spell chests: each holds a fragment of a new spell, and 5 fragments teach it to you.</p>
       <ul class="clist" id="spellList"></ul>
-    </div>
-    <div class="win">
-      <h2>Research</h2>
-      <p class="note" id="researchNote" style="margin-top:10px"></p>
-      <ul class="clist" id="researchList"></ul>
     </div>
     <div class="win">
       <h2>Titles</h2>
@@ -763,7 +767,7 @@ body{padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))}
   <section class="panel stack" id="p-dungeon" hidden>
     <div class="win dgate">
       <div class="spread"><h2>Dungeon</h2><span class="pill dtk"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7 Q3 5 5 5 L19 5 Q21 5 21 7 L21 9.5 Q19 10 19 12 Q19 14 21 14.5 L21 17 Q21 19 19 19 L5 19 Q3 19 3 17 L3 14.5 Q5 14 5 12 Q5 10 3 9.5 Z" fill="#ffcf4a" stroke="#1c1430" stroke-width="2" stroke-linejoin="round"/><path d="M9 8 L9 16" stroke="#1c1430" stroke-width="1.6" stroke-dasharray="2 2"/><path d="M14 9.5 l1 2 2.2.3-1.6 1.5.4 2.2-2-1.1-2 1.1.4-2.2-1.6-1.5 2.2-.3z" fill="#e2384a"/></svg></span><b class="num" id="dTickets">0</b><small>tickets</small></span></div>
-      <p class="note" style="margin-top:10px">You get a new ticket every 4 hours and can hold up to 6. A ticket gets you one run of five floors. Every floor you beat pays gold, and beating the boss on floor 5 earns a free chest. Your first clear of each dungeon also earns its charm and opens the next dungeon. Each dungeon needs better gear than the last.</p>
+      <p class="note" style="margin-top:10px">You get a new ticket every 4 hours and can hold up to 6. A ticket gets you one run of five floors. Every floor you beat pays gold, and beating the boss on floor 5 earns a spell chest. Your first clear of each dungeon also earns its charm and opens the next dungeon. Each dungeon needs better gear than the last.</p>
       <p class="clear" id="dToday" style="margin:8px 0 0"></p>
       <div class="prestige-box" id="prestigeBox" hidden><div><b>Prestige ready</b><p></p></div><button class="btn gold" type="button" id="prestigeBtn">Prestige</button></div>
       <div class="dcontinue" id="dContinue" hidden><div><b>Run in progress</b><span></span></div><button class="btn gold" type="button">Continue</button></div>
@@ -809,9 +813,10 @@ body{padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))}
       <p class="note" style="margin-top:10px">Earn gold by beating floors in the dungeon. Higher dungeons pay more.</p>
     </div>
     <div class="win" id="freeChests">
-      <div class="spread"><h2>Your chests</h2><span class="date num" id="chestCount"></span></div>
-      <p class="note" style="margin-top:10px">Clearing all five floors of a dungeon earns a free chest.</p>
-      <button class="btn big" id="openChest" style="width:100%;margin-top:12px">Open a chest</button>
+      <div class="spread"><h2>Spell chests</h2><span class="date num" id="chestCount"></span></div>
+      <p class="note" style="margin-top:10px">Clearing all five floors of a dungeon earns a spell chest. Each one holds a fragment of a spell you don't know yet. Collect 5 fragments to learn it.</p>
+      <button class="btn big spellchest" id="openSpellChest" style="width:100%;margin-top:12px">Open a spell chest</button>
+      <button class="btn ghost" id="openChest" style="width:100%;margin-top:8px" hidden>Open a gear chest</button>
     </div>
     <div class="win">
       <h2>Rarities</h2>

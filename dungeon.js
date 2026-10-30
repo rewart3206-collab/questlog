@@ -27,13 +27,12 @@ const BOLT_ICON = `<svg viewBox="0 0 40 40"><path d="M23 3 L9 23 L18 23 L14 37 L
 const DRAIN_ICON = `<svg viewBox="0 0 40 40"><path d="M20 35 C8 26 4 19 4 13 A8 8 0 0 1 20 9 A8 8 0 0 1 36 13 C36 19 32 26 20 35 Z" ${st("#c8264a", 2.2)}/><path d="M12 13 Q16 9 19 13" fill="none" stroke="#ff9ab0" stroke-width="2.4" stroke-linecap="round"/><path d="M20 15 L17 22 L22 22 L19 29" fill="none" stroke="#3a1f5e" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 export const SPELLS = {
   fireball: { name: "Fireball", charge: 3, icon: FIRE_ICON, desc: "Charges in 3 attacks. A blast of fire that ignores armour and can crit." },
-  // research: what it takes to learn the spell in the Hero tab's Research section
-  heal: { name: "Healing Light", charge: 3, icon: HEAL_ICON, desc: "Charges in 3 attacks. Heals you, more as you level up.", research: { lv: 2, gold: 200, hours: 1 } },
+  heal: { name: "Healing Light", charge: 3, icon: HEAL_ICON, desc: "Charges in 3 attacks. Heals you, more as you level up." },
   poison: { name: "Poison Cloud", charge: 2, icon: POISON_ICON, desc: "Charges in 2 attacks. Poisons the monster, hurting it every turn." },
-  frost: { name: "Frost Bolt", charge: 2, icon: FROST_ICON, desc: "Charges in 2 attacks. A light hit that freezes the monster, knocking its special attack back two turns.", research: { lv: 6, gold: 600, hours: 3 } },
-  ward: { name: "Arcane Ward", charge: 3, icon: WARD_ICON, desc: "Charges in 3 attacks. A barrier that completely absorbs the next hit, even a special.", research: { lv: 8, gold: 900, hours: 4 } },
-  lightning: { name: "Chain Lightning", charge: 4, icon: BOLT_ICON, desc: "Charges in 4 attacks. A huge strike that can't be dodged, ignores armour and can crit.", research: { lv: 10, gold: 1200, hours: 6 } },
-  drain: { name: "Life Drain", charge: 3, icon: DRAIN_ICON, desc: "Charges in 3 attacks. Hurts the monster and heals you for the same amount.", research: { lv: 13, gold: 2000, hours: 8 } },
+  frost: { name: "Frost Bolt", charge: 2, icon: FROST_ICON, desc: "Charges in 2 attacks. A light hit that freezes the monster, knocking its special attack back two turns." },
+  ward: { name: "Arcane Ward", charge: 3, icon: WARD_ICON, desc: "Charges in 3 attacks. A barrier that completely absorbs the next hit, even a special." },
+  lightning: { name: "Chain Lightning", charge: 4, icon: BOLT_ICON, desc: "Charges in 4 attacks. A huge strike that can't be dodged, ignores armour and can crit." },
+  drain: { name: "Life Drain", charge: 3, icon: DRAIN_ICON, desc: "Charges in 3 attacks. Hurts the monster and heals you for the same amount." },
 };
 // Levels make you stronger: every level adds HP, attack and spell power. sp = level - 1.
 const fireDmg = (sp) => 12 + 2 * sp;
@@ -605,7 +604,7 @@ export function setupDungeon(ctx) {
   }
   function resultCard(r) {
     if (r.state === "won") return `<div class="dresult"><div class="win"><div class="title-tag">FLOOR CLEARED</div><h1>Victory!</h1><p class="gain"><span class="g-gold">+${r.goldGain} gold</span></p><button class="btn gold big" id="dResult">Next floor</button></div></div>`;
-    if (r.state === "cleared") return `<div class="dresult"><div class="win"><div class="title-tag">DUNGEON CLEARED</div><h1>Champion!</h1><p>You beat all ${FLOORS} floors of the ${ALL_DUNGEONS[r.tier || 0].name}.</p><p class="gain"><span class="g-gold">+${r.gold} gold</span></p><p class="g-chest">+1 free chest. Open it in the Shop.</p><button class="btn gold big" id="dResult">Claim and leave</button></div></div>`;
+    if (r.state === "cleared") return `<div class="dresult"><div class="win"><div class="title-tag">DUNGEON CLEARED</div><h1>Champion!</h1><p>You beat all ${FLOORS} floors of the ${ALL_DUNGEONS[r.tier || 0].name}.</p><p class="gain"><span class="g-gold">+${r.gold} gold</span></p><p class="g-chest">+1 spell chest. Open it in the Shop.</p><button class="btn gold big" id="dResult">Claim and leave</button></div></div>`;
     return `<div class="dresult"><div class="win"><div class="title-tag">DEFEATED</div><h1>Knocked out</h1><p>You fell on floor ${r.floor}. You keep the ${r.gold || 0} gold you earned.</p><button class="btn big" id="dResult">Leave dungeon</button></div></div>`;
   }
 
@@ -641,7 +640,7 @@ export function setupDungeon(ctx) {
       li.querySelector("b").textContent = dg.name;
       li.querySelectorAll("small")[0].textContent = locked ? "Clear the " + ALL_DUNGEONS[i - 1].name + " to open" : ("Boss: " + boss.name + " · best floor " + best + "/" + FLOORS + (clears ? " · cleared " + clears + "×" : ""));
       const rw = rewardFor(i), hasRw = ctx.hasReward(i);
-      li.querySelectorAll("small")[1].textContent = (hasRw ? "" : rw.name + " · ") + "Up to " + Array.from({ length: FLOORS }, (_, f) => goldFor(f + 1, i)).reduce((a, b) => a + b, 0) + " gold + chest";
+      li.querySelectorAll("small")[1].textContent = (hasRw ? "" : rw.name + " · ") + "Up to " + Array.from({ length: FLOORS }, (_, f) => goldFor(f + 1, i)).reduce((a, b) => a + b, 0) + " gold + spell chest";
       const b = li.querySelector("button");
       b.textContent = locked ? "Locked" : "Enter";
       b.disabled = locked || !!S.run || t < 1;
