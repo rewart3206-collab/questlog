@@ -71,6 +71,14 @@ const itemName = (it) => it.relic ? relicName(it.slot, it.relic) : GEAR_NAMES[it
 const rarityName = (it) => it.relic ? "Relic" : RARITIES[it.r].name + (it.p ? " +" + it.p : "");
 const rarityColour = (it) => it.relic ? RELIC_COLOUR : RARITIES[it.r].colour;
 const relicText = (it) => it.relic ? RELIC_BONUS[it.slot] + " against " + FAMILY_NAMES[it.relic] : "";
+// Relics are only at full power against their own kind of monster. Against anything else they
+// count as a Rare item, so regular Epic and Legendary gear beats them there.
+const RELIC_OFF_RARITY = 2;
+const sv = (slot, v) => "+" + v + (SLOT_STATS[slot].pct ? "% " : " ") + SLOT_STATS[slot].label;
+function itemStatText(it) {
+  if (!it.relic) return statText(it.slot, it.r, it.p);
+  return sv(it.slot, statVal(it.slot, it.r, it.p)) + " against " + FAMILY_NAMES[it.relic] + " (" + sv(it.slot, statVal(it.slot, RELIC_OFF_RARITY, 0)).replace(/^\+/, "+") + " against others). " + relicText(it);
+}
 const sellPrice = (it) => RARITIES[it.r].sell * (it.r === LEG ? 1 + 2 * (it.p || 0) : 1);
 const SLOTS = ["head", "shirt", "pants", "back", "hand", "off"];
 
@@ -250,9 +258,14 @@ function celestialLevel() {
 }
 const dodgeFor = (lvl) => (lvl ? Math.min(35, 10 + 5 * lvl) : 0);
 // combined dungeon bonuses from everything worn (vanity never changes stats)
-function gearBonus() {
+// fam: the kind of monster you're about to fight (null = any other), for relics
+function gearBonus(fam) {
   const b = { dmg: 0, block: 0, hp: 0, def: 0, crit: 0 };
-  SLOTS.forEach((slot) => { const it = invItem(S.equip[slot]); if (it) b[SLOT_STATS[slot].key] += statVal(slot, it.r, it.p); });
+  SLOTS.forEach((slot) => {
+    const it = invItem(S.equip[slot]); if (!it) return;
+    const full = !it.relic || (fam && it.relic === fam);
+    b[SLOT_STATS[slot].key] += full ? statVal(slot, it.r, it.p) : statVal(slot, RELIC_OFF_RARITY, 0);
+  });
   b.dodge = dodgeFor(celestialLevel());
   // charms only work against their own kind of monster, so the dungeon applies them per fight
   b.charm = equippedCharm();
@@ -562,7 +575,7 @@ function revealItem(tagText, item, offerEquip) {
     w.querySelector(".chest-burst").style.background = "radial-gradient(circle," + R.colour + "aa 0,transparent 65%)";
     w.querySelector("h1").textContent = itemName(item);
     const tag = w.querySelector(".rarity-tag"); tag.textContent = rarityName(item); tag.style.background = rarityColour(item);
-    w.querySelector("p").textContent = statText(item.slot, item.r, item.p) + (item.relic ? ". " + relicText(item) : "");
+    w.querySelector("p").textContent = itemStatText(item);
     const a = w.querySelector(".actions");
     if (offerEquip && S.equip[item.slot] !== item.u) {
       const eq = document.createElement("button"); eq.className = "btn gold"; eq.textContent = "Equip";
@@ -643,7 +656,7 @@ function addXp(n, reason) {
 const dungeon = setupDungeon({
   getS: () => S, save: () => save(), render: () => render(), toast: (m) => toast(m), logEvent: (t) => logEvent(t),
   addXp, dayStreak: () => dayStreak(), tickets: ticketsLeft, spendTicket, nextTicketIn, ticketMax: TK_MAX, unlimited: TK_UNLIMITED,
-  gearBonus: () => gearBonus(), level: () => levelInfo(S.xp).level,
+  gearBonus: (fam) => gearBonus(fam || null), wearsRelic: () => SLOTS.some((s) => { const it = invItem(S.equip[s]); return it && it.relic; }), level: () => levelInfo(S.xp).level,
   addGold: (n) => { S.gold = (S.gold || 0) + n; },
   addChest: () => { S.chests = (S.chests || 0) + 1; },
   earnReward: (n) => earnReward(n), hasReward: (n) => hasReward(n),
@@ -727,7 +740,7 @@ function openGearMenu(slot) {
       const mid = document.createElement("div"); mid.style.minWidth = "0";
       const nm = document.createElement("div"); nm.className = "ch-name"; nm.textContent = itemName(it);
       const rt = document.createElement("span"); rt.className = "rarity-tag small"; rt.textContent = rarityName(it); rt.style.background = rarityColour(it);
-      const sub = document.createElement("div"); sub.className = "ch-goal"; sub.textContent = statText(slot, it.r, it.p) + (it.relic ? ". " + relicText(it) : "");
+      const sub = document.createElement("div"); sub.className = "ch-goal"; sub.textContent = itemStatText(it);
       mid.append(nm, rt, sub);
       if (it.test) { const tt = document.createElement("span"); tt.className = "rarity-tag small test-tag"; tt.textContent = "Test"; rt.after(tt); }
       const btns = document.createElement("div"); btns.className = "gear-btns";

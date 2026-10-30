@@ -234,8 +234,9 @@ export function setupDungeon(ctx) {
     return S.dungeon;
   };
   // the hero's combat numbers, from attributes and worn gear
-  const hero = () => {
-    const S = ctx.getS(), a = S.attr, g = ctx.gearBonus(), L = ctx.level();
+  // fam: the kind of monster in the dungeon you're entering (relics are only at full power against it)
+  const hero = (fam) => {
+    const S = ctx.getS(), a = S.attr, g = ctx.gearBonus(fam), L = ctx.level();
     const spell = SPELLS[S.spell] ? S.spell : "fireball";
     return {
       // level gives a little (2 HP a level, +1 attack every 4 levels); gear does most of the work
@@ -282,7 +283,7 @@ export function setupDungeon(ctx) {
     const dg = ALL_DUNGEONS[t];
     if (t >= ctx.dungeonCount() || !isOpen(D(), t)) { ctx.toast("Clear the " + ALL_DUNGEONS[t - 1].name + " to open the " + dg.name); return; }
     if (!ctx.spendTicket()) { ctx.toast("No tickets left. Next one in " + fmtWait(ctx.nextTicketIn())); return; }
-    const h = hero(), d = D();
+    const h = hero(CHARM_OF[dg.k]), d = D();
     d.runs++;
     S.run = { tier: t, floor: 1, hp: h.maxHp, maxHp: h.maxHp, atk: h.atk, sp: h.sp, crit: h.crit, def: h.def, blockBonus: h.block, dodge: h.dodge, charm: h.charm, baseMax: h.maxHp, vs: ctx.relicBonus(),
       spell: h.spell, charge: 0, xp: 0, gold: 0 };
@@ -552,6 +553,7 @@ export function setupDungeon(ctx) {
       <div><b class="num">+${h.block}</b><span>Shield block</span><small>Shield</small></div>
       ${h.charm ? `<div><b class="num">✦</b><span>${CHARMS[h.charm].name}</span><small>${CHARMS[h.charm].desc}</small></div>` : ""}
       <div><b class="num">${h.spell === "poison" ? poisonStacks(h.sp) : fireDmg(h.sp)}</b><span>${sp.name}</span><small>Intelligence · ${h.spell === "poison" ? "poison" : "damage"}</small></div>`;
+    if (ctx.wearsRelic()) $("#dStats").insertAdjacentHTML("beforeend", '<div class="dnote"><small>These numbers are for normal monsters. Your relics are much stronger against their own kind.</small></div>');
     $("#dRecord").textContent = "Runs " + d.runs + " · Clears " + d.clears + " · Best floor " + d.best + " / " + FLOORS;
     const cont = $("#dContinue");
     cont.hidden = !S.run;
