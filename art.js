@@ -170,6 +170,82 @@ export function heroSVG(p, opts = {}) {
     ${it(p.hand)}${hand(o.handR)}
   </svg>`;
 }
+/* ---------------- back view (dungeon, seen over the shoulder) ---------------- */
+// Same proportions as the front view. The shield arm stays on the viewer's left, the weapon on the right.
+const HEAD_D = "M33 27 Q33 9 50 9 Q67 9 67 27 L67 35 Q66 47 57 51 Q50 54 43 51 Q34 47 33 35 Z";
+function hairBackView(style, c) {
+  const d = shade(c, -0.3), l = shade(c, 0.25);
+  const cap = "M31 36 Q28 22 31 14 Q38 2 50 2 Q62 2 69 14 Q72 22 69 36 Q66 48 50 50 Q34 48 31 36 Z";
+  const strands = `<path d="M42 10 Q40 26 44 44 M50 6 Q50 26 50 48 M58 10 Q60 26 56 44" fill="none" stroke="${d}" stroke-width="1.8" stroke-linecap="round"/>`;
+  const shine = `<path d="M40 10 Q50 5 60 10 Q50 9 40 14 Z" ${ff(l)}/>`;
+  const capPart = part(cap, c, "M31 36 Q28 22 31 14 Q36 6 42 4 Q36 20 38 46 Q33 42 31 36 Z", null) + strands + shine;
+  switch (style) {
+    case "short": return capPart;
+    case "long": return part("M30 22 Q30 2 50 2 Q70 2 70 22 L73 74 Q50 82 27 74 Z", c, "M30 22 Q30 6 40 3 Q34 30 36 78 Q31 77 27 74 Z", null) +
+      `<path d="M42 12 Q40 40 42 76 M50 8 Q50 40 50 78 M58 12 Q60 40 58 76" fill="none" stroke="${d}" stroke-width="1.8" stroke-linecap="round"/>` + shine;
+    case "ponytail": return capPart + `<circle cx="50" cy="40" r="4" ${st("#c42a3e")}/>` +
+      part("M45 42 Q42 58 46 72 Q50 78 54 72 Q58 58 55 42 Z", c, "M45 42 Q42 58 46 72 Q48 74 49 72 Q47 58 49 42 Z", null);
+    case "bun": return capPart + `<circle cx="50" cy="16" r="10" ${st(c)}/><path d="M44 12 Q50 8 56 12" fill="none" stroke="${d}" stroke-width="1.8" stroke-linecap="round"/>`;
+    case "spiky": return part("M31 36 L27 22 L20 18 L29 13 L27 0 L38 6 L42 -6 L50 2 L58 -8 L62 4 L73 -2 L71 12 L80 18 L71 24 L69 36 Q66 48 50 50 Q34 48 31 36 Z",
+      c, "M31 36 L27 22 L20 18 L29 13 L27 0 L36 5 Q34 24 38 46 Q33 42 31 36 Z", null) + strands;
+    default: return ""; // bald: the skin head shows
+  }
+}
+const BACK_ITEMS = {
+  helm: () => part("M28 36 Q28 2 50 2 Q72 2 72 36 L72 46 Q50 54 28 46 Z", STEEL, "M28 36 Q28 8 40 4 Q34 22 36 50 Q31 49 28 46 Z", "M54 5 Q66 8 68 20 L62 20 Q60 11 54 8 Z") +
+    `<path d="M50 2 L50 50" stroke="${shade(STEEL, -0.3)}" stroke-width="2.4"/><path d="M50 2 Q46 -8 54 -14 Q59 -4 53 2 Z" ${st("#c42a3e")}/>`,
+};
+// the back of a shield: darker face, a leather strap and the arm through it
+function shieldBack(id) {
+  const col = { shield: "#a8642c", shield_steel: STEEL, shield_royal: "#2f56c8" }[id];
+  if (!col) return "";
+  const face = id === "shield_steel" ? `<circle cx="24" cy="98" r="15" ${st(shade(col, -0.35))}/>` : `<path d="${SHIELD_D}" ${st(shade(col, -0.4))}/>`;
+  return face + `<rect x="15" y="92" width="18" height="6" rx="2" ${st(DLEATHER)}/><rect x="15" y="102" width="18" height="6" rx="2" ${st(DLEATHER)}/>`;
+}
+function baseBack(p) {
+  const pc = p.pantsColor || PANTS, skin = p.skin, tee = TEE, teeD = shade(tee, -0.3), f = p.body === "f";
+  const legs = limb("M44 94 L42 128", pc, 12) + limb("M56 94 L58 128", pc, 12) +
+    part("M33 126 L48 126 L48 146 L32 146 Q30 140 33 137 Z", SHOE, "M33 140 L48 140 L48 146 L32 146 Z", null) +
+    part("M52 126 L67 126 L67 137 Q70 140 68 146 L52 146 Z", SHOE, "M52 140 L67 140 L68 146 L52 146 Z", null);
+  const seat = part("M34 86 L66 86 L67 100 L52 102 L50 96 L48 102 L33 100 Z", pc, "M34 86 L66 86 L66 90 L34 90 Z", null) +
+    `<path d="M50 88 L50 97" stroke="${shade(pc, -0.35)}" stroke-width="2"/>`;
+  const torso = part(f ? "M33 60 Q35 53 43 53 L57 53 Q65 53 67 60 L66 90 L34 90 Z" : "M32 60 Q34 53 43 53 L57 53 Q66 53 68 60 L67 90 L33 90 Z", tee,
+      "M32 60 Q34 54 40 53 Q37 70 39 90 L33 90 Z", null) +
+    `<path d="M43 74 Q50 77 57 74" fill="none" stroke="${teeD}" stroke-width="2" stroke-linecap="round"/>` +
+    `<rect x="33" y="86" width="34" height="5" rx="1.5" ${st("#3b2a1e")}/>`;
+  const armL = part("M33 56 Q26 58 25 70 L35 72 Q35 64 37 60 Z", teeD, null, null) + limb("M30 72 L27 96", skin, 9);
+  const armR = part("M67 56 Q74 58 75 70 L65 72 Q65 64 63 60 Z", tee, null, null) + limb("M70 72 L73 96", skin, 9);
+  return { legs: legs + seat, torso, armL, armR };
+}
+const ARMOUR_BACK = {
+  armour_leather: () => part("M35 56 Q50 52 65 56 L64 88 L36 88 Z", LEATHER, "M35 56 Q38 55 41 54 L41 88 L36 88 Z", null) +
+    `<path d="M38 64 L62 64 M38 76 L62 76" stroke="${DLEATHER}" stroke-width="2.4" stroke-linecap="round"/>` +
+    `<rect x="23" y="82" width="9" height="11" rx="2" transform="rotate(-6 27 88)" ${st(DLEATHER)}/><rect x="68" y="82" width="9" height="11" rx="2" transform="rotate(6 73 88)" ${st(DLEATHER)}/>`,
+  armour_chain: () => part("M32 60 Q34 53 43 53 L57 53 Q66 53 68 60 L67 90 L33 90 Z", "#9aa4b5", "M32 60 Q34 54 40 53 Q37 70 39 90 L33 90 Z", null) +
+    `<path d="M36 62 Q50 66 64 62 M35 70 Q50 74 65 70 M35 78 Q50 82 65 78" fill="none" stroke="#6c7686" stroke-width="1.6" stroke-dasharray="2 2"/>` +
+    part("M33 56 Q24 58 23 74 L35 74 Q35 64 37 60 Z", "#8a94a5", null, null) + part("M67 56 Q76 58 77 74 L65 74 Q65 64 63 60 Z", "#9aa4b5", null, null),
+  armour_plate: () => part("M34 58 Q50 52 66 58 L65 86 Q50 90 35 86 Z", STEEL, "M34 58 Q38 56 42 55 Q39 70 41 89 Q37 87 35 86 Z", null) +
+    `<path d="M50 56 L50 88" stroke="${shade(STEEL, -0.3)}" stroke-width="2.4"/><path d="M35 86 Q50 90 65 86" fill="none" stroke="${GOLD}" stroke-width="2.4"/>` +
+    part("M22 58 Q30 48 41 55 L39 66 Q30 63 23 67 Z", STEEL, "M22 58 Q25 54 29 52 L30 64 Q26 65 23 67 Z", null) +
+    part("M78 58 Q70 48 59 55 L61 66 Q70 63 77 67 Z", STEEL, null, null) +
+    `<rect x="22" y="82" width="10" height="13" rx="3" transform="rotate(-6 27 88)" ${st(STEEL)}/><rect x="68" y="82" width="10" height="13" rx="3" transform="rotate(6 73 88)" ${st(STEEL)}/>`,
+};
+export function heroBackSVG(p) {
+  const o = baseBack(p), s = p.skin, sd = shade(s, -0.22);
+  const it = (k) => (k ? (BACK_ITEMS[k] ? BACK_ITEMS[k]() : ITEMS[k] ? ITEMS[k]() : "") : "");
+  const hand = (x, y) => `<circle cx="${x}" cy="${y}" r="5" ${st(s)}/>`;
+  const headBack = `<path d="M44 48 L56 48 L57 58 L43 58 Z" ${st(sd)}/>` +
+    `<ellipse cx="32.5" cy="34" rx="3.6" ry="5.2" ${st(s)}/><ellipse cx="67.5" cy="34" rx="3.6" ry="5.2" ${st(s)}/>` + part(HEAD_D, s, "M33 27 Q33 12 42 10 Q37 22 38 36 Q39 46 45 52 Q36 48 33 35 Z", null);
+  const helm = p.head === "helm";
+  return `<svg viewBox="4 -26 92 178" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+    <ellipse cx="50" cy="147" rx="30" ry="4.5" fill="#000" opacity=".3"/>
+    ${o.legs}${o.torso}${p.armour && ARMOUR_BACK[p.armour] ? ARMOUR_BACK[p.armour]() : ""}
+    ${p.back && ITEMS[p.back] ? it(p.back) : ""}
+    ${o.armL}${hand(27, 99)}${o.armR}${hand(73, 99)}
+    ${headBack}${helm ? "" : hairBackView(p.hair, p.hairColor)}${it(p.head)}
+    ${shieldBack(p.off)}${it(p.hand)}
+  </svg>`;
+}
 export function itemSVG(id, colour) {
   if (ARMOUR[id]) {
     const a = ARMOUR[id]();

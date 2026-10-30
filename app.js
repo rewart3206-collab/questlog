@@ -1,5 +1,5 @@
 import { firebaseConfig } from "./firebase-config.js";
-import { heroSVG, itemSVG, flameSVG } from "./art.js";
+import { heroSVG, heroBackSVG, itemSVG, flameSVG } from "./art.js";
 import { setupDungeon, SPELLS } from "./dungeon.js";
 const SDK = "https://www.gstatic.com/firebasejs/10.12.2/";
 
@@ -478,7 +478,7 @@ const dungeon = setupDungeon({
   gearBonus: () => gearBonus(), level: () => levelInfo(S.xp).level,
   addGold: (n) => { S.gold = (S.gold || 0) + n; },
   addChest: () => { S.chests = (S.chests || 0) + 1; },
-  drawHero: (el) => drawSprite(el, null, heroLook()),
+  drawHero: (el, o) => { el.innerHTML = o && o.back ? heroBackSVG(heroParts(heroLook())) : heroSVG(heroParts(heroLook()), {}); },
 });
 
 /* ================= gear menus ================= */

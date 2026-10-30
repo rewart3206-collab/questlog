@@ -230,7 +230,7 @@ export function setupDungeon(ctx) {
         msg = (crit ? "Critical Fireball for " : "Fireball blasts for ") + dmg + "!";
       }
     } else {
-      shielding = true;
+      shielding = true; shieldUp = true;
       await play("shield");
       msg = "You raise your shield.";
     }
@@ -256,7 +256,7 @@ export function setupDungeon(ctx) {
       dmg = Math.max(1, dmg - (r.def || 0));
       line = "You take " + dmg + ".";
     }
-    r.hp = Math.max(0, r.hp - dmg);
+    r.hp = Math.max(0, r.hp - dmg); shieldUp = false;
     pop("you", dmg ? "-" + dmg : "Blocked!", dmg ? (special && !shielding ? "crit" : "bad") : "block");
     en.charge = special ? 0 : en.charge + 1;
     r.msg = (special ? "The " + name + " unleashes " + E.special + "! " : "The " + name + " attacks. ") + line;
@@ -289,7 +289,7 @@ export function setupDungeon(ctx) {
   /* -------- animation -------- */
   // Number pop-ups and hit flashes are queued while the state changes, then played on the newly
   // drawn screen. Attack moves (lunges, projectiles, fire breath) play on the current screen first.
-  let busy = false, fx = [], resultShown = false;
+  let shieldUp = false, busy = false, fx = [], resultShown = false;
   const reduce = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
   const wait = (ms) => new Promise((res) => setTimeout(res, reduce() ? 0 : ms));
   function pop(who, text, kind) { fx.push({ who, text, kind }); }
@@ -364,36 +364,38 @@ export function setupDungeon(ctx) {
     const lvl = en.charge >= E.charge ? 3 : Math.min(2, Math.floor((en.charge / E.charge) * 3));
     const pips = Array.from({ length: sp.charge }, (_, k) => `<i class="${k < r.charge ? "on" : ""}"></i>`).join("");
     box.innerHTML = `
-      <div class="dtop">
-        <button class="iconbtn" id="dFlee">Flee</button>
-        <div class="dfloor"><small>${dg.name}</small><span>Floor</span> ${r.floor} / ${FLOORS}</div>
-        <div class="drr num">Turn ${r.turn}</div>
-      </div>
-      <div class="darena" style="background:linear-gradient(${dg.bg.split(",")[0]} 0,${dg.bg.split(",")[1]} 55%,#2f8f45 55%,#1f5a2c)">
-        <div class="dside">
-          <div class="dunit" id="dHero"><div class="dhero"></div></div>
-          ${bar(r.hp, r.maxHp, "hp")}
-          <div class="dname">You</div>
+      <div class="darena dfield" style="--sky1:${dg.bg.split(",")[0]};--sky2:${dg.bg.split(",")[1]}">
+        <div class="dtop">
+          <button class="iconbtn" id="dFlee">Flee</button>
+          <div class="dfloor"><small>${dg.name}</small><span>Floor</span> ${r.floor} / ${FLOORS}</div>
+          <div class="drr num">Turn ${r.turn}</div>
         </div>
-        <div class="dvs">VS</div>
-        <div class="dside">
-          <div class="dunit charge-${lvl}" id="dEnemy"><div class="aura"></div><div class="denemy" style="filter:hue-rotate(${dg.hue}deg)${t === 4 ? " brightness(.8)" : ""}">${ENEMY_ART[en.key]}</div>${lvl === 3 ? '<div class="sparks"><i></i><i></i><i></i><i></i></div>' : ""}${en.poison ? `<div class="dpoison num">${en.poison}</div>` : ""}</div>
+        <div class="dinfo foe">
+          <div class="dinfo-name"><b>${enemyName(en.key, t)}</b>${en.poison ? `<span class="dpois num">☠ ${en.poison}</span>` : ""}</div>
           ${bar(en.hp, en.maxHp, "ehp")}
-          <div class="dname">${enemyName(en.key, t)}</div>
+        </div>
+        <div class="dpad foe"></div>
+        <div class="dunit foe charge-${lvl}" id="dEnemy"><div class="aura"></div><div class="denemy" style="filter:hue-rotate(${dg.hue}deg)${t === 4 ? " brightness(.8)" : ""}">${ENEMY_ART[en.key]}</div>${lvl === 3 ? '<div class="sparks"><i></i><i></i><i></i><i></i></div>' : ""}</div>
+        <div class="dpad you"></div>
+        <div class="dunit you" id="dHero"><div class="dhero"></div>${shieldUp && busy ? '<div class="bubble up"></div>' : ""}</div>
+        <div class="dinfo you">
+          <div class="dinfo-name"><b>You</b><small class="num">Lv ${ctx.level()}</small></div>
+          ${bar(r.hp, r.maxHp, "hp")}
         </div>
       </div>
-      <p class="dtwist">${twistText(en.key, t)}</p>
-      <p class="dmsg" aria-live="polite"></p>
-      <div class="dacts">
-        <button class="dact atk" id="dAttack" type="button"><span class="dact-ic">${SWORD_ICON}</span><b>Attack</b><small class="num">${r.atk - 1}–${r.atk + 1} dmg · ${r.crit}% crit</small></button>
-        <button class="dact spl${ready ? " ready" : ""}" id="dSpell" type="button"${ready ? "" : ' aria-disabled="true"'}><span class="dact-ic">${sp.icon}</span><b></b><span class="pips">${pips}</span></button>
-        <button class="dact shd" id="dShield" type="button"><span class="dact-ic">${SHIELD_ICON}</span><b>Shield</b><small>Block ¾${r.blockBonus ? " +" + r.blockBonus : ""}</small></button>
+      <div class="dpanel">
+        <div class="dbox"><p class="dmsg" aria-live="polite"></p><p class="dtwist">${twistText(en.key, t)}</p></div>
+        <div class="dacts">
+          <button class="dact shd" id="dShield" type="button"><span class="dact-ic">${SHIELD_ICON}</span><b>Shield</b><small>Block ¾${r.blockBonus ? " +" + r.blockBonus : ""}</small></button>
+          <button class="dact spl${ready ? " ready" : ""}" id="dSpell" type="button"${ready ? "" : ' aria-disabled="true"'}><span class="dact-ic">${sp.icon}</span><b></b><span class="pips">${pips}</span></button>
+          <button class="dact atk" id="dAttack" type="button"><span class="dact-ic">${SWORD_ICON}</span><b>Attack</b><small class="num">${r.atk - 1}–${r.atk + 1} dmg · ${r.crit}% crit</small></button>
+        </div>
       </div>
       ${r.state !== "fight" ? resultCard(r).replace('class="dresult"', 'class="dresult' + (resultShown ? "" : " late") + '"') : ""}`;
     box.querySelector(".dmsg").textContent = r.msg || "Attack to charge your spell. Shield when the monster is about to strike hard.";
     box.querySelector("#dSpell b").textContent = sp.name;
     box.querySelector("#dSpell").setAttribute("aria-label", sp.name + (ready ? ", ready" : ", charging " + r.charge + " of " + sp.charge));
-    ctx.drawHero(box.querySelector(".dhero"));
+    ctx.drawHero(box.querySelector(".dhero"), { back: true });
     box.querySelector("#dAttack").onclick = () => act("attack");
     box.querySelector("#dSpell").onclick = () => act("spell");
     box.querySelector("#dShield").onclick = () => act("shield");

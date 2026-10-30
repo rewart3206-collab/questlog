@@ -456,6 +456,66 @@ input::placeholder{color:#7f8ccc}
 .auth .btn{width:100%}
 .linkbtn{background:none;border:0;color:var(--muted);font-size:13px;font-weight:700;text-decoration:underline;padding:6px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ===== battle v3: full screen, Pokémon-style angle =====
+   Your hero is seen from behind in the bottom left, the monster faces you in the top right. */
+.dungeon{padding:0;gap:0;overflow:hidden;background:#0c0a1e}
+.dungeon>*{max-width:560px}
+.dfield{flex:1 1 auto;min-height:0;position:relative;display:block;padding:0;border:0;border-radius:0;box-shadow:none;overflow:hidden;
+  background:
+    radial-gradient(60% 9% at 72% 41%,rgba(255,255,255,.18),transparent 70%),
+    linear-gradient(var(--sky1) 0,var(--sky2) 30%,#4fae5e 30%,#3a8f4a 62%,#2a6a38 100%)}
+.dfield::before{content:"";position:absolute;left:-10%;right:-10%;top:30%;height:10%;background:linear-gradient(rgba(0,0,0,.18),transparent);pointer-events:none}
+.dfield .dtop{position:absolute;left:0;right:0;top:0;z-index:6;padding:calc(10px + env(safe-area-inset-top,0px)) 12px 8px;background:linear-gradient(rgba(8,6,24,.7),transparent)}
+/* info boxes, Pokémon style */
+.dinfo{position:absolute;z-index:6;width:min(54%,230px);padding:8px 12px 10px;border-radius:14px;background:linear-gradient(#fff8e6,#f0dfb8);color:#2a1a10;
+  border:3px solid var(--deep);box-shadow:0 4px 0 var(--deep);display:flex;flex-direction:column;gap:5px}
+.dinfo.foe{left:12px;top:calc(76px + env(safe-area-inset-top,0px));border-bottom-right-radius:4px}
+.dinfo.you{right:12px;bottom:18px;border-top-left-radius:4px}
+.dinfo-name{display:flex;align-items:baseline;justify-content:space-between;gap:8px;min-width:0}
+.dinfo-name b{font-family:var(--display);font-weight:400;font-size:18px;letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.dinfo-name small{font-weight:800;font-size:13px;color:#6a4a2a}
+.dinfo .dbar{height:16px;border-color:#2a1a10}
+.dinfo .dbar span{color:#fff;font-size:11px}
+.dpois{flex:none;font-size:12px;font-weight:800;color:#fff;background:#3f9a3f;border:2px solid #1f4a1f;border-radius:999px;padding:0 7px}
+/* platforms */
+.dpad{position:absolute;z-index:1;border-radius:50%;background:radial-gradient(ellipse at 50% 40%,#8fd07a,#4f9a4a 60%,#2f6a32 100%);box-shadow:inset 0 -6px 0 rgba(0,0,0,.2)}
+.dpad.foe{right:4%;top:44%;width:52%;height:9%}
+.dpad.you{left:-10%;bottom:-4%;width:64%;height:13%}
+/* the units */
+.dfield .dunit{position:absolute;z-index:3;display:flex;align-items:flex-end;justify-content:center;width:auto}
+.dunit.foe{right:9%;top:calc(44% - 158px);width:44%;max-width:200px;height:178px}
+.dunit.foe .denemy{width:100%;height:100%}
+.dunit.foe .aura{width:190px;height:190px;margin-left:-95px;bottom:-16px}
+.dunit.you{left:0;bottom:-48px;width:46%;max-width:190px;height:min(42vh,340px)}
+.dunit.you .dhero{width:100%;height:100%}
+.dunit.you .dhero svg{width:100%;height:100%}
+.dunit.you .dpop{top:22%}
+.dungeon .dunit .bubble{position:absolute;min-width:0;padding:0;border-radius:50%;border:4px solid #7fc4ff;background:radial-gradient(circle at 35% 30%,#ffffff66,#5aa8ff33 60%);box-shadow:0 0 22px #5aa8ff,inset 0 0 18px #7fc4ff88}
+.dunit.you .bubble{width:92%;height:66%;left:4%;top:8%;margin:0}
+.dunit.you .bubble.up{animation:none;opacity:1}
+.dunit.you .slash{top:34%;width:130px;height:130px;margin:-65px 0 0 -65px}
+.dunit.you .shield-hit{top:34%;width:100px;height:100px;margin:-50px 0 0 -50px}
+/* bottom panel: message box and buttons */
+.dpanel{flex:none;display:flex;flex-direction:column;gap:10px;padding:10px 12px calc(12px + env(safe-area-inset-bottom,0px));background:linear-gradient(#24305e,#151a3a);border-top:4px solid var(--gold);box-shadow:0 -3px 0 var(--deep)}
+.dbox{border:3px solid var(--deep);border-radius:12px;background:#0f1430;padding:8px 12px;min-height:68px;display:flex;flex-direction:column;justify-content:center;gap:3px}
+.dbox .dmsg{text-align:left;min-height:0;font-size:15px}
+.dbox .dtwist{text-align:left;font-size:12px}
+/* motion now runs along the diagonal between the two platforms */
+@keyframes lungeR{0%{transform:none}45%{transform:translate(42px,-46px) scale(.9) rotate(4deg)}100%{transform:none}}
+@keyframes lungeRB{45%{transform:translate(58px,-62px) scale(.86) rotate(8deg)}100%{transform:none}}
+@keyframes lungeL{0%{transform:none}45%{transform:translate(-50px,52px) scale(1.22)}100%{transform:none}}
+@keyframes lungeLB{45%{transform:translate(-70px,74px) scale(1.4) rotate(-6deg)}100%{transform:none}}
+@keyframes windupA{100%{transform:translate(10px,-8px) scale(1.12);filter:brightness(1.5)}}
+@keyframes dodgeA{40%{transform:translateX(30px) rotate(8deg)}100%{transform:none}}
+.dfield .proj{left:28%;top:62%;width:48px;height:48px;margin:-24px 0 0 -24px}
+@keyframes flyR{from{left:30%;top:62%;transform:scale(1.4)}to{left:72%;top:30%;transform:scale(.8)}}
+.dfield .breathfx{left:24%;right:18%;top:46%;height:54px;transform-origin:right center;animation-name:breathD}
+@keyframes breathD{0%{transform:rotate(-34deg) scaleX(0) scaleY(.6);opacity:1}55%{transform:rotate(-34deg) scaleX(1) scaleY(1.2);opacity:1}100%{transform:rotate(-34deg) scaleX(1) scaleY(1.4);opacity:0}}
+.dfield .shockwave{left:68%;top:38%;bottom:auto}
+@keyframes shockA{to{transform:scale(9,4);opacity:0;left:24%;top:82%}}
+@keyframes koA{30%{transform:translateY(-8px) rotate(6deg)}100%{opacity:.3;transform:translateY(18px) rotate(-14deg);filter:grayscale(1)}}
+@media (max-height:700px){.dunit.you{height:38vh}.dunit.foe{height:140px;top:calc(44% - 124px)}.dinfo.foe{top:calc(64px + env(safe-area-inset-top,0px))}.dbox{min-height:56px}}
 </style>
 </head>
 <body>
