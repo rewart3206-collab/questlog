@@ -1,6 +1,6 @@
 import { firebaseConfig } from "./firebase-config.js";
 import { heroSVG, heroBackSVG, itemSVG, flameSVG } from "./art.js";
-import { setupDungeon, SPELLS } from "./dungeon.js";
+import { setupDungeon, SPELLS, CHARMS, CHARM_OF } from "./dungeon.js";
 const SDK = "https://www.gstatic.com/firebasejs/10.12.2/";
 
 /* ================= game data ================= */
@@ -54,12 +54,13 @@ const RARITIES = [
 ];
 const LEG = RARITIES.length - 1;
 const SLOT_STATS = {
-  hand: { key: "dmg", label: "Attack damage", vals: [1, 2, 3, 5, 7], plus: 2 },
-  off: { key: "block", label: "Shield block", vals: [1, 2, 3, 4, 6], plus: 1 },
-  head: { key: "hp", label: "Max HP", vals: [3, 6, 9, 13, 18], plus: 4 },
-  shirt: { key: "def", label: "Defence", vals: [1, 2, 3, 4, 6], plus: 1 },
-  pants: { key: "hp", label: "Max HP", vals: [2, 4, 6, 9, 12], plus: 3 },
-  back: { key: "crit", label: "Crit chance", vals: [5, 8, 12, 16, 22], plus: 3, pct: true },
+  // big jumps between rarities: each dungeon needs gear of its own rarity
+  hand: { key: "dmg", label: "Attack damage", vals: [2, 4, 7, 11, 16], plus: 3 },
+  off: { key: "block", label: "Shield block", vals: [1, 3, 5, 8, 12], plus: 2 },
+  head: { key: "hp", label: "Max HP", vals: [4, 10, 18, 30, 45], plus: 8 },
+  shirt: { key: "def", label: "Defence", vals: [1, 2, 4, 6, 9], plus: 2 },
+  pants: { key: "hp", label: "Max HP", vals: [3, 8, 14, 24, 36], plus: 6 },
+  back: { key: "crit", label: "Crit chance", vals: [3, 6, 10, 15, 20], plus: 3, pct: true },
 };
 const CHEST_PRICE = 100;
 const statVal = (slot, r, p) => SLOT_STATS[slot].vals[r] + (r === LEG ? (p || 0) * SLOT_STATS[slot].plus : 0);
@@ -134,6 +135,11 @@ function migrate(st) {
   (st.inv || []).forEach((it) => { if (it.id) { const o = OLD_GEAR[it.id]; it.slot = o ? o[0] : "hand"; delete it.id; } });
   if (!st.seen) { st.seen = {}; (st.inv || []).forEach((it) => { const l = (st.seen[it.slot] = st.seen[it.slot] || []); if (!l.includes(it.r)) l.push(it.r); }); }
   if (!st.vanity) st.vanity = {};
+  // Charms v1: anyone who already cleared a dungeon gets its charm.
+  if (!st.charms) {
+    const d = st.dungeon || {}, cb = d.clearsBy || {};
+    st.charms = CHARM_OF.filter((k, i) => (cb[["cave", "crypt", "forge", "keep", "citadel"][i]] || 0) > 0 || (i === 0 && !d.clearsBy && d.clears > 0));
+  }
   if (!st.spells) { st.spells = ["fireball"]; st.spell = "fireball"; }
   if (st.run && st.run.dice) { delete st.run; if (st.dungeon && st.dungeon.spent) st.dungeon.spent--; }
   if (st.look) delete st.look.outfit;
@@ -226,7 +232,30 @@ function gearBonus() {
   const b = { dmg: 0, block: 0, hp: 0, def: 0, crit: 0 };
   SLOTS.forEach((slot) => { const it = invItem(S.equip[slot]); if (it) b[SLOT_STATS[slot].key] += statVal(slot, it.r, it.p); });
   b.dodge = dodgeFor(celestialLevel());
+  const c = equippedCharm();
+  if (c === "slime") b.hp += 20;
+  if (c === "bone") b.def += 3;
+  if (c === "imp") b.dodge += 10;
+  b.charm = c;
   return b;
+}
+// Charms: one per dungeon, earned on its first clear. S.charms lists the ones you have.
+const hasCharm = (k) => GEAR_TEST || (S.charms || []).includes(k);
+const equippedCharm = () => { const k = S.equip && S.equip.charm; return k && CHARMS[k] && hasCharm(k) ? k : null; };
+function earnCharm(k) {
+  if (!CHARMS[k] || (S.charms || []).includes(k)) return;
+  (S.charms = S.charms || []).push(k);
+  logEvent("Earned the " + CHARMS[k].name);
+  save();
+  queueModal((w, done) => {
+    w.innerHTML = '<div class="title-tag">NEW CHARM</div><div class="chest-reveal"><div class="chest-burst" style="background:radial-gradient(circle,#ffcf4aaa 0,transparent 65%)"></div><div class="gear-icon unlock-icon"></div></div><h1></h1><p class="muted" style="margin:0"></p><div class="actions" style="justify-content:center"><button class="btn gold">Equip</button><button class="btn ghost">Keep</button></div>';
+    w.querySelector(".gear-icon").innerHTML = CHARMS[k].icon;
+    w.querySelector("h1").textContent = CHARMS[k].name;
+    w.querySelector("p").textContent = CHARMS[k].desc + ". Find it in Hero, then Gear.";
+    const [eq, keep] = w.querySelectorAll("button");
+    eq.onclick = () => { S.equip.charm = k; save(); render(); done(); };
+    keep.onclick = done;
+  });
 }
 // every design you've ever owned can be used as a vanity look
 function markSeen(it) { S.seen = S.seen || {}; const l = (S.seen[it.slot] = S.seen[it.slot] || []); if (!l.includes(it.r)) l.push(it.r); }
@@ -531,6 +560,7 @@ const dungeon = setupDungeon({
   gearBonus: () => gearBonus(), level: () => levelInfo(S.xp).level,
   addGold: (n) => { S.gold = (S.gold || 0) + n; },
   addChest: () => { S.chests = (S.chests || 0) + 1; },
+  earnCharm: (k) => earnCharm(k), hasCharm: (k) => hasCharm(k),
   drawHero: (el, o) => { el.innerHTML = o && o.back ? heroBackSVG(heroParts(heroLook()), o) : heroSVG(heroParts(heroLook()), {}); },
 });
 
@@ -554,6 +584,11 @@ function renderGearSlots() {
     b.setAttribute("aria-label", name + ": " + (worn ? rarityName(worn) + " " + itemName(worn) : "nothing equipped") + ", " + mine.length + " owned");
     box.appendChild(b);
   });
+  const ck = equippedCharm(), owned = CHARM_OF.filter(hasCharm).length;
+  const cicon = document.createElement("div"); cicon.className = "gear-icon" + (ck ? " charm-icon" : " empty"); if (ck) cicon.innerHTML = CHARMS[ck].icon;
+  const cb = slotButton("charm", "Charm", cicon, ck ? CHARMS[ck].name : owned + " found", ck ? "#ffcf4a" : null, () => openCharmMenu());
+  cb.setAttribute("aria-label", "Charm: " + (ck ? CHARMS[ck].name : "nothing equipped") + ", " + owned + " found");
+  box.appendChild(cb);
   const vb = $("#vanitySlots"); if (!vb) return; vb.innerHTML = "";
   const v = S.vanity || {};
   GEAR_SLOTS.forEach(({ slot, name }) => {
@@ -625,6 +660,29 @@ function openGearMenu(slot) {
         btns.appendChild(m);
       }
       li.append(mid, btns); list.appendChild(li);
+    });
+    w.appendChild(list);
+  });
+}
+function openCharmMenu() {
+  openSheet((w, close) => {
+    sheetHead(w, "Charms", close);
+    const note = document.createElement("p"); note.className = "note";
+    note.textContent = "Clear a dungeon for the first time to earn its charm. You can wear one at a time. Charms don't show on your hero.";
+    w.appendChild(note);
+    const list = document.createElement("ul"); list.className = "clist gear-menu";
+    CHARM_OF.forEach((k, i) => {
+      const c = CHARMS[k], own = hasCharm(k), eq = S.equip.charm === k && own;
+      const li = document.createElement("li"); li.className = "ch" + (own ? " done" : " locked") + (eq ? " equipped" : "");
+      const ic = document.createElement("div"); ic.className = "gear-icon charm-icon"; ic.innerHTML = c.icon; li.appendChild(ic);
+      const mid = document.createElement("div"); mid.style.minWidth = "0";
+      const nm = document.createElement("div"); nm.className = "ch-name"; nm.textContent = own ? c.name : "???";
+      const sub = document.createElement("div"); sub.className = "ch-goal"; sub.textContent = own ? c.desc : "Clear dungeon " + (i + 1) + " to earn it.";
+      mid.append(nm, sub);
+      const b = document.createElement("button"); b.className = "btn" + (eq ? " gold" : " ghost");
+      b.textContent = !own ? "Locked" : eq ? "Unequip" : "Equip"; b.disabled = !own;
+      b.onclick = () => { S.equip.charm = eq ? null : k; save(); render(); openCharmMenu(); };
+      li.append(mid, b); list.appendChild(li);
     });
     w.appendChild(list);
   });

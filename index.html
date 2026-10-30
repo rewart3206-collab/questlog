@@ -146,6 +146,7 @@ h2{display:inline-block;align-self:flex-start;font-size:19px;color:#fff;backgrou
 .ch{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 12px}
 .gear-icon{width:54px;height:54px;padding:6px;border-radius:12px;background:radial-gradient(circle,#5470e0,var(--deep));border:2px solid var(--gold)}
 .ch.locked .gear-icon svg{filter:brightness(0) opacity(.55)}
+.charm-icon svg,.gear-icon svg{width:100%;height:100%;display:block}
 .ch.equipped{border-color:var(--gold)}
 .ch-name{font-family:var(--display);font-size:17px;letter-spacing:.03em;text-shadow:var(--stroke)}
 .ch-goal{font-size:12px;color:var(--muted)}
@@ -684,7 +685,7 @@ input::placeholder{color:#7f8ccc}
   <section class="panel stack" id="p-dungeon" hidden>
     <div class="win dgate">
       <div class="spread"><h2>Dungeon</h2><span class="pill dtk"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7 Q3 5 5 5 L19 5 Q21 5 21 7 L21 9.5 Q19 10 19 12 Q19 14 21 14.5 L21 17 Q21 19 19 19 L5 19 Q3 19 3 17 L3 14.5 Q5 14 5 12 Q5 10 3 9.5 Z" fill="#ffcf4a" stroke="#1c1430" stroke-width="2" stroke-linejoin="round"/><path d="M9 8 L9 16" stroke="#1c1430" stroke-width="1.6" stroke-dasharray="2 2"/><path d="M14 9.5 l1 2 2.2.3-1.6 1.5.4 2.2-2-1.1-2 1.1.4-2.2-1.6-1.5 2.2-.3z" fill="#e2384a"/></svg></span><b class="num" id="dTickets">0</b><small>tickets</small></span></div>
-      <p class="note" style="margin-top:10px">You get a new ticket every 4 hours and can hold up to 6. A ticket gets you one run of five floors. Every floor you beat pays gold, and beating the boss on floor 5 earns a free chest. Clear a dungeon to open the next one.</p>
+      <p class="note" style="margin-top:10px">You get a new ticket every 4 hours and can hold up to 6. A ticket gets you one run of five floors. Every floor you beat pays gold, and beating the boss on floor 5 earns a free chest. Your first clear of each dungeon also earns its charm and opens the next dungeon. Each dungeon needs better gear than the last.</p>
       <p class="clear" id="dToday" style="margin:8px 0 0"></p>
       <div class="dcontinue" id="dContinue" hidden><div><b>Run in progress</b><span></span></div><button class="btn gold" type="button">Continue</button></div>
       <ul class="dlist" id="dList"></ul>

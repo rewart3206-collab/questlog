@@ -25,6 +25,21 @@ export const SPELLS = {
   poison: { name: "Poison Cloud", charge: 2, icon: POISON_ICON, desc: "Charges in 2 attacks. Poisons the monster, hurting it every turn." },
 };
 const fireDmg = (sp) => 12 + 3 * sp;
+
+/* ---------------- charms ----------------
+   One charm per dungeon, earned the first time you clear it. A charm sits in its own slot,
+   isn't drawn on the hero and gives one special effect. */
+const charmIcon = (col, emblem) => `<svg viewBox="0 0 40 44"><path d="M10 4 Q20 16 30 4" fill="none" stroke="#c9a06a" stroke-width="2.6" stroke-linecap="round"/>
+  <circle cx="20" cy="27" r="13" ${st(col, 2.4)}/><circle cx="20" cy="27" r="9.5" fill="none" stroke="#fff" stroke-width="1.4" opacity=".45"/>${emblem}
+  <rect x="17" y="11" width="6" height="5" rx="1.5" ${st("#f2b631", 1.8)}/></svg>`;
+export const CHARMS = {
+  slime: { name: "Slime Charm", from: 0, desc: "+20 max HP", icon: charmIcon("#5fd36a", `<path d="M20 19 Q27 27 26 31 A6 6 0 0 1 14 31 Q13 27 20 19 Z" ${st("#b5f5a0", 1.8)}/>`) },
+  bone: { name: "Bone Charm", from: 1, desc: "+3 defence", icon: charmIcon("#d9d2bf", `<path d="M14 23 L26 31 M14 31 L26 23" stroke="${INK}" stroke-width="4" stroke-linecap="round"/><path d="M14 23 L26 31 M14 31 L26 23" stroke="#fff8e6" stroke-width="2" stroke-linecap="round"/>`) },
+  imp: { name: "Imp Charm", from: 2, desc: "+10% chance to dodge a hit", icon: charmIcon("#8a4fd6", `<path d="M13 22 L16 30 L20 24 L24 30 L27 22" fill="none" stroke="#ffe14a" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="20" cy="33" r="2" fill="#ffe14a"/>`) },
+  golem: { name: "Golem Charm", from: 3, desc: "Your shield blocks 90% of a hit instead of 75%", icon: charmIcon("#a3a6b5", `<rect x="14" y="21" width="12" height="12" rx="2" ${st("#7d8090", 1.8)}/><rect x="16.5" y="25" width="2.6" height="2" fill="#5ff0ff"/><rect x="21" y="25" width="2.6" height="2" fill="#5ff0ff"/>`) },
+  dragon: { name: "Dragon Charm", from: 4, desc: "Spells are 50% stronger", icon: charmIcon("#e2443f", `<path d="M20 18 C23 23 27 24 27 29 A7 7 0 0 1 13 29 C13 26 15 25 16 22 C18 25 19 24 20 18 Z" ${st("#ffcf4a", 1.8)}/>`) },
+};
+export const CHARM_OF = ["slime", "bone", "imp", "golem", "dragon"];
 const poisonStacks = (sp) => 5 + 2 * sp;
 
 /* ---------------- monsters ---------------- */
@@ -142,8 +157,12 @@ function isOpen(d, i) {
   const prev = DUNGEONS[i - 1].id, cb = d.clearsBy || {};
   return (cb[prev] || 0) > 0 || (i === 1 && !d.clearsBy && d.clears > 0) || ((d.bestBy || {})[DUNGEONS[i].id] || 0) > 0;
 }
-const armourOf = (t) => 3 + t;
-const breathOf = (t) => 15 + Math.round(3.6 * t);
+// Per-dungeon difficulty, tuned with a simulation: each dungeon is a fair fight with gear of its
+// rarity (common, uncommon, rare, epic, legendary) and very hard with gear one rarity lower.
+const TIER_HP = [1, 1.5, 2.25, 3, 5.2];       // monster HP multiplier
+const TIER_ATK = [0, 3, 6, 8, 16];            // added to monster attacks
+const armourOf = (t) => [3, 5, 8, 12, 17][t];
+const breathOf = (t) => [15, 24, 36, 46, 75][t];
 const goldFor = (floor, t) => 10 * floor * (1 + t) + (floor === FLOORS ? 25 * (1 + t) : 0);
 function twistText(key, t) {
   if (ENEMIES[key].twist === "armour") return "Armoured: attacks deal " + armourOf(t) + " less. Spells ignore armour.";
@@ -156,7 +175,7 @@ const SHIELD_ICON = itemSVG("off0");
 
 /* ---------------- module ---------------- */
 // ctx: { getS, save, render, toast, logEvent, addXp, addGold, addChest, drawHero(el), dayStreak,
-//        tickets(), spendTicket(), nextTicketIn(), ticketMax, gearBonus(), level() }
+//        tickets(), spendTicket(), nextTicketIn(), ticketMax, gearBonus(), level(), earnCharm(k), hasCharm(k) }
 export function setupDungeon(ctx) {
   const $ = (s) => document.querySelector(s);
   const D = () => {
@@ -166,11 +185,15 @@ export function setupDungeon(ctx) {
   };
   // the hero's combat numbers, from attributes and worn gear
   const hero = () => {
-    const S = ctx.getS(), a = S.attr, g = ctx.gearBonus();
+    const S = ctx.getS(), a = S.attr, g = ctx.gearBonus(), L = ctx.level();
     const spell = SPELLS[S.spell] ? S.spell : "fireball";
     return {
-      maxHp: 40 + g.hp,
-      atk: 5 + g.dmg,
+      // level gives a little (2 HP a level, +1 attack every 4 levels); gear does most of the work
+      maxHp: 40 + 2 * (L - 1) + g.hp,
+      atk: 5 + Math.floor((L - 1) / 4) + g.dmg,
+      shieldTake: g.charm === "golem" ? 0.1 : 0.25,
+      spellMul: g.charm === "dragon" ? 1.5 : 1,
+      charm: g.charm || null,
       sp: a.INT - 1,
       crit: 5 + g.crit,
       def: g.def,
@@ -183,9 +206,9 @@ export function setupDungeon(ctx) {
   function makeEnemy(floor, t) {
     const f = DUNGEONS[t].floors[floor - 1], key = f.key;
     // tuned by simulation so each dungeon is a fair fight around its unlock level with matching gear
-    const e = ENEMIES[key], scale = (1 + 0.15 * (floor - 1)) * (1 + 0.5 * t);
+    const e = ENEMIES[key], scale = (1 + 0.15 * (floor - 1)) * TIER_HP[t];
     const boss = floor === FLOORS;
-    const bump = (boss ? 0 : Math.floor((floor - 1) / 2)) + Math.round(1.2 * t);
+    const bump = (boss ? 0 : Math.floor((floor - 1) / 2)) + TIER_ATK[t];
     const hp = Math.round(e.hp * scale);
     return { key, name: f.name, fx: f.fx || "", boss, hp, maxHp: hp, atk: [e.atk[0] + bump, e.atk[1] + bump], poison: 0, charge: 0 };
   }
@@ -209,7 +232,7 @@ export function setupDungeon(ctx) {
     if (!ctx.spendTicket()) { ctx.toast("No tickets left. Next one in " + fmtWait(ctx.nextTicketIn())); return; }
     const h = hero(), d = D();
     d.runs++;
-    S.run = { tier: t, floor: 1, hp: h.maxHp, maxHp: h.maxHp, atk: h.atk, sp: h.sp, crit: h.crit, def: h.def, blockBonus: h.block, dodge: h.dodge,
+    S.run = { tier: t, floor: 1, hp: h.maxHp, maxHp: h.maxHp, atk: h.atk, sp: h.sp, crit: h.crit, def: h.def, blockBonus: h.block, dodge: h.dodge, shieldTake: h.shieldTake, spellMul: h.spellMul,
       spell: h.spell, charge: 0, xp: 0, gold: 0 };
     startFloor(S.run);
     ctx.logEvent("Entered the " + dg.name);
@@ -259,11 +282,11 @@ export function setupDungeon(ctx) {
       if (r.spell === "poison") {
         await play("poison");
         if (E.twist === "nopoison") { pop("enemy", "Immune", "block"); msg = "Poison does nothing to the " + name + "."; }
-        else { const n = poisonStacks(r.sp); en.poison += n; pop("enemy", "+" + n + " poison", "poison"); msg = "Poison Cloud! The " + name + " has " + en.poison + " poison."; }
+        else { const n = Math.round(poisonStacks(r.sp) * (r.spellMul || 1)); en.poison += n; pop("enemy", "+" + n + " poison", "poison"); msg = "Poison Cloud! The " + name + " has " + en.poison + " poison."; }
       } else {
         const crit = Math.random() * 100 < r.crit;
         await play("fireball");
-        const dmg = fireDmg(r.sp) * (crit ? 2 : 1);
+        const dmg = Math.round(fireDmg(r.sp) * (r.spellMul || 1)) * (crit ? 2 : 1);
         en.hp = Math.max(0, en.hp - dmg);
         pop("enemy", (crit ? "CRIT -" : "-") + dmg, crit ? "crit" : "hit");
         msg = (crit ? "Critical Fireball for " : "Fireball blasts for ") + dmg + "!";
@@ -294,7 +317,7 @@ export function setupDungeon(ctx) {
       dmg = 0; line = "You vanish in a flash of light and dodge it!";
       const h = document.getElementById("dHero"); if (h && !reduce()) restart(h, "blink");
     } else if (shielding) {
-      dmg = Math.max(0, Math.round(dmg * 0.25) - (r.blockBonus || 0));
+      dmg = Math.max(0, Math.round(dmg * (r.shieldTake || 0.25)) - (r.blockBonus || 0));
       line = dmg ? "You block most of it and take " + dmg + "." : "Your shield blocks it all!";
     } else {
       dmg = Math.max(1, dmg - (r.def || 0));
@@ -313,7 +336,7 @@ export function setupDungeon(ctx) {
     const t = r.tier || 0, gold = goldFor(r.floor, t);
     r.gold = (r.gold || 0) + gold;
     ctx.addGold(gold);
-    if (r.floor === FLOORS) ctx.addChest();
+    if (r.floor === FLOORS) { ctx.addChest(); ctx.earnCharm(CHARM_OF[t]); }
     r.goldGain = gold;
     r.state = r.floor === FLOORS ? "cleared" : "won";
     ctx.logEvent("Defeated the " + enemyName(r.enemy) + " on floor " + r.floor + " (+" + gold + " gold)");
@@ -428,7 +451,7 @@ export function setupDungeon(ctx) {
       <div class="dpanel">
         <div class="dbox"><p class="dmsg" aria-live="polite"></p><p class="dtwist">${twistText(en.key, t)}</p></div>
         <div class="dacts">
-          <button class="dact shd" id="dShield" type="button"><span class="dact-ic">${SHIELD_ICON}</span><b>Shield</b><small>Block ¾${r.blockBonus ? " +" + r.blockBonus : ""}</small></button>
+          <button class="dact shd" id="dShield" type="button"><span class="dact-ic">${SHIELD_ICON}</span><b>Shield</b><small>Block ${(r.shieldTake || 0.25) < 0.25 ? "90%" : "¾"}${r.blockBonus ? " +" + r.blockBonus : ""}</small></button>
           <button class="dact spl${ready ? " ready" : ""}" id="dSpell" type="button"${ready ? "" : ' aria-disabled="true"'}><span class="dact-ic">${sp.icon}</span><b></b><span class="pips">${pips}</span></button>
           <button class="dact atk" id="dAttack" type="button"><span class="dact-ic">${SWORD_ICON}</span><b>Attack</b><small class="num">${r.atk - 1}–${r.atk + 1} dmg · ${r.crit}% crit</small></button>
         </div>
@@ -468,13 +491,14 @@ export function setupDungeon(ctx) {
     $("#dTickets").textContent = ctx.unlimited ? "∞" : t;
     $("#dToday").textContent = ctx.unlimited ? "Unlimited tickets for now" : t >= ctx.ticketMax ? "Tickets full (" + t + " / " + ctx.ticketMax + ")" : "Next ticket in " + fmtWait(wait) + " · " + t + " / " + ctx.ticketMax;
     $("#dStats").innerHTML = `
-      <div><b class="num">${h.maxHp}</b><span>Max HP</span><small>Helmet, pants</small></div>
-      <div><b class="num">${h.atk}</b><span>Attack</span><small>Sword</small></div>
+      <div><b class="num">${h.maxHp}</b><span>Max HP</span><small>Level, helmet, pants${h.charm === "slime" ? ", charm" : ""}</small></div>
+      <div><b class="num">${h.atk}</b><span>Attack</span><small>Level, sword</small></div>
       <div><b class="num">${h.crit}%</b><span>Crit chance</span><small>Cape</small></div>
-      ${h.dodge ? `<div><b class="num">${h.dodge}%</b><span>Dodge</span><small>Celestial set</small></div>` : ""}
-      <div><b class="num">${h.def}</b><span>Defence</span><small>Armour</small></div>
+      ${h.dodge ? `<div><b class="num">${h.dodge}%</b><span>Dodge</span><small>${h.charm === "imp" ? "Charm" : ""}${h.charm === "imp" && h.dodge > 10 ? ", " : ""}${h.dodge > (h.charm === "imp" ? 10 : 0) ? "Celestial set" : ""}</small></div>` : ""}
+      <div><b class="num">${h.def}</b><span>Defence</span><small>Armour${h.charm === "bone" ? ", charm" : ""}</small></div>
       <div><b class="num">+${h.block}</b><span>Shield block</span><small>Shield</small></div>
-      <div><b class="num">${h.spell === "poison" ? poisonStacks(h.sp) : fireDmg(h.sp)}</b><span>${sp.name}</span><small>Intelligence · ${h.spell === "poison" ? "poison" : "damage"}</small></div>`;
+      ${h.charm ? `<div><b class="num">✦</b><span>${CHARMS[h.charm].name}</span><small>${CHARMS[h.charm].desc}</small></div>` : ""}
+      <div><b class="num">${Math.round((h.spell === "poison" ? poisonStacks(h.sp) : fireDmg(h.sp)) * h.spellMul)}</b><span>${sp.name}</span><small>Intelligence · ${h.spell === "poison" ? "poison" : "damage"}</small></div>`;
     $("#dRecord").textContent = "Runs " + d.runs + " · Clears " + d.clears + " · Best floor " + d.best + " / " + FLOORS;
     const cont = $("#dContinue");
     cont.hidden = !S.run;
@@ -490,7 +514,8 @@ export function setupDungeon(ctx) {
         <button class="btn${locked ? " ghost" : ""}" type="button"></button>`;
       li.querySelector("b").textContent = dg.name;
       li.querySelectorAll("small")[0].textContent = locked ? "Clear the " + DUNGEONS[i - 1].name + " to open" : ("Boss: " + boss.name + " · best floor " + best + "/" + FLOORS + (clears ? " · cleared " + clears + "×" : ""));
-      li.querySelectorAll("small")[1].textContent = "Up to " + Array.from({ length: FLOORS }, (_, f) => goldFor(f + 1, i)).reduce((a, b) => a + b, 0) + " gold + chest";
+      const charmKey = CHARM_OF[i], hasCharm = ctx.hasCharm(charmKey);
+      li.querySelectorAll("small")[1].textContent = (hasCharm ? "" : CHARMS[charmKey].name + " · ") + "Up to " + Array.from({ length: FLOORS }, (_, f) => goldFor(f + 1, i)).reduce((a, b) => a + b, 0) + " gold + chest";
       const b = li.querySelector("button");
       b.textContent = locked ? "Locked" : "Enter";
       b.disabled = locked || !!S.run || t < 1;
