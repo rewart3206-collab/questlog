@@ -568,7 +568,7 @@ export function setupDungeon(ctx) {
         <div class="dpad you"></div>
         <div class="dunit you" id="dHero">${r.dodge ? '<div class="holo l"></div><div class="holo r"></div>' : ""}<div class="dhero"></div></div>
         <div class="dinfo you">
-          <div class="dinfo-name"><b>You</b>${r.ward ? '<span class="dward" title="Arcane Ward">◈ Ward</span>' : ""}<small class="num">Lv ${ctx.level()}</small>${fightStats(r).on || fightStats(r).relic ? `<span class="dcharm" title="Bonus active">✦ ${fightStats(r).on ? "Charm" : ""}${fightStats(r).on && fightStats(r).relic ? " + " : ""}${fightStats(r).relic ? "Relic" : ""}</span>` : ""}</div>
+          <div class="dinfo-name"><b>You</b>${r.ward ? '<span class="dward" title="Arcane Ward">◈ Ward</span>' : ""}<small class="num">Lv ${ctx.shownLevel()}</small>${fightStats(r).on || fightStats(r).relic ? `<span class="dcharm" title="Bonus active">✦ ${fightStats(r).on ? "Charm" : ""}${fightStats(r).on && fightStats(r).relic ? " + " : ""}${fightStats(r).relic ? "Relic" : ""}</span>` : ""}</div>
           ${bar(r.hp, r.maxHp, "hp")}
         </div>
       </div>

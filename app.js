@@ -312,7 +312,6 @@ function openPrestige() {
     p.children[0].textContent = "Start your adventure again and unlock the " + next.name + ", a harder dungeon than any before it.";
     const ul = p.children[1];
     [["Resets", "your gear from chests, gold, chests, tickets, spells and dungeon progress. Dungeons lock again until you clear them in order."],
-     ["Fighting level", "you keep level " + levelInfo(S.xp).level + ", but you'll fight as level " + Math.min(levelInfo(S.xp).level, fightLevelAfter(P + 1)) + " in the dungeon. Every level you gain after that still counts."],
      ["Keeps", "your level, charms, relics, vanity looks, quests and streaks."],
      ["Unlocks", next.name + ". Its first clear gives the " + rewardFor(5 + P).name + "."]].forEach(([k, v]) => {
       const li = document.createElement("li"); const b = document.createElement("b"); b.textContent = k + " "; li.append(b, v); ul.appendChild(li);
@@ -672,7 +671,7 @@ function addXp(n, reason) {
 const dungeon = setupDungeon({
   getS: () => S, save: () => save(), render: () => render(), toast: (m) => toast(m), logEvent: (t) => logEvent(t),
   addXp, dayStreak: () => dayStreak(), tickets: ticketsLeft, spendTicket, nextTicketIn, ticketMax: TK_MAX, unlimited: TK_UNLIMITED,
-  gearBonus: (fam) => gearBonus(fam || null), wearsRelic: () => SLOTS.some((s) => { const it = invItem(S.equip[s]); return it && it.relic; }), level: () => fightLevel(),
+  gearBonus: (fam) => gearBonus(fam || null), wearsRelic: () => SLOTS.some((s) => { const it = invItem(S.equip[s]); return it && it.relic; }), level: () => fightLevel(), shownLevel: () => levelInfo(S.xp).level,
   addGold: (n) => { S.gold = (S.gold || 0) + n; },
   addChest: () => { S.spellChests = (S.spellChests || 0) + 1; },
   earnReward: (n) => earnReward(n), hasReward: (n) => hasReward(n),
@@ -1068,9 +1067,7 @@ function render() {
   // what your level gives you in the dungeon
   const FL = fightLevel(), LS = levelStats(FL);
   $("#heroDot").hidden = true;
-  $("#lvlStatsLv").textContent = FL < L.level ? "Fights as LV " + FL : "LV " + L.level;
-  $("#fightNote").hidden = FL >= L.level;
-  $("#fightNote").textContent = "Prestige ★" + (S.prestige || 0) + ": you're level " + L.level + " but fight as level " + FL + ". Every level you gain still makes you stronger.";
+  $("#lvlStatsLv").textContent = "LV " + L.level;
   $("#lvlStats").innerHTML = "";
   [["Max HP", LS.hp, LEVEL_GAIN.hp], ["Attack", LS.atk, LEVEL_GAIN.atk], ["Spell power", FL - 1, 1]].forEach(([n, v, g]) => {
     const el = document.createElement("div"); el.innerHTML = '<b class="num"></b><span></span><small class="num"></small>';
