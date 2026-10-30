@@ -69,6 +69,8 @@ const today = () => dkey(new Date());
 const uid = () => Math.random().toString(36).slice(2, 9);
 
 const TK_MAX = 6, TK_EVERY = 4 * 60 * 60 * 1000;
+// While testing: unlimited dungeon runs. Set to false to bring back the 4-hour ticket timer.
+const TK_UNLIMITED = true;
 function freshState(name) {
   return {
     v: 1, at: Date.now(), name: name || "Adventurer", xp: 0,
@@ -460,13 +462,14 @@ function refillTickets() {
   if (gained) { tk.n = Math.min(TK_MAX, tk.n + gained); tk.at = tk.n >= TK_MAX ? now : tk.at + gained * TK_EVERY; }
   return tk;
 }
-const ticketsLeft = () => refillTickets().n;
+const ticketsLeft = () => (TK_UNLIMITED ? Infinity : refillTickets().n);
 function spendTicket() {
+  if (TK_UNLIMITED) return true;
   const tk = refillTickets(); if (tk.n < 1) return false;
   if (tk.n >= TK_MAX) tk.at = Date.now(); // the countdown starts once you drop below full
   tk.n--; return true;
 }
-const nextTicketIn = () => { const tk = refillTickets(); return tk.n >= TK_MAX ? 0 : Math.max(0, tk.at + TK_EVERY - Date.now()); };
+const nextTicketIn = () => { if (TK_UNLIMITED) return 0; const tk = refillTickets(); return tk.n >= TK_MAX ? 0 : Math.max(0, tk.at + TK_EVERY - Date.now()); };
 function addXp(n, reason) {
   const before = levelInfo(S.xp).level;
   S.xp += n; logEvent(reason + " (+" + n + " XP)");
@@ -477,7 +480,7 @@ function addXp(n, reason) {
 }
 const dungeon = setupDungeon({
   getS: () => S, save: () => save(), render: () => render(), toast: (m) => toast(m), logEvent: (t) => logEvent(t),
-  addXp, dayStreak: () => dayStreak(), tickets: ticketsLeft, spendTicket, nextTicketIn, ticketMax: TK_MAX,
+  addXp, dayStreak: () => dayStreak(), tickets: ticketsLeft, spendTicket, nextTicketIn, ticketMax: TK_MAX, unlimited: TK_UNLIMITED,
   gearBonus: () => gearBonus(), level: () => levelInfo(S.xp).level,
   addGold: (n) => { S.gold = (S.gold || 0) + n; },
   addChest: () => { S.chests = (S.chests || 0) + 1; },
@@ -670,7 +673,7 @@ function render() {
     rl.appendChild(li);
   });
   renderStreak();
-  $("#tkTop").textContent = ticketsLeft();
+  $("#tkTop").textContent = TK_UNLIMITED ? "∞" : ticketsLeft();
   dungeon.renderTab();
   dungeon.resume();
   drawSprite($("#sprite"), null, heroLook());
@@ -899,7 +902,7 @@ const rollover = () => {
   if (!S) return;
   const n = ticketsLeft();
   if (n !== lastTk) { lastTk = n; save(); }
-  $("#tkTop").textContent = n; dungeon.renderTab();
+  $("#tkTop").textContent = TK_UNLIMITED ? "∞" : n; dungeon.renderTab();
 };
 setInterval(rollover, 60000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) rollover(); });

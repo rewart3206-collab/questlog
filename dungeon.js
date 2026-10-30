@@ -419,8 +419,8 @@ export function setupDungeon(ctx) {
   function renderTab() {
     const S = ctx.getS(); if (!S) return;
     const h = hero(), d = D(), t = ctx.tickets(), wait = ctx.nextTicketIn(), sp = SPELLS[h.spell];
-    $("#dTickets").textContent = t;
-    $("#dToday").textContent = t >= ctx.ticketMax ? "Tickets full (" + t + " / " + ctx.ticketMax + ")" : "Next ticket in " + fmtWait(wait) + " · " + t + " / " + ctx.ticketMax;
+    $("#dTickets").textContent = ctx.unlimited ? "∞" : t;
+    $("#dToday").textContent = ctx.unlimited ? "Unlimited tickets for now" : t >= ctx.ticketMax ? "Tickets full (" + t + " / " + ctx.ticketMax + ")" : "Next ticket in " + fmtWait(wait) + " · " + t + " / " + ctx.ticketMax;
     $("#dStats").innerHTML = `
       <div><b class="num">${h.maxHp}</b><span>Max HP</span><small>Helmet, pants</small></div>
       <div><b class="num">${h.atk}</b><span>Attack</span><small>Sword</small></div>
