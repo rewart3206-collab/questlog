@@ -667,7 +667,7 @@ function addXp(n, reason) {
 const dungeon = setupDungeon({
   getS: () => S, save: () => save(), render: () => render(), toast: (m) => toast(m), logEvent: (t) => logEvent(t),
   addXp, dayStreak: () => dayStreak(), tickets: ticketsLeft, spendTicket, nextTicketIn, ticketMax: TK_MAX, unlimited: TK_UNLIMITED,
-  gearBonus: (fam) => gearBonus(fam || null), wearsRelic: () => SLOTS.some((s) => { const it = invItem(S.equip[s]); return it && it.relic; }), level: () => fightLevel(), shownLevel: () => levelInfo(S.xp).level,
+  gearBonus: (fam) => gearBonus(fam || null), wearsRelic: () => SLOTS.some((s) => { const it = invItem(S.equip[s]); return it && it.relic; }), level: () => fightLevel(), shownLevel: () => levelInfo(S.xp).level, prestige: () => S.prestige || 0,
   addGold: (n) => { S.gold = (S.gold || 0) + n; },
   addChest: () => { S.spellChests = (S.spellChests || 0) + 1; },
   earnReward: (n) => earnReward(n), hasReward: (n) => hasReward(n),

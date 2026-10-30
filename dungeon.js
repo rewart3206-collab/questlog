@@ -231,6 +231,12 @@ function isOpen(d, i) {
 // is harder than Dragon Peak (it needs about Legendary +1 gear) and the relics you keep matter more
 // and more. Also tuned with the simulation.
 const lvJump = (t) => Math.floor(t / 5);
+// Prestige makes every dungeon tougher, so a strong hero can't race back through them. Tuned with a
+// simulation (heroes ~level 15 at prestige 1, gaining ~3 levels per prestige, common gear on day one):
+// prestige 1 cruises the Slime Cave and struggles in the Bone Crypt; prestige 2 cruises two and
+// struggles in Imp Hollow. From prestige 3 the later dungeons already need better gear, so no extra.
+const PRESTIGE_BOOST = { 1: { hp: 1.6, atk: 6 }, 2: { hp: 1.3, atk: 3 } };
+const boostOf = (P) => PRESTIGE_BOOST[P] || { hp: 1, atk: 0 };
 // Tuned so each dungeon needs the right gear AND the right level. With matching gear: Slime Cave
 // from level 1, Bone Crypt ~4, Imp Hollow ~7, Golem Forge ~12, Dragon Peak ~14. Gear one rarity
 // lower needs roughly 3-5 more levels. Prestige dungeons then climb about half a level per step.
@@ -279,17 +285,17 @@ export function setupDungeon(ctx) {
   };
 
   function makeEnemy(floor, t) {
-    const f = ALL_DUNGEONS[t].floors[floor - 1], key = f.key;
+    const f = ALL_DUNGEONS[t].floors[floor - 1], key = f.key, B = boostOf(ctx.prestige());
     // tuned by simulation so each dungeon is a fair fight around its unlock level with matching gear
-    const e = ENEMIES[key], scale = (1 + 0.15 * (floor - 1)) * tierHp(t);
+    const e = ENEMIES[key], scale = (1 + 0.15 * (floor - 1)) * tierHp(t) * B.hp;
     const boss = floor === FLOORS;
-    const bump = (boss ? 0 : Math.floor((floor - 1) / 2)) + tierAtk(t);
+    const bump = (boss ? 0 : Math.floor((floor - 1) / 2)) + tierAtk(t) + B.atk;
     const hp = Math.round(e.hp * scale);
     return { key, name: f.name, fx: f.fx || "", boss, hp, maxHp: hp, atk: [e.atk[0] + bump, e.atk[1] + bump], poison: 0, charge: 0 };
   }
   function specialDmg(r) {
     const en = r.enemy, e = ENEMIES[en.key];
-    if (en.key === "dragon") return breathOf(r.tier || 0);
+    if (en.key === "dragon") return Math.round(breathOf(r.tier || 0) * boostOf(ctx.prestige()).hp);
     return Math.round(((en.atk[0] + en.atk[1]) / 2) * e.mult);
   }
   function startFloor(run) {
