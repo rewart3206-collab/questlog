@@ -187,7 +187,7 @@ function normLook(l) {
 // ids from older versions (in old saves or friends' guild cards) are translated.
 function toDesign(slot, v) {
   if (v == null) return null;
-  if (new RegExp("^" + slot + "[0-4]$").test(v)) return v;
+  if (new RegExp("^" + slot + "([0-4]|_(slime|bone|imp|golem|dragon))$").test(v)) return v;
   const o = OLD_GEAR[v]; return o && o[0] === slot ? slot + o[1] : null;
 }
 function heroParts(equip) {
@@ -198,10 +198,13 @@ function heroParts(equip) {
   return out;
 }
 function drawSprite(el, cls, equip, opts) { el.innerHTML = heroSVG(heroParts(equip), opts || {}); }
-function gearIcon(slot, r) {
+// r: a rarity number, or a monster family ("slime") for a relic
+function gearIcon(slot, r, relic) {
+  if (typeof r === "string") { relic = r; }
   const d = document.createElement("div"); d.className = "gear-icon";
-  if (r != null) { d.style.borderColor = RARITIES[r].colour; d.style.boxShadow = "0 0 0 2px " + RARITIES[r].colour + "55, inset 0 0 14px " + RARITIES[r].colour + "66"; }
-  d.innerHTML = itemSVG(slot + (r == null ? 0 : r));
+  const col = relic ? RELIC_COLOUR : r != null ? RARITIES[r].colour : null;
+  if (col) { d.style.borderColor = col; d.style.boxShadow = "0 0 0 2px " + col + "55, inset 0 0 14px " + col + "66"; }
+  d.innerHTML = itemSVG(slot + (relic ? "_" + relic : r == null ? 0 : r));
   return d;
 }
 function testItems(slot) {
@@ -232,8 +235,8 @@ function lookIds() {
   const out = {}, v = S.vanity || {};
   SLOTS.forEach((slot) => {
     if (v[slot] === -1) out[slot] = null;
-    else if (v[slot] != null) out[slot] = slot + v[slot];
-    else { const it = invItem(S.equip[slot]); out[slot] = it ? slot + it.r : null; }
+    else if (v[slot] != null) out[slot] = slot + (typeof v[slot] === "string" ? "_" : "") + v[slot];
+    else { const it = invItem(S.equip[slot]); out[slot] = it ? slot + (it.relic ? "_" + it.relic : it.r) : null; }
   });
   return out;
 }
@@ -242,7 +245,7 @@ function lookIds() {
 const SET_SLOTS = ["head", "shirt", "pants"];
 function celestialLevel() {
   const its = SET_SLOTS.map((s) => invItem(S.equip[s]));
-  if (its.some((it) => !it || it.r !== LEG || !(it.p >= 1))) return 0;
+  if (its.some((it) => !it || it.relic || it.r !== LEG || !(it.p >= 1))) return 0;
   return Math.min(...its.map((it) => it.p));
 }
 const dodgeFor = (lvl) => (lvl ? Math.min(35, 10 + 5 * lvl) : 0);
@@ -554,7 +557,7 @@ function revealItem(tagText, item, offerEquip) {
     w.innerHTML = '<div class="title-tag"></div><div class="chest-reveal"><div class="chest-burst"></div><div class="reveal-slot"></div></div><h1></h1><span class="rarity-tag"></span><p class="muted" style="margin:0"></p><div class="actions" style="justify-content:center"></div>';
     w.querySelector(".title-tag").textContent = tagText;
     const R = RARITIES[item.r];
-    const icon = gearIcon(item.slot, item.r); icon.classList.add("unlock-icon");
+    const icon = gearIcon(item.slot, item.r, item.relic); icon.classList.add("unlock-icon");
     w.querySelector(".reveal-slot").replaceWith(icon);
     w.querySelector(".chest-burst").style.background = "radial-gradient(circle," + R.colour + "aa 0,transparent 65%)";
     w.querySelector("h1").textContent = itemName(item);
@@ -662,7 +665,7 @@ function renderGearSlots() {
   GEAR_SLOTS.forEach(({ slot, name }) => {
     const mine = S.inv.filter((x) => x.slot === slot);
     const worn = invItem(S.equip[slot]);
-    const icon = worn ? gearIcon(slot, worn.r) : Object.assign(document.createElement("div"), { className: "gear-icon empty" });
+    const icon = worn ? gearIcon(slot, worn.r, worn.relic) : Object.assign(document.createElement("div"), { className: "gear-icon empty" });
     const canMerge = mine.some((x) => mergeFodder(x).length >= 2);
     const b = slotButton(slot, name, icon, worn ? rarityName(worn) : mine.length + " owned", worn && rarityColour(worn), () => openGearMenu(slot), canMerge && "Merge");
     b.setAttribute("aria-label", name + ": " + (worn ? rarityName(worn) + " " + itemName(worn) : "nothing equipped") + ", " + mine.length + " owned");
@@ -678,8 +681,9 @@ function renderGearSlots() {
   GEAR_SLOTS.forEach(({ slot, name }) => {
     const on = v[slot] != null;
     const icon = v[slot] == null || v[slot] === -1 ? Object.assign(document.createElement("div"), { className: "gear-icon empty" }) : gearIcon(slot, v[slot]);
-    const sub = !on ? "Shows gear" : v[slot] === -1 ? "Hidden" : GEAR_NAMES[slot][v[slot]];
-    const b = slotButton(slot, name, icon, sub, on && v[slot] >= 0 ? RARITIES[v[slot]].colour : null, () => openVanityMenu(slot));
+    const rel = typeof v[slot] === "string";
+    const sub = !on ? "Shows gear" : v[slot] === -1 ? "Hidden" : rel ? relicName(slot, v[slot]) : GEAR_NAMES[slot][v[slot]];
+    const b = slotButton(slot, name, icon, sub, on && v[slot] !== -1 ? (rel ? RELIC_COLOUR : RARITIES[v[slot]].colour) : null, () => openVanityMenu(slot));
     b.setAttribute("aria-label", name + " look: " + sub);
     vb.appendChild(b);
   });
@@ -719,7 +723,7 @@ function openGearMenu(slot) {
     mine.forEach((it) => {
       const eq = S.equip[slot] === it.u, R = RARITIES[it.r];
       const li = document.createElement("li"); li.className = "ch done" + (eq ? " equipped" : "");
-      li.appendChild(gearIcon(slot, it.r));
+      li.appendChild(gearIcon(slot, it.r, it.relic));
       const mid = document.createElement("div"); mid.style.minWidth = "0";
       const nm = document.createElement("div"); nm.className = "ch-name"; nm.textContent = itemName(it);
       const rt = document.createElement("span"); rt.className = "rarity-tag small"; rt.textContent = rarityName(it); rt.style.background = rarityColour(it);
@@ -784,7 +788,7 @@ function openMergeMenu(it) {
     head.append(h, back); w.appendChild(head);
     // the item being upgraded, now and after
     const top = document.createElement("div"); top.className = "merge-top";
-    const icon = gearIcon(it.slot, it.r); icon.classList.add("merge-icon");
+    const icon = gearIcon(it.slot, it.r, it.relic); icon.classList.add("merge-icon");
     const txt = document.createElement("div"); txt.style.minWidth = "0";
     const nm = document.createElement("div"); nm.className = "ch-name"; nm.textContent = itemName(it);
     const arrow = document.createElement("div"); arrow.className = "merge-after";
@@ -813,7 +817,7 @@ function openMergeMenu(it) {
     };
     pool.forEach((x) => {
       const li = document.createElement("li"); li.className = "ch done"; li.dataset.u = x.u;
-      li.appendChild(gearIcon(x.slot, x.r));
+      li.appendChild(gearIcon(x.slot, x.r, x.relic));
       const mid = document.createElement("div"); mid.style.minWidth = "0";
       const n2 = document.createElement("div"); n2.className = "ch-name"; n2.textContent = itemName(x);
       const rt = document.createElement("span"); rt.className = "rarity-tag small"; rt.textContent = rarityName(x); rt.style.background = RARITIES[x.r].colour;
@@ -857,6 +861,11 @@ function openVanityMenu(slot) {
     RARITIES.forEach((R, r) => {
       const own = seen.includes(r);
       row(gearIcon(slot, own ? r : null), own ? GEAR_NAMES[slot][r] : "???", own ? R.name + " look" : "Find a " + R.name.toLowerCase() + " " + info.name.toLowerCase() + " to unlock", r, !own, own ? R.colour : null);
+    });
+    // relic set looks, once you've earned them
+    if (RELIC_ORDER.includes(slot)) CHARM_OF.forEach((fam) => {
+      const own = hasRelic(slot, fam);
+      row(gearIcon(slot, null, own ? fam : null), own ? relicName(slot, fam) : "???", own ? "Relic look" : "Earn it in a prestige dungeon", fam, !own, own ? RELIC_COLOUR : null);
     });
     w.appendChild(list);
   });
