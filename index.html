@@ -52,7 +52,7 @@ h2{display:inline-block;align-self:flex-start;font-size:19px;color:#fff;backgrou
 .spread{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 
 /* top resource counters */
-.topbar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.topbar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 .pill{display:grid;grid-template-columns:26px minmax(0,1fr);grid-template-rows:auto auto;column-gap:5px;align-items:center;padding:3px 8px 3px 3px;min-width:0;border-radius:999px;background:var(--deep);border:2px solid var(--gold);box-shadow:0 3px 0 #000}
 .pill .ic{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:#24306b;padding:5px}
 .pill b{font-family:var(--display);font-weight:400;font-size:17px;letter-spacing:.03em;line-height:1;padding-top:4px;min-width:0;overflow:hidden;text-overflow:ellipsis}
@@ -606,7 +606,6 @@ input::placeholder{color:#7f8ccc}
 <div id="screen-game" class="wrap" hidden>
   <div class="topbar">
     <div class="pill streak-badge" id="streakBadge" role="img" aria-label="0-day streak"><span class="ic" id="flame"></span><b class="num" id="streakNum">0</b><small>streak</small></div>
-    <div class="pill" id="spPill"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3 6.5 7 .8-5.2 4.8 1.5 7L12 17.6 5.7 21l1.5-7L2 9.3l7-.8z" fill="#ffd23f" stroke="#1c1430" stroke-width="2" stroke-linejoin="round"/></svg></span><b class="num" id="spTop">0</b><small>skill pts</small></div>
     <div class="pill"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#ffcf4a" stroke="#1c1430" stroke-width="2"/><circle cx="12" cy="12" r="6.5" fill="none" stroke="#d99a1a" stroke-width="2"/><path d="M10.5 9.5 L13.5 9.5 L13.5 14.5" stroke="#d99a1a" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><b class="num" id="goldTop">0</b><small>gold</small></div>
     <div class="pill"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7 Q3 5 5 5 L19 5 Q21 5 21 7 L21 9.5 Q19 10 19 12 Q19 14 21 14.5 L21 17 Q21 19 19 19 L5 19 Q3 19 3 17 L3 14.5 Q5 14 5 12 Q5 10 3 9.5 Z" fill="#ffcf4a" stroke="#1c1430" stroke-width="2" stroke-linejoin="round"/><path d="M9 8 L9 16" stroke="#1c1430" stroke-width="1.6" stroke-dasharray="2 2"/><path d="M14 9.5 l1 2 2.2.3-1.6 1.5.4 2.2-2-1.1-2 1.1.4-2.2-1.6-1.5 2.2-.3z" fill="#e2384a"/></svg></span><b class="num" id="tkTop">0</b><small>tickets</small></div>
   </div>
@@ -634,9 +633,9 @@ input::placeholder{color:#7f8ccc}
 
   <section class="panel stack" id="p-hero" hidden>
     <div class="win">
-      <div class="spread"><h2>Attributes</h2><span class="sp num" id="spWrap"><span id="sp">0</span> skill points</span></div>
-      <div class="stats" id="stats"></div>
-      <p class="note" style="margin-top:10px">Complete every daily quest to earn a skill point, then spend it to level up an attribute.</p>
+      <div class="spread"><h2>Level</h2><span class="sp num" id="lvlStatsLv">LV 1</span></div>
+      <div class="dstats" id="lvlStats"></div>
+      <p class="note" style="margin-top:10px">Every level makes your hero stronger in the dungeon. Earn XP by completing your daily quests, with a bonus for clearing them all. Gear alone won't get you through the harder dungeons.</p>
     </div>
     <div class="win">
       <h2>Appearance</h2>

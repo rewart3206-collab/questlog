@@ -1,13 +1,11 @@
 import { firebaseConfig } from "./firebase-config.js";
 import { heroSVG, heroBackSVG, itemSVG, flameSVG } from "./art.js";
-import { setupDungeon, SPELLS, CHARMS, CHARM_OF, ALL_DUNGEONS, MAX_LEVEL, rewardFor, RELIC_ORDER, RELIC_NOUN, RELIC_BONUS, FAMILY_NAMES } from "./dungeon.js";
+import { setupDungeon, SPELLS, levelStats, LEVEL_GAIN, CHARMS, CHARM_OF, ALL_DUNGEONS, MAX_LEVEL, rewardFor, RELIC_ORDER, RELIC_NOUN, RELIC_BONUS, FAMILY_NAMES } from "./dungeon.js";
 const SDK = "https://www.gstatic.com/firebasejs/10.12.2/";
 
 /* ================= game data ================= */
-const STATS = {
-  INT: { name: "Intelligence", hint: "Spell power in the dungeon" },
-};
-const QUEST_XP = 20;        // every quest is worth the same
+const QUEST_XP = 20;
+const CLEAR_XP = 20;         // bonus for completing every quest in a day        // every quest is worth the same
 const MAX_EXTRA_QUESTS = 2; // on top of the 3 core quests
 // The three core quests are the same for every player and can't be edited or removed.
 const CORE_QUESTS = [
@@ -307,7 +305,7 @@ function openPrestige() {
     p.children[0].textContent = "Start your adventure again and unlock the " + next.name + ", a harder dungeon than any before it.";
     const ul = p.children[1];
     [["Resets", "your gear from chests, gold, chests, tickets, XP level and dungeon progress. Dungeons lock again until you clear them in order."],
-     ["Keeps", "your charms, relics, spells, Intelligence, vanity looks, quests and streaks."],
+     ["Keeps", "your charms, relics, spells, vanity looks, quests and streaks."],
      ["Unlocks", next.name + ". Its first clear gives the " + rewardFor(5 + P).name + "."]].forEach(([k, v]) => {
       const li = document.createElement("li"); const b = document.createElement("b"); b.textContent = k + " "; li.append(b, v); ul.appendChild(li);
     });
@@ -385,41 +383,11 @@ function bestStreak() {
   for (const k of keys) { const d = new Date(k + "T12:00:00"); run = prev && (d - prev) / 864e5 < 1.5 ? run + 1 : 1; best = Math.max(best, run); prev = d; }
   return best;
 }
-// One skill point per full-clear day; each point raises an attribute by one level.
-function skillPoints() {
-  const earned = Object.keys(S.clears).length;
-  const spent = Object.values(S.attr).reduce((n, l) => n + (l - 1), 0);
-  return Math.max(0, earned - spent);
-}
-function upgradeAttr(k) {
-  if (skillPoints() < 1) { toast("Complete every quest in a day to earn a skill point"); return; }
-  S.attr[k]++; (S.attrLog = S.attrLog || []).push(k);
-  logEvent(STATS[k].name + " upgraded to level " + S.attr[k]);
-  save(); render(); toast(STATS[k].name + " is now level " + S.attr[k]);
-}
-// If undoing a quest takes away a full clear whose skill point was already spent,
-// take back the most recent upgrade(s) so attributes never exceed the points earned.
-function refundSkillPoints() {
-  const earned = Object.keys(S.clears).length;
-  let spent = Object.values(S.attr).reduce((n, l) => n + (l - 1), 0);
-  S.attrLog = S.attrLog || [];
-  const undone = [];
-  while (spent > earned) {
-    let k = S.attrLog.pop();
-    if (!k || S.attr[k] <= 1) k = Object.keys(S.attr).sort((a, b) => S.attr[b] - S.attr[a])[0];
-    if (S.attr[k] <= 1) break;
-    S.attr[k]--; spent--; undone.push(k);
-    logEvent(STATS[k].name + " back to level " + S.attr[k] + " (skill point taken back)");
-  }
-  return undone;
-}
 function totalQuests() { return Object.values(S.days).reduce((n, d) => n + Object.keys(d).length, 0); }
 function counts() {
   return {
     total: totalQuests(), clears: Object.keys(S.clears).length, best: bestStreak(),
     level: levelInfo(S.xp).level,
-    INT: S.attr.INT,
-    spent: Object.values(S.attr).reduce((n, l) => n + (l - 1), 0),
   };
 }
 function unlockedTitles() {
@@ -475,14 +443,12 @@ function toggleQuest(q, ev) {
     logEvent("Completed “" + q.name + "” (+" + xp + " XP)");
     if (ev) floatText(ev, "+" + xp + " XP");
     if (S.quests.length && S.quests.every((x) => S.days[k][x.id]) && !S.clears[k]) {
-      S.clears[k] = 1;
-      logEvent("Full clear! Earned a skill point"); toast("Full clear! +1 skill point. Spend it in the Hero tab");
+      S.clears[k] = 1; S.clearXp[k] = CLEAR_XP; S.xp += CLEAR_XP;
+      logEvent("Full clear! (+" + CLEAR_XP + " bonus XP)"); toast("Full clear! +" + CLEAR_XP + " bonus XP");
     }
   }
   const after = levelInfo(S.xp).level;
   if (after > before) logEvent("Reached level " + after);
-  const refunded = refundSkillPoints();
-  if (refunded.length) toast("Skill point taken back from " + refunded.map((k) => STATS[k].name).join(", "));
   save(); render();
   if (after > before) levelUp(after);
 }
@@ -507,7 +473,7 @@ function levelUp(L) {
     w.innerHTML = '<div class="title-tag">LEVEL UP</div><h1></h1><div class="sprite"></div><p class="muted" style="margin:0"></p><button class="btn gold">Onward</button>';
     w.querySelector("h1").textContent = "Level " + L;
     drawSprite(w.querySelector(".sprite"), null, heroLook());
-    w.querySelector("p").textContent = newTitle.length ? "New title unlocked: " + newTitle.join(", ") : "Your hero grows stronger.";
+    w.querySelector("p").textContent = "+" + LEVEL_GAIN.hp + " HP, +" + LEVEL_GAIN.atk + " attack and +" + LEVEL_GAIN.spell + " spell power." + (newTitle.length ? " New title: " + newTitle.join(", ") : "");
     w.querySelector("button").onclick = done;
   });
 }
@@ -1037,18 +1003,15 @@ function render() {
   addBtn.hidden = extras >= MAX_EXTRA_QUESTS;
   addBtn.textContent = "+ Add your own quest (" + extras + "/" + MAX_EXTRA_QUESTS + ")";
 
-  // attributes
-  const sp = skillPoints();
-  $("#sp").textContent = sp; $("#spWrap").classList.toggle("has", sp > 0);
-  $("#spTop").textContent = sp; $("#spPill").classList.toggle("has", sp > 0);
-  $("#heroDot").hidden = sp < 1;
-  const sg = $("#stats"); sg.innerHTML = "";
-  Object.entries(STATS).forEach(([k, s]) => {
-    const el = document.createElement("div"); el.className = "stat " + k;
-    el.innerHTML = '<div class="stat-info"><span class="px stat-name">' + s.name + '</span><small>' + s.hint + '</small></div><span class="stat-lv num">LV ' + S.attr[k] + '</span><button class="btn up" type="button">+1</button>';
-    const b = el.querySelector(".up"); b.disabled = sp < 1; b.setAttribute("aria-label", "Upgrade " + s.name);
-    b.onclick = () => upgradeAttr(k);
-    sg.appendChild(el);
+  // what your level gives you in the dungeon
+  const LS = levelStats(L.level);
+  $("#heroDot").hidden = true;
+  $("#lvlStatsLv").textContent = "LV " + L.level;
+  $("#lvlStats").innerHTML = "";
+  [["Max HP", LS.hp, LEVEL_GAIN.hp], ["Attack", LS.atk, LEVEL_GAIN.atk], ["Fireball", LS.fire, LEVEL_GAIN.spell]].forEach(([n, v, g]) => {
+    const el = document.createElement("div"); el.innerHTML = '<b class="num"></b><span></span><small class="num"></small>';
+    el.children[0].textContent = v; el.children[1].textContent = n; el.children[2].textContent = "+" + g + " next level";
+    $("#lvlStats").appendChild(el);
   });
 
   // titles

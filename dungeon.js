@@ -7,7 +7,7 @@
 //   Shield – take only a quarter of this turn's damage, less the shield's block bonus.
 // Monsters charge a special attack over several turns. The build-up shows only as a growing glow
 // around the monster, so the player has to read it and shield at the right moment.
-// Intelligence adds spell power; attack, HP and the rest come from gear. Dungeons give gold, not XP.
+// Your level adds HP, attack and spell power; gear adds the rest. Dungeons give gold, not XP.
 
 import { itemSVG } from "./art.js";
 
@@ -24,7 +24,10 @@ export const SPELLS = {
   fireball: { name: "Fireball", charge: 3, icon: FIRE_ICON, desc: "Charges in 3 attacks. A blast of fire that ignores armour and can crit." },
   poison: { name: "Poison Cloud", charge: 2, icon: POISON_ICON, desc: "Charges in 2 attacks. Poisons the monster, hurting it every turn." },
 };
-const fireDmg = (sp) => 12 + 3 * sp;
+// Levels make you stronger: every level adds HP, attack and spell power. sp = level - 1.
+const fireDmg = (sp) => 12 + 2 * sp;
+export const LEVEL_GAIN = { hp: 6, atk: 1, spell: 2 };
+export const levelStats = (L) => ({ hp: 40 + LEVEL_GAIN.hp * (L - 1), atk: 5 + LEVEL_GAIN.atk * (L - 1), fire: fireDmg(L - 1) });
 
 /* ---------------- charms ----------------
    One charm per dungeon, earned the first time you clear it. A charm sits in its own slot,
@@ -70,7 +73,7 @@ function fightStats(r, sp) {
     on, relic: Object.keys(v).length > 0,
   };
 }
-const poisonStacks = (sp) => 5 + 2 * sp;
+const poisonStacks = (sp) => 5 + sp;
 
 /* ---------------- monsters ---------------- */
 // charge: turns of building before the special fires. mult: special damage as a multiple of a normal hit.
@@ -208,10 +211,13 @@ function isOpen(d, i) {
 // is harder than Dragon Peak (it needs about Legendary +1 gear) and the relics you keep matter more
 // and more. Also tuned with the simulation.
 const lvJump = (t) => Math.floor(t / 5);
-const tierHp = (t) => t < 5 ? [1, 1.5, 2.25, 3, 5.2][t] : 5.2 * Math.pow(1.015, t - 4) * (1 + 0.32 * lvJump(t));
-const tierAtk = (t) => t < 5 ? [0, 3, 6, 8, 16][t] : 16 + Math.round(0.25 * (t - 4)) + 2 * lvJump(t);
-const armourOf = (t) => t < 5 ? [3, 5, 8, 12, 17][t] : 17 + Math.round(0.3 * (t - 4));
-const breathOf = (t) => t < 5 ? [15, 24, 36, 46, 75][t] : 75 + 3 * (t - 4);
+// Tuned so each dungeon needs the right gear AND the right level. With matching gear: Slime Cave
+// from level 1, Bone Crypt ~4, Imp Hollow ~7, Golem Forge ~12, Dragon Peak ~14. Gear one rarity
+// lower needs roughly 3-5 more levels. Prestige dungeons then climb about half a level per step.
+const tierHp = (t) => t < 5 ? [1, 1.8, 2.7, 3.7, 6][t] : 6 * (1 + 0.5 * lvJump(t));
+const tierAtk = (t) => t < 5 ? [0, 4, 8, 11, 19][t] : 19 + Math.round(0.3 * (t - 4)) + 3 * lvJump(t);
+const armourOf = (t) => t < 5 ? [3, 6, 9, 13, 19][t] : 19 + Math.round(0.3 * (t - 4));
+const breathOf = (t) => t < 5 ? [15, 28, 42, 54, 85][t] : 85 + 3 * (t - 4);
 const goldFor = (floor, t) => 10 * floor * (1 + t) + (floor === FLOORS ? 25 * (1 + t) : 0);
 function twistText(key, t) {
   if (ENEMIES[key].twist === "armour") return "Armoured: attacks deal " + armourOf(t) + " less. Spells ignore armour.";
@@ -236,14 +242,14 @@ export function setupDungeon(ctx) {
   // the hero's combat numbers, from attributes and worn gear
   // fam: the kind of monster in the dungeon you're entering (relics are only at full power against it)
   const hero = (fam) => {
-    const S = ctx.getS(), a = S.attr, g = ctx.gearBonus(fam), L = ctx.level();
+    const S = ctx.getS(), g = ctx.gearBonus(fam), L = ctx.level();
     const spell = SPELLS[S.spell] ? S.spell : "fireball";
     return {
       // level gives a little (2 HP a level, +1 attack every 4 levels); gear does most of the work
-      maxHp: 40 + 2 * (L - 1) + g.hp,
-      atk: 5 + Math.floor((L - 1) / 4) + g.dmg,
+      maxHp: levelStats(L).hp + g.hp,
+      atk: levelStats(L).atk + g.dmg,
       charm: g.charm || null,
-      sp: a.INT - 1,
+      sp: L - 1,
       crit: 5 + g.crit,
       def: g.def,
       block: g.block,
@@ -552,7 +558,7 @@ export function setupDungeon(ctx) {
       <div><b class="num">${h.def}</b><span>Defence</span><small>Armour</small></div>
       <div><b class="num">+${h.block}</b><span>Shield block</span><small>Shield</small></div>
       ${h.charm ? `<div><b class="num">✦</b><span>${CHARMS[h.charm].name}</span><small>${CHARMS[h.charm].desc}</small></div>` : ""}
-      <div><b class="num">${h.spell === "poison" ? poisonStacks(h.sp) : fireDmg(h.sp)}</b><span>${sp.name}</span><small>Intelligence · ${h.spell === "poison" ? "poison" : "damage"}</small></div>`;
+      <div><b class="num">${h.spell === "poison" ? poisonStacks(h.sp) : fireDmg(h.sp)}</b><span>${sp.name}</span><small>Level · ${h.spell === "poison" ? "poison" : "damage"}</small></div>`;
     if (ctx.wearsRelic()) $("#dStats").insertAdjacentHTML("beforeend", '<div class="dnote"><small>These numbers are for normal monsters. Your relics are much stronger against their own kind.</small></div>');
     $("#dRecord").textContent = "Runs " + d.runs + " · Clears " + d.clears + " · Best floor " + d.best + " / " + FLOORS;
     const cont = $("#dContinue");
