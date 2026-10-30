@@ -20,10 +20,20 @@ const st = (f, w = 2.6) => `fill="${f}" stroke="${INK}" stroke-width="${w}" stro
 /* ---------------- spells ---------------- */
 const FIRE_ICON = `<svg viewBox="0 0 40 40"><path d="M22 4 C26 12 34 14 34 24 A13 13 0 0 1 8 24 C8 18 12 15 13 10 C16 15 19 14 22 4 Z" ${st("#ff6a2b", 2.2)}/><path d="M21 16 C24 21 28 22 28 27 A7 7 0 0 1 14 27 C14 23 18 21 21 16 Z" fill="#ffd34a"/></svg>`;
 const POISON_ICON = `<svg viewBox="0 0 40 40"><path d="M15 5 L25 5 L25 12 Q34 16 34 26 Q34 36 20 36 Q6 36 6 26 Q6 16 15 12 Z" ${st("#5fd36a", 2.2)}/><rect x="14" y="3" width="12" height="5" rx="2" ${st("#3a6b3a", 2)}/><circle cx="16" cy="24" r="3" fill="#2a6b2a"/><circle cx="24" cy="28" r="2.4" fill="#2a6b2a"/><circle cx="22" cy="20" r="1.8" fill="#b8ff9a"/></svg>`;
+const HEAL_ICON = `<svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="15" fill="#ffe9a8" opacity=".5"/><path d="M16 6 H24 V16 H34 V24 H24 V34 H16 V24 H6 V16 H16 Z" ${st("#7cf0a8", 2.2)}/><path d="M18 9 H22 V18 H31 V22" fill="none" stroke="#fff" stroke-width="2" opacity=".8" stroke-linecap="round"/></svg>`;
+const FROST_ICON = `<svg viewBox="0 0 40 40"><path d="M20 3 L24 14 L35 12 L27 20 L35 28 L24 26 L20 37 L16 26 L5 28 L13 20 L5 12 L16 14 Z" ${st("#9fdcff", 2.2)}/><path d="M20 10 L20 30 M11 15 L29 25 M11 25 L29 15" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>`;
+const WARD_ICON = `<svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="15" fill="none" stroke="#c58bff" stroke-width="5" opacity=".45"/><path d="M20 5 L33 11 L33 21 Q33 31 20 36 Q7 31 7 21 L7 11 Z" ${st("#b46cff", 2.2)}/><path d="M20 12 L23 19 L30 20 L24.5 24 L26 31 L20 27.5 L14 31 L15.5 24 L10 20 L17 19 Z" fill="#f3e2ff"/></svg>`;
+const BOLT_ICON = `<svg viewBox="0 0 40 40"><path d="M23 3 L9 23 L18 23 L14 37 L31 15 L21 15 Z" fill="none" stroke="#ffe14a" stroke-width="6" opacity=".4" stroke-linejoin="round"/><path d="M23 3 L9 23 L18 23 L14 37 L31 15 L21 15 Z" ${st("#ffe14a", 2.2)}/><path d="M21 9 L14 21" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>`;
+const DRAIN_ICON = `<svg viewBox="0 0 40 40"><path d="M20 35 C8 26 4 19 4 13 A8 8 0 0 1 20 9 A8 8 0 0 1 36 13 C36 19 32 26 20 35 Z" ${st("#c8264a", 2.2)}/><path d="M12 13 Q16 9 19 13" fill="none" stroke="#ff9ab0" stroke-width="2.4" stroke-linecap="round"/><path d="M20 15 L17 22 L22 22 L19 29" fill="none" stroke="#3a1f5e" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 export const SPELLS = {
   fireball: { name: "Fireball", charge: 3, icon: FIRE_ICON, desc: "Charges in 3 attacks. A blast of fire that ignores armour and can crit." },
   // research: what it takes to learn the spell in the Hero tab's Research section
+  heal: { name: "Healing Light", charge: 3, icon: HEAL_ICON, desc: "Charges in 3 attacks. Heals you, more as you level up.", research: { lv: 2, gold: 200, hours: 1 } },
   poison: { name: "Poison Cloud", charge: 2, icon: POISON_ICON, desc: "Charges in 2 attacks. Poisons the monster, hurting it every turn.", research: { lv: 3, gold: 300, hours: 2 } },
+  frost: { name: "Frost Bolt", charge: 2, icon: FROST_ICON, desc: "Charges in 2 attacks. A light hit that freezes the monster, knocking its special attack back two turns.", research: { lv: 6, gold: 600, hours: 3 } },
+  ward: { name: "Arcane Ward", charge: 3, icon: WARD_ICON, desc: "Charges in 3 attacks. A barrier that completely absorbs the next hit, even a special.", research: { lv: 8, gold: 900, hours: 4 } },
+  lightning: { name: "Chain Lightning", charge: 4, icon: BOLT_ICON, desc: "Charges in 4 attacks. A huge strike that can't be dodged, ignores armour and can crit.", research: { lv: 10, gold: 1200, hours: 6 } },
+  drain: { name: "Life Drain", charge: 3, icon: DRAIN_ICON, desc: "Charges in 3 attacks. Hurts the monster and heals you for the same amount.", research: { lv: 13, gold: 2000, hours: 8 } },
 };
 // Levels make you stronger: every level adds HP, attack and spell power. sp = level - 1.
 const fireDmg = (sp) => 12 + 2 * sp;
@@ -75,6 +85,16 @@ function fightStats(r, sp) {
   };
 }
 const poisonStacks = (sp) => 5 + sp;
+// what each spell does, scaled by spell power (sp = level - 1) and, for healing, your max HP
+const healAmt = (sp, maxHp) => Math.round(maxHp * 0.25 + 2 * sp);
+const frostDmg = (sp) => 6 + sp;
+const boltDmg = (sp) => 22 + 3 * sp;
+const drainDmg = (sp) => 9 + Math.round(1.5 * sp);
+// for the stats panel: [number, what it is]
+export function spellPower(k, sp, maxHp) {
+  return k === "poison" ? [poisonStacks(sp), "poison"] : k === "heal" ? [healAmt(sp, maxHp), "healing"] : k === "frost" ? [frostDmg(sp), "damage + freeze"]
+    : k === "ward" ? ["1", "hit absorbed"] : k === "lightning" ? [boltDmg(sp), "damage"] : k === "drain" ? [drainDmg(sp), "damage + heal"] : [fireDmg(sp), "damage"];
+}
 
 /* ---------------- monsters ---------------- */
 // charge: turns of building before the special fires. mult: special damage as a multiple of a normal hit.
@@ -344,6 +364,31 @@ export function setupDungeon(ctx) {
         await play("poison");
         if (E.twist === "nopoison") { pop("enemy", "Immune", "block"); msg = "Poison does nothing to the " + name + "."; }
         else { const n = Math.round(poisonStacks(r.sp) * fightStats(r).spellMul); en.poison += n; pop("enemy", "+" + n + " poison", "poison"); msg = "Poison Cloud! The " + name + " has " + en.poison + " poison."; }
+      } else if (r.spell === "heal") {
+        await play("heal");
+        const before = r.hp; r.hp = Math.min(r.maxHp, r.hp + Math.round(healAmt(r.sp, r.maxHp) * fightStats(r).spellMul));
+        pop("you", "+" + (r.hp - before), "heal"); msg = "Healing Light restores " + (r.hp - before) + " HP.";
+      } else if (r.spell === "frost") {
+        await play("frost");
+        const dmg = Math.round(frostDmg(r.sp) * fightStats(r).spellMul);
+        en.hp = Math.max(0, en.hp - dmg); en.charge = Math.max(0, en.charge - 2);
+        pop("enemy", "-" + dmg, "frost"); msg = "Frost Bolt hits for " + dmg + " and freezes the " + name + ".";
+      } else if (r.spell === "ward") {
+        await play("ward");
+        r.ward = 1; msg = "An arcane ward surrounds you. It will absorb the next hit.";
+      } else if (r.spell === "lightning") {
+        const crit = Math.random() * 100 < fightStats(r).crit;
+        await play("lightning");
+        const dmg = Math.round(boltDmg(r.sp) * fightStats(r).spellMul) * (crit ? 2 : 1);
+        en.hp = Math.max(0, en.hp - dmg);
+        pop("enemy", (crit ? "CRIT -" : "-") + dmg, crit ? "crit" : "hit"); msg = (crit ? "Critical Chain Lightning for " : "Chain Lightning strikes for ") + dmg + "!";
+      } else if (r.spell === "drain") {
+        await play("drain");
+        const dmg = Math.min(en.hp, Math.round(drainDmg(r.sp) * fightStats(r).spellMul));
+        en.hp = Math.max(0, en.hp - dmg);
+        const before = r.hp; r.hp = Math.min(r.maxHp, r.hp + dmg);
+        pop("enemy", "-" + dmg, "hit"); pop("you", "+" + (r.hp - before), "heal");
+        msg = "Life Drain takes " + dmg + " and heals you for " + (r.hp - before) + ".";
       } else {
         const crit = Math.random() * 100 < fightStats(r).crit;
         await play("fireball");
@@ -374,7 +419,9 @@ export function setupDungeon(ctx) {
     const fs = fightStats(r), evade = fs.dodge > 0 && Math.random() * 100 < fs.dodge;
     await play(special ? (en.key === "dragon" ? "breath" : "special") : "enemy", shielding && !evade);
     let line;
-    if (evade) {
+    const warded = !evade && r.ward > 0;
+    if (warded) { r.ward = 0; dmg = 0; line = "Your arcane ward absorbs the whole hit!"; overlay(document.getElementById("dHero"), "ward-pop", 600); }
+    else if (evade) {
       dmg = 0; line = "You vanish in a flash of light and dodge it!";
       const h = document.getElementById("dHero"); if (h && !reduce()) restart(h, "blink");
     } else if (shielding) {
@@ -385,7 +432,7 @@ export function setupDungeon(ctx) {
       line = "You take " + dmg + ".";
     }
     r.hp = Math.max(0, r.hp - dmg); shieldUp = false;
-    pop("you", evade ? "Dodged!" : dmg ? "-" + dmg : "Blocked!", evade ? "evade" : dmg ? (special && !shielding ? "crit" : "bad") : "block");
+    pop("you", warded ? "Absorbed!" : evade ? "Dodged!" : dmg ? "-" + dmg : "Blocked!", warded ? "ward" : evade ? "evade" : dmg ? (special && !shielding ? "crit" : "bad") : "block");
     en.charge = special ? 0 : en.charge + 1;
     r.msg = (special ? "The " + name + " unleashes " + E.special + "! " : "The " + name + " attacks. ") + line;
     if (r.hp <= 0) { r.state = "lost"; busy = false; save(); paint(); return; }
@@ -437,6 +484,9 @@ export function setupDungeon(ctx) {
     });
   }
   const FIRE_SVG = '<svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="13" fill="#ff7a2b" stroke="#1c1430" stroke-width="2.4"/><circle cx="20" cy="20" r="7" fill="#ffe14a"/></svg>';
+  const FROST_SVG = '<svg viewBox="0 0 40 40"><path d="M20 4 L24 16 L36 20 L24 24 L20 36 L16 24 L4 20 L16 16 Z" fill="#c3e9ff" stroke="#1c1430" stroke-width="2.4" stroke-linejoin="round"/><circle cx="20" cy="20" r="4" fill="#fff"/></svg>';
+  const DRAIN_SVG = '<svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="11" fill="#e8335a" stroke="#1c1430" stroke-width="2.4"/><circle cx="16" cy="16" r="3" fill="#ffb0c0"/></svg>';
+  const BOLT_SVG = '<svg viewBox="0 0 60 120" preserveAspectRatio="none"><path d="M34 0 L16 52 L30 52 L18 120 L46 40 L32 40 Z" fill="#fff6a8" stroke="#ffe14a" stroke-width="4" stroke-linejoin="round"/></svg>';
   const POISON_SVG = '<svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="12" fill="#7cf05a" stroke="#1c1430" stroke-width="2.4"/><circle cx="16" cy="17" r="3" fill="#d6ffc4"/><circle cx="24" cy="24" r="2.4" fill="#2a6b2a"/></svg>';
   async function play(kind, flag) { try { await playFx(kind, flag); } catch (e) { console.warn(e); } }
   async function playFx(kind, flag) {
@@ -461,6 +511,20 @@ export function setupDungeon(ctx) {
         overlay(arena, "proj fire green", 500, POISON_SVG); await wait(410);
         overlay(enemy, "poison-cloud", 900); await wait(200); break;
       case "tick": overlay(enemy, "bubbles", 700, "<i></i><i></i><i></i>"); await wait(300); break;
+      case "heal": restart(hero, "cast green"); overlay(hero, "heal-glow", 900); overlay(hero, "sparkle", 900, "<i>+</i><i>+</i><i>+</i>"); await wait(500); break;
+      case "frost":
+        restart(hero, "cast"); await wait(160);
+        overlay(arena, "proj fire frost", 500, FROST_SVG); await wait(410);
+        overlay(enemy, "frost-burst", 700); await wait(200); break;
+      case "ward": restart(hero, "cast"); overlay(hero, "ward-ring", 900); await wait(450); break;
+      case "lightning":
+        restart(hero, "cast"); await wait(160);
+        overlay(arena, "bolt-flash", 450); overlay(enemy, "bolt", 500, BOLT_SVG); restart(arena, "quake"); await wait(380); break;
+      case "drain":
+        restart(hero, "cast"); await wait(140);
+        overlay(enemy, "drain-burst", 500); await wait(220);
+        overlay(arena, "proj fire drain back", 900, DRAIN_SVG); await wait(560);
+        overlay(hero, "heal-glow", 700); await wait(150); break;
       case "shield": ctx.drawHero(hero.querySelector(".dhero"), { back: true, guard: true }); restart(hero, "brace"); await wait(300); break;
       case "enemy":
         restart(enemy, "lunge-l"); await wait(230);
@@ -505,7 +569,7 @@ export function setupDungeon(ctx) {
         <div class="dpad you"></div>
         <div class="dunit you" id="dHero">${r.dodge ? '<div class="holo l"></div><div class="holo r"></div>' : ""}<div class="dhero"></div></div>
         <div class="dinfo you">
-          <div class="dinfo-name"><b>You</b><small class="num">Lv ${ctx.level()}</small>${fightStats(r).on || fightStats(r).relic ? `<span class="dcharm" title="Bonus active">✦ ${fightStats(r).on ? "Charm" : ""}${fightStats(r).on && fightStats(r).relic ? " + " : ""}${fightStats(r).relic ? "Relic" : ""}</span>` : ""}</div>
+          <div class="dinfo-name"><b>You</b>${r.ward ? '<span class="dward" title="Arcane Ward">◈ Ward</span>' : ""}<small class="num">Lv ${ctx.level()}</small>${fightStats(r).on || fightStats(r).relic ? `<span class="dcharm" title="Bonus active">✦ ${fightStats(r).on ? "Charm" : ""}${fightStats(r).on && fightStats(r).relic ? " + " : ""}${fightStats(r).relic ? "Relic" : ""}</span>` : ""}</div>
           ${bar(r.hp, r.maxHp, "hp")}
         </div>
       </div>
@@ -559,7 +623,7 @@ export function setupDungeon(ctx) {
       <div><b class="num">${h.def}</b><span>Defence</span><small>Armour</small></div>
       <div><b class="num">+${h.block}</b><span>Shield block</span><small>Shield</small></div>
       ${h.charm ? `<div><b class="num">✦</b><span>${CHARMS[h.charm].name}</span><small>${CHARMS[h.charm].desc}</small></div>` : ""}
-      <div><b class="num">${h.spell === "poison" ? poisonStacks(h.sp) : fireDmg(h.sp)}</b><span>${sp.name}</span><small>Level · ${h.spell === "poison" ? "poison" : "damage"}</small></div>`;
+      <div><b class="num">${spellPower(h.spell, h.sp, h.maxHp)[0]}</b><span>${sp.name}</span><small>Level · ${spellPower(h.spell, h.sp, h.maxHp)[1]}</small></div>`;
     if (ctx.wearsRelic()) $("#dStats").insertAdjacentHTML("beforeend", '<div class="dnote"><small>These numbers are for normal monsters. Your relics are much stronger against their own kind.</small></div>');
     $("#dRecord").textContent = "Runs " + d.runs + " · Clears " + d.clears + " · Best floor " + d.best + " / " + FLOORS;
     const cont = $("#dContinue");

@@ -580,6 +580,25 @@ input::placeholder{color:#7f8ccc}
 .res-bar{position:relative;margin-top:6px;height:16px;border-radius:8px;background:var(--deep);border:2px solid var(--deep);overflow:hidden}
 .res-bar i{display:block;height:100%;background:linear-gradient(#c58bff,#8a3fd6);transition:width .5s}
 .res-bar span{position:absolute;inset:0;display:grid;place-items:center;font-size:11px;font-weight:800;text-shadow:var(--stroke)}
+
+/* more spells */
+.proj.frost{filter:drop-shadow(0 0 10px #9fdcff)}
+.proj.drain{filter:drop-shadow(0 0 10px #ff4a7a)}
+.dfield .proj.back{animation:flyBackD .9s ease-in-out forwards}
+@keyframes flyBackD{0%{left:72%;top:30%;transform:scale(.8)}100%{left:30%;top:62%;transform:scale(1.4)}}
+.frost-burst{position:absolute;inset:-6%;border-radius:50%;pointer-events:none;z-index:4;background:radial-gradient(circle,#ffffffcc 0,#9fdcff99 35%,transparent 65%);animation:burstA .7s ease-out forwards}
+.drain-burst{position:absolute;left:50%;top:45%;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;pointer-events:none;z-index:4;background:radial-gradient(circle,#ff9ab0,#c8264a 50%,transparent 70%);animation:burstA .5s ease-out forwards}
+.heal-glow{position:absolute;inset:0;pointer-events:none;z-index:4;background:radial-gradient(ellipse at 50% 55%,#a8ffc888 0,transparent 60%);animation:healA .9s ease-out forwards}
+@keyframes healA{0%{opacity:0}30%{opacity:1}100%{opacity:0}}
+.ward-ring{position:absolute;left:4%;top:6%;width:92%;height:70%;border-radius:50%;border:5px solid #c58bff;box-shadow:0 0 22px #b46cff,inset 0 0 18px #c58bff88;pointer-events:none;z-index:4;animation:bubbleA .9s ease-out forwards}
+.ward-pop{position:absolute;left:4%;top:6%;width:92%;height:70%;border-radius:50%;background:radial-gradient(circle,#f3e2ffaa,transparent 65%);pointer-events:none;z-index:5;animation:burstA .6s ease-out forwards}
+.bolt{position:absolute;left:30%;top:-60%;width:40%;height:140%;pointer-events:none;z-index:5;filter:drop-shadow(0 0 12px #ffe14a);animation:boltA .5s ease-out forwards}
+.bolt svg{width:100%;height:100%}
+@keyframes boltA{0%{opacity:0}10%{opacity:1}60%{opacity:1}100%{opacity:0}}
+.bolt-flash{position:absolute;inset:0;background:#fff8c8;pointer-events:none;z-index:6;animation:flashA .45s ease-out forwards}
+@keyframes flashA{0%{opacity:0}15%{opacity:.7}100%{opacity:0}}
+.dpop.frost{color:#9fdcff}.dpop.ward{color:#e2c8ff;text-shadow:0 0 8px #b46cff,var(--stroke)}
+.dward{flex:none;font-size:11px;font-weight:800;color:#fff;background:#8a3fd6;border:2px solid #3a1f5e;border-radius:999px;padding:0 7px}
 </style>
 </head>
 <body>

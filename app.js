@@ -473,7 +473,7 @@ function levelUp(L) {
     w.innerHTML = '<div class="title-tag">LEVEL UP</div><h1></h1><div class="sprite"></div><p class="muted" style="margin:0"></p><button class="btn gold">Onward</button>';
     w.querySelector("h1").textContent = "Level " + L;
     drawSprite(w.querySelector(".sprite"), null, heroLook());
-    w.querySelector("p").textContent = "+" + LEVEL_GAIN.hp + " HP, +" + LEVEL_GAIN.atk + " attack and +" + LEVEL_GAIN.spell + " spell power." + (newTitle.length ? " New title: " + newTitle.join(", ") : "");
+    w.querySelector("p").textContent = "+" + LEVEL_GAIN.hp + " HP, +" + LEVEL_GAIN.atk + " attack and stronger spells." + (newTitle.length ? " New title: " + newTitle.join(", ") : "");
     w.querySelector("button").onclick = done;
   });
 }
@@ -1066,9 +1066,9 @@ function render() {
   $("#heroDot").hidden = true;
   $("#lvlStatsLv").textContent = "LV " + L.level;
   $("#lvlStats").innerHTML = "";
-  [["Max HP", LS.hp, LEVEL_GAIN.hp], ["Attack", LS.atk, LEVEL_GAIN.atk], ["Fireball", LS.fire, LEVEL_GAIN.spell]].forEach(([n, v, g]) => {
+  [["Max HP", LS.hp, LEVEL_GAIN.hp], ["Attack", LS.atk, LEVEL_GAIN.atk], ["Spell power", L.level - 1, 1]].forEach(([n, v, g]) => {
     const el = document.createElement("div"); el.innerHTML = '<b class="num"></b><span></span><small class="num"></small>';
-    el.children[0].textContent = v; el.children[1].textContent = n; el.children[2].textContent = "+" + g + " next level";
+    el.children[0].textContent = n === "Spell power" ? "+" + v : v; el.children[1].textContent = n; el.children[2].textContent = "+" + g + " next level";
     $("#lvlStats").appendChild(el);
   });
 
