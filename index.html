@@ -573,6 +573,13 @@ input::placeholder{color:#7f8ccc}
 .prest-list b{color:var(--gold)}
 .dnote{grid-column:1/-1;background:none!important;border:0!important;box-shadow:none!important;padding:2px 4px!important}
 .dnote small{font-size:12px;color:var(--muted)}
+
+/* research */
+.res-req{margin-top:4px;font-size:12px;font-weight:800;color:var(--gold)}
+.ch.locked .res-req{color:var(--muted)}
+.res-bar{position:relative;margin-top:6px;height:16px;border-radius:8px;background:var(--deep);border:2px solid var(--deep);overflow:hidden}
+.res-bar i{display:block;height:100%;background:linear-gradient(#c58bff,#8a3fd6);transition:width .5s}
+.res-bar span{position:absolute;inset:0;display:grid;place-items:center;font-size:11px;font-weight:800;text-shadow:var(--stroke)}
 </style>
 </head>
 <body>
@@ -662,8 +669,13 @@ input::placeholder{color:#7f8ccc}
     </div>
     <div class="win">
       <h2>Spells</h2>
-      <p class="note" style="margin-top:10px">Your equipped spell charges up as you attack in the dungeon. Find new spells in chests.</p>
+      <p class="note" style="margin-top:10px">Your equipped spell charges up as you attack in the dungeon. Learn new spells in Research.</p>
       <ul class="clist" id="spellList"></ul>
+    </div>
+    <div class="win">
+      <h2>Research</h2>
+      <p class="note" id="researchNote" style="margin-top:10px"></p>
+      <ul class="clist" id="researchList"></ul>
     </div>
     <div class="win">
       <h2>Titles</h2>

@@ -22,7 +22,8 @@ const FIRE_ICON = `<svg viewBox="0 0 40 40"><path d="M22 4 C26 12 34 14 34 24 A1
 const POISON_ICON = `<svg viewBox="0 0 40 40"><path d="M15 5 L25 5 L25 12 Q34 16 34 26 Q34 36 20 36 Q6 36 6 26 Q6 16 15 12 Z" ${st("#5fd36a", 2.2)}/><rect x="14" y="3" width="12" height="5" rx="2" ${st("#3a6b3a", 2)}/><circle cx="16" cy="24" r="3" fill="#2a6b2a"/><circle cx="24" cy="28" r="2.4" fill="#2a6b2a"/><circle cx="22" cy="20" r="1.8" fill="#b8ff9a"/></svg>`;
 export const SPELLS = {
   fireball: { name: "Fireball", charge: 3, icon: FIRE_ICON, desc: "Charges in 3 attacks. A blast of fire that ignores armour and can crit." },
-  poison: { name: "Poison Cloud", charge: 2, icon: POISON_ICON, desc: "Charges in 2 attacks. Poisons the monster, hurting it every turn." },
+  // research: what it takes to learn the spell in the Hero tab's Research section
+  poison: { name: "Poison Cloud", charge: 2, icon: POISON_ICON, desc: "Charges in 2 attacks. Poisons the monster, hurting it every turn.", research: { lv: 3, gold: 300, hours: 2 } },
 };
 // Levels make you stronger: every level adds HP, attack and spell power. sp = level - 1.
 const fireDmg = (sp) => 12 + 2 * sp;

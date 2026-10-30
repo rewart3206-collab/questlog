@@ -490,23 +490,81 @@ function rollRarity() {
 }
 function openChest(bought) {
   if (!bought) { if (S.chests < 1) return; S.chests--; }
-  // 1 in 8 chests holds a spell you don't have yet, while there are any left to find
-  const missing = Object.keys(SPELLS).filter((k) => !S.spells.includes(k));
-  if (missing.length && Math.random() < 0.125) {
-    const k = missing[Math.floor(Math.random() * missing.length)];
-    S.spells.push(k); logEvent("Opened a chest: learned " + SPELLS[k].name);
-    save(); render(); revealSpell(k); return;
-  }
   const item = { u: uid(), slot: SLOTS[Math.floor(Math.random() * SLOTS.length)], r: rollRarity() };
   S.inv.push(item); markSeen(item);
   logEvent("Opened a chest: " + RARITIES[item.r].name + " " + itemName(item));
   save(); render();
   revealItem("CHEST OPENED", item, true);
 }
-function revealSpell(k) {
+// Research: learn new spells with gold and time. One at a time; it keeps going while the app is closed.
+// S.research = { key, ends, started } while a spell is being researched.
+const fmtLeft = (ms) => { const m = Math.max(1, Math.ceil(ms / 60000)), h = Math.floor(m / 60); return h ? h + "h " + (m % 60) + "m" : m + "m"; };
+function startResearch(k) {
+  const sp = SPELLS[k], R = sp && sp.research; if (!R || S.spells.includes(k) || S.research) return;
+  if (levelInfo(S.xp).level < R.lv) { toast("Reach level " + R.lv + " to research " + sp.name); return; }
+  if (!GOLD_UNLIMITED) {
+    if ((S.gold || 0) < R.gold) { toast("You need " + (R.gold - (S.gold || 0)) + " more gold"); return; }
+    S.gold -= R.gold;
+  }
+  S.research = { key: k, started: Date.now(), ends: Date.now() + R.hours * 3600000 };
+  logEvent("Started researching " + sp.name + (GOLD_UNLIMITED ? "" : " (-" + R.gold + " gold)"));
+  save(); render();
+}
+function cancelResearch() {
+  const r = S.research; if (!r) return;
+  const R = SPELLS[r.key].research;
+  if (!GOLD_UNLIMITED) S.gold = (S.gold || 0) + R.gold;
+  S.research = null; logEvent("Cancelled researching " + SPELLS[r.key].name + " (gold refunded)");
+  save(); render();
+}
+function checkResearch() {
+  const r = S && S.research;
+  if (!r || Date.now() < r.ends) return;
+  S.research = null;
+  if (SPELLS[r.key] && !S.spells.includes(r.key)) { S.spells.push(r.key); logEvent("Research complete: learned " + SPELLS[r.key].name); }
+  save(); revealSpell(r.key, "RESEARCH COMPLETE");
+}
+function renderResearch() {
+  const box = $("#researchList"); if (!box) return; box.innerHTML = "";
+  const L = levelInfo(S.xp).level, cur = S.research;
+  const todo = Object.entries(SPELLS).filter(([k, sp]) => sp.research && !S.spells.includes(k));
+  todo.forEach(([k, sp]) => {
+    const R = sp.research, active = cur && cur.key === k;
+    const li = document.createElement("li"); li.className = "ch research" + (active ? " equipped" : L < R.lv ? " locked" : " done");
+    const ic = document.createElement("div"); ic.className = "gear-icon"; ic.innerHTML = sp.icon; li.appendChild(ic);
+    const mid = document.createElement("div"); mid.style.minWidth = "0";
+    const nm = document.createElement("div"); nm.className = "ch-name"; nm.textContent = sp.name;
+    const sub = document.createElement("div"); sub.className = "ch-goal"; sub.textContent = sp.desc;
+    const req = document.createElement("div"); req.className = "res-req num";
+    req.textContent = "Level " + R.lv + " · " + (GOLD_UNLIMITED ? "free for now" : R.gold + " gold") + " · " + R.hours + (R.hours === 1 ? " hour" : " hours");
+    mid.append(nm, sub, req);
+    if (active) {
+      const total = cur.ends - cur.started, done = Math.min(1, (Date.now() - cur.started) / total);
+      const bar = document.createElement("div"); bar.className = "res-bar"; bar.innerHTML = "<i></i><span class=\"num\"></span>";
+      bar.firstChild.style.width = Math.round(done * 100) + "%"; bar.lastChild.textContent = fmtLeft(cur.ends - Date.now()) + " left";
+      mid.appendChild(bar);
+    }
+    let b;
+    if (active) { b = document.createElement("button"); b.className = "btn ghost"; b.textContent = "Cancel"; b.onclick = cancelResearch; }
+    else {
+      b = document.createElement("button"); b.className = "btn" + (L >= R.lv && !cur ? " gold" : " ghost");
+      b.textContent = L < R.lv ? "Lv " + R.lv : cur ? "Busy" : "Research";
+      b.disabled = L < R.lv || !!cur;
+      b.setAttribute("aria-label", "Research " + sp.name);
+      b.onclick = () => startResearch(k);
+    }
+    li.append(mid, b); box.appendChild(li);
+  });
+  const more = document.createElement("li"); more.className = "ch locked";
+  more.innerHTML = '<div class="gear-icon"></div><div><div class="ch-name">More spells</div><div class="ch-goal">New spells will appear here to research.</div></div><span></span>';
+  box.appendChild(more);
+  $("#researchNote").textContent = cur ? "Researching " + SPELLS[cur.key].name + ". It carries on while the app is closed." : todo.length ? "Pick a spell to research. One at a time; it carries on while the app is closed." : "You've learned every spell so far.";
+}
+function revealSpell(k, tag) {
   const sp = SPELLS[k];
   queueModal((w, done) => {
-    w.innerHTML = '<div class="title-tag">NEW SPELL</div><div class="chest-reveal"><div class="chest-burst" style="background:radial-gradient(circle,#b46cffaa 0,transparent 65%)"></div><div class="gear-icon unlock-icon"></div></div><h1></h1><p class="muted" style="margin:0"></p><div class="actions" style="justify-content:center"><button class="btn gold">Equip</button><button class="btn ghost">Keep</button></div>';
+    w.innerHTML = '<div class="title-tag"></div><div class="chest-reveal"><div class="chest-burst" style="background:radial-gradient(circle,#b46cffaa 0,transparent 65%)"></div><div class="gear-icon unlock-icon"></div></div><h1></h1><p class="muted" style="margin:0"></p><div class="actions" style="justify-content:center"><button class="btn gold">Equip</button><button class="btn ghost">Keep</button></div>';
+    w.querySelector(".title-tag").textContent = tag || "NEW SPELL";
     w.querySelector(".gear-icon").innerHTML = sp.icon;
     w.querySelector("h1").textContent = sp.name;
     w.querySelector("p").textContent = sp.desc;
@@ -517,7 +575,7 @@ function revealSpell(k) {
 }
 function renderSpells() {
   const box = $("#spellList"); box.innerHTML = "";
-  Object.entries(SPELLS).forEach(([k, sp]) => {
+  Object.entries(SPELLS).filter(([k]) => S.spells.includes(k)).forEach(([k, sp]) => {
     const own = S.spells.includes(k), eq = S.spell === k;
     const li = document.createElement("li"); li.className = "ch" + (own ? " done" : " locked") + (eq ? " equipped" : "");
     const ic = document.createElement("div"); ic.className = "gear-icon"; ic.innerHTML = sp.icon; li.appendChild(ic);
@@ -1029,7 +1087,9 @@ function render() {
   if (document.activeElement !== $("#nameIn")) $("#nameIn").value = S.name;
   renderAppearance();
   renderGearSlots();
+  checkResearch();
   renderSpells();
+  renderResearch();
   const uname = usernameOf(me);
   $("#acct").textContent = me ? "Signed in as " + (uname || me.email || me.displayName || "Google user") + ". Your progress syncs to every device you sign in on." : "";
   $("#linkForm").hidden = !me || !!uname;
@@ -1201,6 +1261,7 @@ const rollover = () => {
   const n = ticketsLeft();
   if (n !== lastTk) { lastTk = n; save(); }
   $("#tkTop").textContent = TK_UNLIMITED ? "∞" : n; dungeon.renderTab();
+  if (S.research) { checkResearch(); renderResearch(); }
 };
 setInterval(rollover, 60000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) rollover(); });
