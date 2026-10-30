@@ -198,12 +198,29 @@ function capeArt(r) {
   if (r === 1) return part(CAPE_D, c, dark, null) + `<path d="M24 120 L30 132 M40 124 L42 136 M60 124 L58 136 M76 120 L70 132" stroke="${shade(c, -0.35)}" stroke-width="2.4" stroke-linecap="round"/>`;
   if (r === 2) return part(CAPE_D, c, dark, null) + `<path d="M22 128 Q50 136 78 128" fill="none" stroke="${GOLD}" stroke-width="2.4"/>`;
   if (r === 3) return part(CAPE_D, c, dark, null) + `<path d="M21 128 Q50 136 79 128 L80 132 Q50 140 20 132 Z" ${st(GOLD)}/>`;
-  return `<path d="${CAPE_D}" fill="none" stroke="#ffcf4a" stroke-width="7" opacity=".35"/>` +
-    `<defs><linearGradient id="phx" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd34a"/><stop offset="1" stop-color="#e8452a"/></linearGradient></defs>` +
-    `<path d="${CAPE_D}" fill="url(#phx)"/><path d="${dark}" ${ff("#c8501a", 'opacity=".6"')}/>${ol(CAPE_D)}` +
-    `<path d="M22 126 Q28 116 32 128 Q38 112 44 128 Q50 110 56 128 Q62 112 68 128 Q72 116 78 126" fill="none" stroke="#fff1a8" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>`;
+  return wingsArt();
 }
 const CAPE_D = "M33 56 L67 56 L80 132 Q50 140 20 132 Z";
+// Legendary back slot: Celestial Wings, a pair of icy crystal-feathered wings. One wing is drawn and
+// mirrored for the other. Each wing has a soft flap (see .wing in the page CSS).
+function feather(bx, by, tx, ty, w, col) {
+  // a long pointed feather from a base point to a tip, with a light centre line
+  const dx = tx - bx, dy = ty - by, len = Math.hypot(dx, dy), nx = (-dy / len) * w, ny = (dx / len) * w;
+  const mx = bx + dx * 0.55, my = by + dy * 0.55;
+  const d = `M${bx - nx} ${by - ny} Q${mx - nx * 1.3} ${my - ny * 1.3} ${tx} ${ty} Q${mx + nx * 1.3} ${my + ny * 1.3} ${bx + nx} ${by + ny} Z`;
+  return `<path d="${d}" ${st(col, 'stroke-width="2.2"')}/><path d="M${bx} ${by} L${bx + dx * 0.8} ${by + dy * 0.8}" stroke="#ffffff" stroke-width="1.6" opacity=".7" stroke-linecap="round"/>`;
+}
+function wingsArt() {
+  const F = [[63, 72, 69, 108, 4.2, "#5aa8e8"], [70, 65, 81, 104, 4.6, "#7fc4f4"], [77, 58, 89, 97, 4.6, "#5aa8e8"], [83, 51, 94, 86, 4.2, "#7fc4f4"], [88, 44, 96, 70, 3.6, "#9fdcff"]];
+  const band = "M56 64 Q64 42 90 24 Q97 30 93 41 Q83 54 63 76 Z";
+  const one = `<g class="wing">` +
+    `<path d="M60 70 Q80 40 94 30 L98 74 L72 110 Z" fill="${CEL.glow}" opacity=".28"/>` +
+    F.map(([bx, by, tx, ty, w, c]) => feather(bx, by, tx, ty, w, c)).join("") +
+    part(band, "#e6f7ff", "M56 64 Q64 50 74 42 Q70 56 63 76 Z", null) +
+    `<path d="M66 56 Q76 44 88 32" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>` +
+    `<path d="M80 44 L83 39 L86 44 L83 49 Z M71 55 L73.5 51 L76 55 L73.5 59 Z" ${ff(CEL.crystal)}/></g>`;
+  return `<g class="wings">${one}<g transform="matrix(-1 0 0 1 100 0)">${one}</g></g>`;
+}
 
 /* ---------------- body ---------------- */
 // Everyone wears a T-shirt and trousers; armour (from chests) goes over the T-shirt.
@@ -301,7 +318,7 @@ export function heroBackSVG(p0, opts = {}) {
   </svg>`;
 }
 // a single gear icon for menus
-const ICON_BOX = { hand: [42, 40, 64, 64], off: [6, 74, 36, 52], head: [24, -26, 52, 74], back: [14, 52, 72, 92] };
+const ICON_BOX = { hand: [42, 40, 64, 64], off: [6, 74, 36, 52], head: [24, -26, 52, 74], back: [14, 52, 72, 92], wings: [2, 20, 96, 92] };
 export function itemSVG(id) {
   const d = des(id); if (!d) return "";
   const [slot, r] = d;
@@ -314,7 +331,7 @@ export function itemSVG(id) {
       (r >= 3 ? `<ellipse cx="19" cy="38" rx="5.5" ry="4.5" ${st(KNEE[r])}/><ellipse cx="41" cy="38" rx="5.5" ry="4.5" ${st(KNEE[r])}/>` : "") +
       `<rect x="15" y="6" width="30" height="7" rx="1.5" ${st(DLEATHER)}/><rect x="27" y="5" width="6" height="9" rx="1.5" ${st(GOLD)}/>`);
   }
-  const [x, y, w, h] = ICON_BOX[slot];
+  const [x, y, w, h] = ICON_BOX[slot === "back" && r === 4 ? "wings" : slot];
   const inner = slot === "hand" ? `<g transform="rotate(40 74 72)">${swordArt(r)}</g>` : slot === "off" ? shieldArt(r) : slot === "head" ? headArt(r, false) : capeArt(r);
   return wrap(`${x} ${y} ${w} ${h}`, inner);
 }

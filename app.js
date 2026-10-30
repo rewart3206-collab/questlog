@@ -27,7 +27,7 @@ const GEAR_NAMES = {
   head: ["Leather Cap", "Iron Helm", "Knight Helm", "Wizard Hat", "Celestial Helm"],
   shirt: ["Leather Vest", "Chainmail", "Steel Plate", "Shadow Plate", "Celestial Plate"],
   pants: ["Traveller's Trousers", "Ranger Trousers", "Royal Leggings", "Shadow Greaves", "Celestial Greaves"],
-  back: ["Traveller's Cloak", "Ranger Cloak", "Hero's Cape", "Royal Mantle", "Phoenix Cape"],
+  back: ["Traveller's Cloak", "Ranger Cloak", "Hero's Cape", "Royal Mantle", "Celestial Wings"],
   hand: ["Iron Sword", "Steel Sword", "Knight's Blade", "Runeblade", "Golden Blade"],
   off: ["Wooden Shield", "Iron Buckler", "Knight's Shield", "Dragon Shield", "Golden Aegis"],
 };

@@ -548,6 +548,12 @@ input::placeholder{color:#7f8ccc}
 @keyframes blinkA{0%{opacity:1}20%{opacity:.15;transform:translateX(-22px)}55%{opacity:.6;transform:translateX(10px)}100%{opacity:1;transform:none}}
 .dpop.evade{color:#9ff0ff;text-shadow:0 0 8px #7fe4ff,var(--stroke)}
 @media (prefers-reduced-motion:reduce){.holo.l,.holo.r{animation:none}}
+
+/* Celestial Wings: each wing flaps gently from its shoulder root */
+.wing{transform-box:view-box;transform-origin:57px 68px;animation:flapA 2.6s ease-in-out infinite}
+@keyframes flapA{0%,100%{transform:rotate(0)}50%{transform:rotate(-7deg)}}
+.gear-icon .wing,.dcard-art .wing{animation:none}
+@media (prefers-reduced-motion:reduce){.wing{animation:none}}
 </style>
 </head>
 <body>
