@@ -1,5 +1,5 @@
 // Questlog dungeon.
-// Each run costs one ticket and has 5 floors: a random monster on floors 1–4 and a dragon on floor 5.
+// Each run costs one ticket (one refills every 4 hours, up to 6) and has 5 floors: a random monster on floors 1–4 and a dragon on floor 5.
 // There are five dungeons, unlocked by player level; each is tougher and pays more gold.
 // Each turn the hero chooses one action:
 //   Attack – weapon damage, may crit (capes add crit chance). Every attack charges the equipped spell.
@@ -10,6 +10,8 @@
 // Strength adds attack damage, Intelligence adds spell power and Health adds max HP.
 
 import { itemSVG } from "./art.js";
+
+const fmtWait = (ms) => { const m = Math.max(1, Math.ceil(ms / 60000)), h = Math.floor(m / 60); return h ? h + "h " + (m % 60) + "m" : m + "m"; };
 
 const INK = "#1c1430";
 const FLOORS = 5;
@@ -113,7 +115,7 @@ const SHIELD_ICON = itemSVG("shield");
 
 /* ---------------- module ---------------- */
 // ctx: { getS, save, render, toast, logEvent, addXp, addGold, addChest, drawHero(el), dayStreak,
-//        tickets(), ticketsToday(), gearBonus(), level() }
+//        tickets(), spendTicket(), nextTicketIn(), ticketMax, gearBonus(), level() }
 export function setupDungeon(ctx) {
   const $ = (s) => document.querySelector(s);
   const D = () => {
@@ -165,9 +167,9 @@ export function setupDungeon(ctx) {
     if (S.run) { openBattle(); return; }
     const dg = DUNGEONS[t];
     if (ctx.level() < dg.lv) { ctx.toast(dg.name + " opens at level " + dg.lv); return; }
-    if (ctx.tickets() < 1) { ctx.toast("You need a ticket. Complete a quest to earn one"); return; }
+    if (!ctx.spendTicket()) { ctx.toast("No tickets left. Next one in " + fmtWait(ctx.nextTicketIn())); return; }
     const h = hero(), d = D();
-    d.spent++; d.runs++;
+    d.runs++;
     S.run = { tier: t, floor: 1, hp: h.maxHp, maxHp: h.maxHp, atk: h.atk, sp: h.sp, crit: h.crit, def: h.def, blockBonus: h.block,
       spell: h.spell, charge: 0, xp: 0, gold: 0 };
     startFloor(S.run);
@@ -417,9 +419,9 @@ export function setupDungeon(ctx) {
   /* -------- dungeon tab -------- */
   function renderTab() {
     const S = ctx.getS(); if (!S) return;
-    const h = hero(), d = D(), t = ctx.tickets(), today = ctx.ticketsToday(), sp = SPELLS[h.spell];
+    const h = hero(), d = D(), t = ctx.tickets(), wait = ctx.nextTicketIn(), sp = SPELLS[h.spell];
     $("#dTickets").textContent = t;
-    $("#dToday").textContent = today + " / 3 earned today";
+    $("#dToday").textContent = t >= ctx.ticketMax ? "Tickets full (" + t + " / " + ctx.ticketMax + ")" : "Next ticket in " + fmtWait(wait) + " · " + t + " / " + ctx.ticketMax;
     $("#dStats").innerHTML = `
       <div><b class="num">${h.maxHp}</b><span>Max HP</span><small>Health, helmet, pants</small></div>
       <div><b class="num">${h.atk}</b><span>Attack</span><small>Strength, sword</small></div>

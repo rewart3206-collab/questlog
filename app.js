@@ -70,6 +70,7 @@ const dkey = (d) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2,
 const today = () => dkey(new Date());
 const uid = () => Math.random().toString(36).slice(2, 9);
 
+const TK_MAX = 6, TK_EVERY = 4 * 60 * 60 * 1000;
 function freshState(name) {
   return {
     v: 1, at: Date.now(), name: name || "Adventurer", xp: 0,
@@ -81,7 +82,7 @@ function freshState(name) {
       { id: uid(), name: "Weekend lie-in", every: 15, base: 0 },
       { id: uid(), name: "Takeaway night", every: 30, base: 0 },
     ],
-    inv: [], gold: 0, chests: 0, spells: ["fireball"], spell: "fireball", equip: {}, title: "Novice", days: {}, clears: {}, clearXp: {}, log: [],
+    tk: { n: TK_MAX, at: Date.now() }, inv: [], gold: 0, chests: 0, spells: ["fireball"], spell: "fireball", equip: {}, title: "Novice", days: {}, clears: {}, clearXp: {}, log: [],
   };
 }
 
@@ -117,6 +118,8 @@ function migrate(st) {
   if (!st.spells) { st.spells = ["fireball"]; st.spell = "fireball"; }
   if (st.run && st.run.dice) { delete st.run; if (st.dungeon && st.dungeon.spent) st.dungeon.spent--; }
   if (st.look) delete st.look.outfit;
+  // Tickets v2: a timer instead of quests. Everyone starts with a full stack.
+  if (!st.tk) st.tk = { n: TK_MAX, at: Date.now() };
   // Core quests always use the standard wording, even if renamed in an earlier version.
   st.quests.filter((q) => q.core).forEach((q, i) => { if (CORE_QUESTS[i]) Object.assign(q, CORE_QUESTS[i]); });
   const total = Object.values(st.days || {}).reduce((n, d) => n + Object.keys(d).length, 0);
@@ -445,10 +448,22 @@ function floatText(ev, txt) {
   document.body.appendChild(f); setTimeout(() => f.remove(), 1000);
 }
 /* ================= dungeon ================= */
-// One ticket per completed quest, up to 3 a day. Tickets bank up; each dungeon run spends one.
-const ticketsOn = (k) => Math.min(3, Object.keys(S.days[k] || {}).length);
-const ticketsEarned = () => Object.keys(S.days).reduce((n, k) => n + ticketsOn(k), 0);
-const ticketsLeft = () => Math.max(0, ticketsEarned() - ((S.dungeon && S.dungeon.spent) || 0));
+// Tickets refill on a timer: one every 4 hours, holding up to 6. Each dungeon run spends one.
+// S.tk = { n: tickets held, at: when the current 4-hour countdown started }.
+function refillTickets() {
+  const tk = S.tk || (S.tk = { n: TK_MAX, at: Date.now() }), now = Date.now();
+  if (tk.n >= TK_MAX) { tk.n = TK_MAX; tk.at = now; return tk; }
+  const gained = Math.floor(Math.max(0, now - tk.at) / TK_EVERY);
+  if (gained) { tk.n = Math.min(TK_MAX, tk.n + gained); tk.at = tk.n >= TK_MAX ? now : tk.at + gained * TK_EVERY; }
+  return tk;
+}
+const ticketsLeft = () => refillTickets().n;
+function spendTicket() {
+  const tk = refillTickets(); if (tk.n < 1) return false;
+  if (tk.n >= TK_MAX) tk.at = Date.now(); // the countdown starts once you drop below full
+  tk.n--; return true;
+}
+const nextTicketIn = () => { const tk = refillTickets(); return tk.n >= TK_MAX ? 0 : Math.max(0, tk.at + TK_EVERY - Date.now()); };
 function addXp(n, reason) {
   const before = levelInfo(S.xp).level;
   S.xp += n; logEvent(reason + " (+" + n + " XP)");
@@ -459,7 +474,7 @@ function addXp(n, reason) {
 }
 const dungeon = setupDungeon({
   getS: () => S, save: () => save(), render: () => render(), toast: (m) => toast(m), logEvent: (t) => logEvent(t),
-  addXp, dayStreak: () => dayStreak(), tickets: ticketsLeft, ticketsToday: () => ticketsOn(today()),
+  addXp, dayStreak: () => dayStreak(), tickets: ticketsLeft, spendTicket, nextTicketIn, ticketMax: TK_MAX,
   gearBonus: () => gearBonus(), level: () => levelInfo(S.xp).level,
   addGold: (n) => { S.gold = (S.gold || 0) + n; },
   addChest: () => { S.chests = (S.chests || 0) + 1; },
@@ -874,7 +889,15 @@ $("#invite").onclick = async () => {
 };
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") { $("#sheet").hidden = true; if (!$("#lvlup").hidden) nextModal(); } });
 let lastDay = today();
-const rollover = () => { if (today() !== lastDay) { lastDay = today(); render(); } };
+let lastTk = null;
+const rollover = () => {
+  if (today() !== lastDay) { lastDay = today(); render(); return; }
+  // keep the ticket count and countdown fresh while the app is open
+  if (!S) return;
+  const n = ticketsLeft();
+  if (n !== lastTk) { lastTk = n; save(); }
+  $("#tkTop").textContent = n; dungeon.renderTab();
+};
 setInterval(rollover, 60000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) rollover(); });
 
