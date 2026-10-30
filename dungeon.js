@@ -175,6 +175,7 @@ export function setupDungeon(ctx) {
       crit: 5 + g.crit,
       def: g.def,
       block: g.block,
+      dodge: g.dodge || 0,
       spell,
     };
   };
@@ -208,7 +209,7 @@ export function setupDungeon(ctx) {
     if (!ctx.spendTicket()) { ctx.toast("No tickets left. Next one in " + fmtWait(ctx.nextTicketIn())); return; }
     const h = hero(), d = D();
     d.runs++;
-    S.run = { tier: t, floor: 1, hp: h.maxHp, maxHp: h.maxHp, atk: h.atk, sp: h.sp, crit: h.crit, def: h.def, blockBonus: h.block,
+    S.run = { tier: t, floor: 1, hp: h.maxHp, maxHp: h.maxHp, atk: h.atk, sp: h.sp, crit: h.crit, def: h.def, blockBonus: h.block, dodge: h.dodge,
       spell: h.spell, charge: 0, xp: 0, gold: 0 };
     startFloor(S.run);
     ctx.logEvent("Entered the " + dg.name);
@@ -285,9 +286,14 @@ export function setupDungeon(ctx) {
     // the monster's turn: release the special once it is fully charged, otherwise attack and build up
     const special = en.charge >= E.charge;
     let dmg = special ? specialDmg(r) : rnd(en.atk[0], en.atk[1]);
-    await play(special ? (en.key === "dragon" ? "breath" : "special") : "enemy", shielding);
+    // Celestial set: a chance to slip out of the way of any hit, specials included
+    const evade = (r.dodge || 0) > 0 && Math.random() * 100 < r.dodge;
+    await play(special ? (en.key === "dragon" ? "breath" : "special") : "enemy", shielding && !evade);
     let line;
-    if (shielding) {
+    if (evade) {
+      dmg = 0; line = "You vanish in a flash of light and dodge it!";
+      const h = document.getElementById("dHero"); if (h && !reduce()) restart(h, "blink");
+    } else if (shielding) {
       dmg = Math.max(0, Math.round(dmg * 0.25) - (r.blockBonus || 0));
       line = dmg ? "You block most of it and take " + dmg + "." : "Your shield blocks it all!";
     } else {
@@ -295,7 +301,7 @@ export function setupDungeon(ctx) {
       line = "You take " + dmg + ".";
     }
     r.hp = Math.max(0, r.hp - dmg); shieldUp = false;
-    pop("you", dmg ? "-" + dmg : "Blocked!", dmg ? (special && !shielding ? "crit" : "bad") : "block");
+    pop("you", evade ? "Dodged!" : dmg ? "-" + dmg : "Blocked!", evade ? "evade" : dmg ? (special && !shielding ? "crit" : "bad") : "block");
     en.charge = special ? 0 : en.charge + 1;
     r.msg = (special ? "The " + name + " unleashes " + E.special + "! " : "The " + name + " attacks. ") + line;
     if (r.hp <= 0) { r.state = "lost"; busy = false; save(); paint(); return; }
@@ -413,7 +419,7 @@ export function setupDungeon(ctx) {
         <div class="dpad foe"></div>
         <div class="dunit foe charge-${lvl}${en.boss ? " boss" : ""}" id="dEnemy"><div class="aura"></div><div class="denemy">${artFor(en.key, en.fx)}</div>${lvl === 3 ? '<div class="sparks"><i></i><i></i><i></i><i></i></div>' : ""}</div>
         <div class="dpad you"></div>
-        <div class="dunit you" id="dHero"><div class="dhero"></div></div>
+        <div class="dunit you" id="dHero">${r.dodge ? '<div class="holo l"></div><div class="holo r"></div>' : ""}<div class="dhero"></div></div>
         <div class="dinfo you">
           <div class="dinfo-name"><b>You</b><small class="num">Lv ${ctx.level()}</small></div>
           ${bar(r.hp, r.maxHp, "hp")}
@@ -432,6 +438,7 @@ export function setupDungeon(ctx) {
     box.querySelector("#dSpell b").textContent = sp.name;
     box.querySelector("#dSpell").setAttribute("aria-label", sp.name + (ready ? ", ready" : ", charging " + r.charge + " of " + sp.charge));
     ctx.drawHero(box.querySelector(".dhero"), { back: true, guard: shieldUp && busy });
+    box.querySelectorAll("#dHero .holo").forEach((el) => ctx.drawHero(el, { back: true }));
     box.querySelector("#dAttack").onclick = () => act("attack");
     box.querySelector("#dSpell").onclick = () => act("spell");
     box.querySelector("#dShield").onclick = () => act("shield");
@@ -464,6 +471,7 @@ export function setupDungeon(ctx) {
       <div><b class="num">${h.maxHp}</b><span>Max HP</span><small>Helmet, pants</small></div>
       <div><b class="num">${h.atk}</b><span>Attack</span><small>Sword</small></div>
       <div><b class="num">${h.crit}%</b><span>Crit chance</span><small>Cape</small></div>
+      ${h.dodge ? `<div><b class="num">${h.dodge}%</b><span>Dodge</span><small>Celestial set</small></div>` : ""}
       <div><b class="num">${h.def}</b><span>Defence</span><small>Armour</small></div>
       <div><b class="num">+${h.block}</b><span>Shield block</span><small>Shield</small></div>
       <div><b class="num">${h.spell === "poison" ? poisonStacks(h.sp) : fireDmg(h.sp)}</b><span>${sp.name}</span><small>Intelligence · ${h.spell === "poison" ? "poison" : "damage"}</small></div>`;

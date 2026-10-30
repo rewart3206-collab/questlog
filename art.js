@@ -142,13 +142,20 @@ function headArt(r, back) {
   if (r === 3) return `<ellipse cx="50" cy="12" rx="30" ry="6.5" ${st("#3f3596")}/>` +
     part("M34 10 Q42 -10 58 -24 Q53 -12 57 -2 Q62 5 66 10 Z", "#4a3fb0", "M34 10 Q42 -10 58 -24 Q47 -8 42 10 Z", null) +
     `<path d="M35 7 Q50 12 65 7" fill="none" stroke="${GOLD}" stroke-width="3" stroke-linecap="round"/><path d="M52 -6 l1.5 3 3 .5 -2.2 2 .6 3 -2.9 -1.5 -2.9 1.5 .6 -3 -2.2 -2 3 -.5 z" ${ff("#ffe27a")}/>`;
-  return `<path d="M32 12 L30 -8 L41 1 L50 -12 L59 1 L70 -8 L68 12 Z" fill="none" stroke="#ffcf4a" stroke-width="7" opacity=".35" stroke-linejoin="round"/>` +
-    part("M32 12 L30 -8 L41 1 L50 -12 L59 1 L70 -8 L68 12 Z", "#f2bf2e", "M32 12 L30 -8 L36 -3 L37 12 Z", null) +
-    `<rect x="31" y="7" width="38" height="6" rx="2" ${st("#e0a520")}/><circle cx="40" cy="10" r="1.8" ${ff("#4fa8ff")}/><circle cx="60" cy="10" r="1.8" ${ff("#5fd36a")}/>` +
-    `<rect x="47.5" y="-1" width="5" height="5" transform="rotate(45 50 1.5)" ${st("#d8233f")}/>`;
+  // legendary: Celestial Helm, pearl white with a glowing crystal crest
+  const crest = `<path d="M50 -20 L57 -6 L50 4 L43 -6 Z" fill="none" stroke="${CEL.glow}" stroke-width="6" opacity=".45" stroke-linejoin="round"/>` +
+    `<path d="M50 -20 L57 -6 L50 4 L43 -6 Z" ${st(CEL.crystal)}/><path d="M50 -16 L53.5 -6 L50 -6 Z" ${ff("#fff", 'opacity=".85"')}/>`;
+  if (back) return part("M28 36 Q28 2 50 2 Q72 2 72 36 L72 46 Q50 54 28 46 Z", CEL.pearl, "M28 36 Q28 8 40 4 Q34 22 36 50 Q31 49 28 46 Z", null) +
+    `<path d="M50 4 L50 48" stroke="${CEL.trim}" stroke-width="3"/><path d="M30 34 Q50 42 70 34" fill="none" stroke="${CEL.trim}" stroke-width="2.6"/>` + crest;
+  return part("M28 34 Q28 2 50 2 Q72 2 72 34 L72 46 L63 46 L63 25 L37 25 L37 46 L28 46 Z", CEL.pearl,
+      "M28 34 Q28 8 40 4 Q34 16 37 25 L37 46 L28 46 Z", "M54 5 Q66 8 68 20 L62 20 Q60 11 54 8 Z") +
+    `<path d="M28 25 L72 25" stroke="${CEL.trim}" stroke-width="3.4"/><path d="M37 25 L63 25" stroke="${CEL.glow}" stroke-width="1.6"/>` +
+    `<path d="M50 9 l2 4 4.4.6 -3.2 3 .8 4.4 -4 -2.1 -4 2.1 .8 -4.4 -3.2 -3 4.4 -.6 z" ${st(CEL.crystal, 'stroke-width="1.4"')}/>` + crest;
 }
 // armour pieces, drawn over the T-shirt
-const PLATES = [null, null, { col: STEEL, trim: GOLD, gem: GOLD }, { col: "#5c5884", trim: "#c58bff", gem: "#b46cff" }, { col: "#f2c94a", trim: "#fff6c8", gem: "#e8233f" }];
+// legendary Celestial set colours
+const CEL = { pearl: "#eef2fa", trim: "#5aa8e8", crystal: "#9ff0ff", glow: "#7fe4ff" };
+const PLATES = [null, null, { col: STEEL, trim: GOLD, gem: GOLD }, { col: "#5c5884", trim: "#c58bff", gem: "#b46cff" }, { col: CEL.pearl, trim: CEL.trim, gem: CEL.crystal }];
 function armourArt(r, back) {
   if (r === 0) {
     const torso = back
@@ -170,16 +177,19 @@ function armourArt(r, back) {
       `<path d="M50 56 L50 88" stroke="${dk}" stroke-width="2.4"/><path d="M35 86 Q50 90 65 86" fill="none" stroke="${p.trim}" stroke-width="2.4"/>`
     : part("M34 58 Q50 51 66 58 L65 84 Q50 92 35 84 Z", p.col, "M34 58 Q38 56 42 55 Q39 70 41 89 Q37 87 35 84 Z", "M56 57 Q62 58 64 61 L63 72 Q60 66 56 62 Z") +
       `<path d="M35 84 Q50 92 65 84" fill="none" stroke="${p.trim}" stroke-width="2.4"/><path d="M50 62 L54 68 L50 76 L46 68 Z" ${st(p.gem)}/>`;
-  const glow = r === 4 ? `<path d="M34 58 Q50 51 66 58 L65 86 Q50 92 35 86 Z" fill="none" stroke="#ffcf4a" stroke-width="6" opacity=".35"/>` : "";
+  const glow = r === 4 ? `<path d="M34 58 Q50 51 66 58 L65 86 Q50 92 35 86 Z" fill="none" stroke="${CEL.glow}" stroke-width="6" opacity=".4"/>` : "";
+  // the Celestial plate has a glowing crystal core instead of a small gem
+  const core = r === 4 && !back ? `<path d="M50 60 L56 69 L50 80 L44 69 Z" fill="none" stroke="${CEL.glow}" stroke-width="5" opacity=".5"/><path d="M50 60 L56 69 L50 80 L44 69 Z" ${st(CEL.crystal)}/><path d="M50 63 L53 69 L50 69 Z" ${ff("#fff", 'opacity=".9"')}/>` : "";
   const arms = part("M22 58 Q30 48 41 55 L39 66 Q30 63 23 67 Z", p.col, "M22 58 Q25 54 29 52 L30 64 Q26 65 23 67 Z", null) +
     part("M78 58 Q70 48 59 55 L61 66 Q70 63 77 67 Z", p.col, null, "M70 52 Q75 54 77 57 L73 58 Q71 55 68 54 Z") +
     `<path d="M24 64 Q30 61 38 63 M76 64 Q70 61 62 63" fill="none" stroke="${p.trim}" stroke-width="2" stroke-linecap="round"/>` +
     `<rect x="22" y="82" width="10" height="13" rx="3" transform="rotate(-6 27 88)" ${st(p.col)}/><rect x="68" y="82" width="10" height="13" rx="3" transform="rotate(6 73 88)" ${st(p.col)}/>`;
-  return { torso: glow + torso, arms };
+  return { torso: glow + torso + core, arms };
 }
 // trousers: a colour per rarity; rare and up get a trim stripe, epic and up knee guards
-const PANTS_COL = ["#7a6448", "#2f6b3c", "#2f4fb0", "#4a2a7a", "#c8962a"];
-const PANTS_TRIM = [null, null, GOLD, "#c58bff", "#fff1a8"];
+const PANTS_COL = ["#7a6448", "#2f6b3c", "#2f4fb0", "#4a2a7a", CEL.pearl];
+const PANTS_TRIM = [null, null, GOLD, "#c58bff", CEL.trim];
+const KNEE = [null, null, null, "#7a74a8", CEL.crystal];
 // capes
 const CAPES = ["#7a5a3a", "#2f6b3c", "#c8362f", "#6a34b0", "#ff8a2a"];
 function capeArt(r) {
@@ -201,7 +211,7 @@ function legsArt(p, back) {
   const pr = p.pants != null ? p.pants : -1, pc = pr >= 0 ? PANTS_COL[pr] : PANTS, trim = pr >= 0 ? PANTS_TRIM[pr] : null;
   let s = limb("M44 94 L42 128", pc, 12) + limb("M56 94 L58 128", pc, 12);
   if (trim) s += `<path d="M38.5 100 L37 126 M61.5 100 L63 126" stroke="${trim}" stroke-width="2" stroke-linecap="round"/>`;
-  if (pr >= 3) s += `<ellipse cx="42.6" cy="113" rx="6.4" ry="5" ${st(pr === 4 ? "#f2c94a" : "#7a74a8")}/><ellipse cx="57.4" cy="113" rx="6.4" ry="5" ${st(pr === 4 ? "#f2c94a" : "#7a74a8")}/>`;
+  if (pr >= 3) s += `<ellipse cx="42.6" cy="113" rx="6.4" ry="5" ${st(KNEE[pr])}/><ellipse cx="57.4" cy="113" rx="6.4" ry="5" ${st(KNEE[pr])}/>`;
   if (!back) s += `<path d="M38 120 Q42 124 47 120 M53 120 Q58 124 62 120" fill="none" stroke="${shade(pc, -0.35)}" stroke-width="2" stroke-linecap="round"/>`;
   s += back
     ? part("M33 126 L48 126 L48 146 L32 146 Q30 140 33 137 Z", SHOE, "M33 140 L48 140 L48 146 L32 146 Z", null) + part("M52 126 L67 126 L67 137 Q70 140 68 146 L52 146 Z", SHOE, "M52 140 L67 140 L68 146 L52 146 Z", null)
@@ -241,7 +251,7 @@ export function heroSVG(p0, opts = {}) {
     ${sleeveL()}${limb("M30 72 L27 96", s, 9)}${handAt(27, 99, s)}
     ${sleeveR()}${limb("M70 72 L73 96", s, 9)}
     ${arm ? arm.arms : ""}${p.off != null && !opts.head ? shieldArt(p.off) : ""}
-    ${head(p)}${p.head === 1 || p.head === 2 ? "" : hairFront(p.hair, p.hairColor)}${p.head != null ? headArt(p.head, false) : ""}
+    ${head(p)}${p.head === 1 || p.head === 2 || p.head === 4 ? "" : hairFront(p.hair, p.hairColor)}${p.head != null ? headArt(p.head, false) : ""}
     ${p.hand != null && !opts.head ? swordArt(p.hand) : ""}${handAt(73, 99, s)}
   </svg>`;
 }
@@ -278,7 +288,7 @@ export function heroBackSVG(p0, opts = {}) {
   const sword = p.hand != null ? `<g transform="translate(-8 -8) rotate(28 74 100)">${swordArt(p.hand)}</g>` : "";
   const headBack = `<path d="M44 48 L56 48 L57 58 L43 58 Z" ${st(sd)}/>` +
     `<ellipse cx="32.5" cy="34" rx="3.6" ry="5.2" ${st(s)}/><ellipse cx="67.5" cy="34" rx="3.6" ry="5.2" ${st(s)}/>` + part(HEAD_D, s, "M33 27 Q33 12 42 10 Q37 22 38 36 Q39 46 45 52 Q36 48 33 35 Z", null);
-  const helm = p.head === 1 || p.head === 2;
+  const helm = p.head === 1 || p.head === 2 || p.head === 4;
   return `<svg viewBox="4 -26 92 178" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
     <ellipse cx="50" cy="147" rx="30" ry="4.5" fill="#000" opacity=".3"/>
     ${shield}${sword}
@@ -301,7 +311,7 @@ export function itemSVG(id) {
     const c = PANTS_COL[r], t = PANTS_TRIM[r];
     return wrap("0 0 60 60", `<path d="M16 8 L44 8 L48 54 L34 54 L30 26 L26 54 L12 54 Z" ${st(c)}/><path d="M16 8 L22 8 L19 54 L12 54 Z" ${ff(shade(c, -0.3))}/>` +
       (t ? `<path d="M15 14 L13 52 M45 14 L47 52" stroke="${t}" stroke-width="2.4"/>` : "") +
-      (r >= 3 ? `<ellipse cx="19" cy="38" rx="5.5" ry="4.5" ${st(r === 4 ? "#f2c94a" : "#7a74a8")}/><ellipse cx="41" cy="38" rx="5.5" ry="4.5" ${st(r === 4 ? "#f2c94a" : "#7a74a8")}/>` : "") +
+      (r >= 3 ? `<ellipse cx="19" cy="38" rx="5.5" ry="4.5" ${st(KNEE[r])}/><ellipse cx="41" cy="38" rx="5.5" ry="4.5" ${st(KNEE[r])}/>` : "") +
       `<rect x="15" y="6" width="30" height="7" rx="1.5" ${st(DLEATHER)}/><rect x="27" y="5" width="6" height="9" rx="1.5" ${st(GOLD)}/>`);
   }
   const [x, y, w, h] = ICON_BOX[slot];

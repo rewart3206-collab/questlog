@@ -24,9 +24,9 @@ const STREAK_TITLES = [{ d: 7, t: "Week Warden" }, { d: 30, t: "Moon Marathoner"
 // Gear by slot. Armour is drawn over the T-shirt; pants recolour the trousers.
 // Every slot has one design per rarity: all commons look alike, all uncommons look alike, and so on.
 const GEAR_NAMES = {
-  head: ["Leather Cap", "Iron Helm", "Knight Helm", "Wizard Hat", "Golden Crown"],
-  shirt: ["Leather Vest", "Chainmail", "Steel Plate", "Shadow Plate", "Golden Plate"],
-  pants: ["Traveller's Trousers", "Ranger Trousers", "Royal Leggings", "Shadow Greaves", "Golden Greaves"],
+  head: ["Leather Cap", "Iron Helm", "Knight Helm", "Wizard Hat", "Celestial Helm"],
+  shirt: ["Leather Vest", "Chainmail", "Steel Plate", "Shadow Plate", "Celestial Plate"],
+  pants: ["Traveller's Trousers", "Ranger Trousers", "Royal Leggings", "Shadow Greaves", "Celestial Greaves"],
   back: ["Traveller's Cloak", "Ranger Cloak", "Hero's Cape", "Royal Mantle", "Phoenix Cape"],
   hand: ["Iron Sword", "Steel Sword", "Knight's Blade", "Runeblade", "Golden Blade"],
   off: ["Wooden Shield", "Iron Buckler", "Knight's Shield", "Dragon Shield", "Golden Aegis"],
@@ -201,10 +201,20 @@ function lookIds() {
   });
   return out;
 }
+// Celestial set bonus: wear the legendary helmet, armour and pants, all at +1 or higher, for a chance
+// to dodge any monster hit. Returns the lowest + level of the three (0 = no bonus).
+const SET_SLOTS = ["head", "shirt", "pants"];
+function celestialLevel() {
+  const its = SET_SLOTS.map((s) => invItem(S.equip[s]));
+  if (its.some((it) => !it || it.r !== LEG || !(it.p >= 1))) return 0;
+  return Math.min(...its.map((it) => it.p));
+}
+const dodgeFor = (lvl) => (lvl ? Math.min(35, 10 + 5 * lvl) : 0);
 // combined dungeon bonuses from everything worn (vanity never changes stats)
 function gearBonus() {
   const b = { dmg: 0, block: 0, hp: 0, def: 0, crit: 0 };
   SLOTS.forEach((slot) => { const it = invItem(S.equip[slot]); if (it) b[SLOT_STATS[slot].key] += statVal(slot, it.r, it.p); });
+  b.dodge = dodgeFor(celestialLevel());
   return b;
 }
 // every design you've ever owned can be used as a vanity look
@@ -559,7 +569,8 @@ function openGearMenu(slot) {
   openSheet((w, close) => {
     sheetHead(w, info.name, close);
     const note = document.createElement("p"); note.className = "note";
-    note.textContent = info.name + " gear adds " + st.label + " in the dungeon. Sell what you don't need for gold. Three legendaries make a Legendary +1.";
+    note.textContent = info.name + " gear adds " + st.label + " in the dungeon. Sell what you don't need for gold. Three legendaries make a Legendary +1." +
+      (SET_SLOTS.includes(slot) ? " Celestial set: wear the Celestial Helm, Plate and Greaves, all at +1 or higher, for a chance to dodge any hit (more at higher + levels)." : "");
     w.appendChild(note);
     const list = document.createElement("ul"); list.className = "clist gear-menu";
     const mine = S.inv.filter((x) => x.slot === slot).sort((a, b) => b.r - a.r || (b.p || 0) - (a.p || 0));
@@ -751,6 +762,10 @@ function render() {
   dungeon.renderTab();
   dungeon.resume();
   drawSprite($("#sprite"), null, heroLook());
+  if (celestialLevel()) ["l", "r"].forEach((side) => {
+    const h = document.createElement("div"); h.className = "holo " + side; h.innerHTML = heroSVG(heroParts(heroLook()), {});
+    $("#sprite").prepend(h);
+  });
 
   // quests
   $("#today").textContent = new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "short" });
