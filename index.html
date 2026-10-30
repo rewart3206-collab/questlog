@@ -631,6 +631,9 @@ body{padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))}
 .ch.frag-row .ch-name{color:#fff}
 .btn.spellchest{background:linear-gradient(#d39bff,#8a3fd6);border-color:#3a1f5e;color:#fff;text-shadow:0 2px 0 #3a1f5e,2px 0 0 #3a1f5e,-2px 0 0 #3a1f5e,0 -2px 0 #3a1f5e}
 .fight-note{margin:10px 0 0;padding:8px 10px;border-radius:10px;background:#ff9a5a22;border:2px solid #ff9a5a;color:#fff;font-weight:700}
+.xp-test{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px;padding:8px;border-radius:12px;border:2px dashed var(--muted)}
+.xp-test span{font-size:12px;font-weight:800;color:var(--muted);margin-right:auto}
+.xp-test .btn{padding:6px 10px 2px;font-size:14px}
 </style>
 </head>
 <body>
@@ -707,6 +710,7 @@ body{padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))}
     <div class="win">
       <div class="spread"><h2>Level</h2><span class="sp num" id="lvlStatsLv">LV 1</span></div>
       <div class="dstats" id="lvlStats"></div>
+      <div class="xp-test" id="xpTest" hidden><span>Testing</span><button class="btn ghost" type="button" data-xp="100">+100 XP</button><button class="btn ghost" type="button" data-xp="0" data-lv="1">+1 level</button><button class="btn ghost" type="button" data-xp="0" data-lv="5">+5 levels</button></div>
       <p class="note" style="margin-top:10px">Every level makes your hero stronger in the dungeon. Earn XP by completing your daily quests, with a bonus for clearing them all. Gear alone won't get you through the harder dungeons.</p>
     </div>
     <div class="win">

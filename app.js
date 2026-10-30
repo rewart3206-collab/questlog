@@ -93,6 +93,8 @@ const GOLD_UNLIMITED = true;
 // These test items are never saved into the inventory, so setting this to false removes them cleanly
 // (anything equipped from them simply comes off).
 const GEAR_TEST = true;
+// While testing: +XP buttons in the Hero screen's Level panel. Set to false to hide them.
+const XP_TEST = true;
 function freshState(name) {
   return {
     v: 1, at: Date.now(), name: name || "Adventurer", xp: 0,
@@ -1064,6 +1066,7 @@ function render() {
   const FL = fightLevel(), LS = levelStats(FL);
   $("#heroDot").hidden = true;
   $("#lvlStatsLv").textContent = "LV " + L.level;
+  $("#xpTest").hidden = !XP_TEST;
   $("#lvlStats").innerHTML = "";
   [["Max HP", LS.hp, LEVEL_GAIN.hp], ["Attack", LS.atk, LEVEL_GAIN.atk], ["Spell power", FL - 1, 1]].forEach(([n, v, g]) => {
     const el = document.createElement("div"); el.innerHTML = '<b class="num"></b><span></span><small class="num"></small>';
@@ -1246,6 +1249,14 @@ $("#buyChest").onclick = () => buyChest();
 $("#prestigeBtn").onclick = () => openPrestige();
 $("#openChest").onclick = () => openChest(false);
 $("#openSpellChest").onclick = () => openSpellChest();
+// testing: give XP or whole levels
+function testXp(levels, flat) {
+  if (!XP_TEST) return;
+  let add = flat || 0, xp = S.xp;
+  for (let i = 0; i < (levels || 0); i++) { const L = levelInfo(xp); add += L.need - L.into; xp += L.need - L.into; }
+  addXp(add, "Testing"); save();
+}
+document.querySelectorAll("#xpTest [data-xp]").forEach((b) => (b.onclick = () => testXp(+b.dataset.lv || 0, +b.dataset.xp || 0)));
 $("#nameIn").addEventListener("input", (e) => { S.name = e.target.value.trim() || "Adventurer"; $("#hname").textContent = S.name; save(); });
 let resetArmed = false;
 $("#resetBtn").onclick = () => {
