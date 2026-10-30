@@ -48,27 +48,22 @@ const GEAR_SLOTS = [
   { slot: "head", name: "Helmet" }, { slot: "shirt", name: "Shirt" }, { slot: "pants", name: "Pants" },
   { slot: "back", name: "Cape" }, { slot: "hand", name: "Sword" }, { slot: "off", name: "Shield" },
 ];
-// Each challenge unlocks one piece of gear. prog(c) returns [progress, target] from the player's counts.
-const CHALLENGES = [
-  { id: "first", name: "First Steps", goal: "Complete your first quest", gear: "sword", prog: (c) => [c.total, 1] },
-  { id: "sweep", name: "Clean Sweep", goal: "Complete every quest in a single day", gear: "shield", prog: (c) => [c.clears, 1] },
-  { id: "streak3", name: "Momentum", goal: "Reach a 3-day streak", gear: "cape", prog: (c) => [c.best, 3] },
-  { id: "trained", name: "Trained", goal: "Spend 3 skill points", gear: "shield_steel", prog: (c) => [c.spent, 3] },
-  { id: "q10", name: "Getting Started", goal: "Complete 10 quests", gear: "pants_shadow", prog: (c) => [c.total, 10] },
-  { id: "clear3", name: "Hat Trick", goal: "Get 3 full clears", gear: "shirt_forest", prog: (c) => [c.clears, 3] },
-  { id: "q50", name: "Seasoned", goal: "Complete 50 quests", gear: "cape_forest", prog: (c) => [c.total, 50] },
-  { id: "q25", name: "Quest Hunter", goal: "Complete 25 quests", gear: "dye_shadow", prog: (c) => [c.total, 25] },
-  { id: "lv5", name: "Rising Star", goal: "Reach level 5", gear: "pants_royal", prog: (c) => [c.level, 5] },
-  { id: "streak7", name: "Week Warden", goal: "Reach a 7-day streak", gear: "pants_ember", prog: (c) => [c.best, 7] },
-  { id: "clear7", name: "Perfect Week", goal: "Get 7 full clears", gear: "shield_royal", prog: (c) => [c.clears, 7] },
-  { id: "str5", name: "Iron Will", goal: "Reach Strength level 5", gear: "helm", prog: (c) => [c.STR, 5] },
-  { id: "int5", name: "Bookworm", goal: "Reach Intelligence level 5", gear: "hat", prog: (c) => [c.INT, 5] },
-  { id: "hlt5", name: "Glowing", goal: "Reach Health level 5", gear: "dye_gold", prog: (c) => [c.HLT, 5] },
-  { id: "clear10", name: "Unstoppable", goal: "Get 10 full clears", gear: "staff", prog: (c) => [c.clears, 10] },
-  { id: "streak14", name: "Fortnight Hero", goal: "Reach a 14-day streak", gear: "goldcape", prog: (c) => [c.best, 14] },
-  { id: "lv10", name: "Ruler of Routine", goal: "Reach level 10", gear: "crown", prog: (c) => [c.level, 10] },
-  { id: "q100", name: "Centurion", goal: "Complete 100 quests", gear: "sword_gold", prog: (c) => [c.total, 100] },
+// Gear comes from chests as common items. Merging 3 items of the same slot and rarity turns the one
+// you choose into the next rarity. Each slot powers one part of dungeon combat.
+const RARITIES = [
+  { name: "Common", colour: "#b9c0cf" }, { name: "Uncommon", colour: "#5fd36a" }, { name: "Rare", colour: "#4fa8ff" },
+  { name: "Epic", colour: "#b46cff" }, { name: "Legendary", colour: "#ffb020" },
 ];
+const SLOT_STATS = {
+  hand: { key: "dmg", label: "Sword and Twin Strike damage", vals: [1, 2, 3, 5, 7] },
+  off: { key: "block", label: "Shield block", vals: [1, 2, 3, 4, 6] },
+  head: { key: "hp", label: "Max HP", vals: [3, 6, 9, 13, 18] },
+  shirt: { key: "hp", label: "Max HP", vals: [3, 6, 9, 13, 18] },
+  pants: { key: "heal", label: "Potion healing", vals: [1, 2, 4, 6, 8] },
+  back: { key: "fire", label: "Fireball damage", vals: [2, 4, 6, 9, 12] },
+};
+const CHEST_PRICE = 100;
+const statText = (slot, r) => "+" + SLOT_STATS[slot].vals[r] + " " + SLOT_STATS[slot].label;
 const SLOTS = ["head", "shirt", "pants", "back", "hand", "off"];
 
 const dkey = (d) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
@@ -86,7 +81,7 @@ function freshState(name) {
       { id: uid(), name: "Weekend lie-in", every: 15, base: 0 },
       { id: uid(), name: "Takeaway night", every: 30, base: 0 },
     ],
-    unlocked: [], equip: {}, title: "Novice", days: {}, clears: {}, clearXp: {}, log: [],
+    inv: [], gold: 0, chests: 0, equip: {}, title: "Novice", days: {}, clears: {}, clearXp: {}, log: [],
   };
 }
 
@@ -98,8 +93,6 @@ function migrate(st) {
   const sx = st.statXp || {};
   if (!("HLT" in sx)) st.statXp = { STR: sx.STR || 0, INT: sx.INT || 0, HLT: (sx.VIT || 0) + (sx.SPI || 0) };
   delete st.cls;
-  // Gold economy replaced by challenges: keep anything already bought, convert gold-priced rewards to quest counts.
-  if (!st.unlocked) st.unlocked = (st.owned || []).slice();
   if (!st.clearXp) st.clearXp = {};
   st.look = normLook(st.look);
   if (st.equip && st.equip.dye) { st.equip.shirt = st.equip.dye; delete st.equip.dye; }
@@ -108,6 +101,16 @@ function migrate(st) {
     st.quests = defaultQuests();
     st.attr = { STR: 1, INT: 1, HLT: 1 };
     st.qv = 2;
+  }
+  // Gear v2: gear lives in an inventory with rarities. Anything already unlocked becomes a common copy
+  // (worn items stay worn), and gear bought with gold in the first version too.
+  if (!st.inv) {
+    const ids = [...new Set([...(st.unlocked || []), ...(st.owned || [])])].filter((id) => GEAR.some((g) => g.id === id));
+    st.inv = ids.map((id) => ({ u: uid(), id, r: 0 }));
+    const eq = {};
+    Object.entries(st.equip || {}).forEach(([slot, id]) => { const it = st.inv.find((x) => x.id === id); if (it) eq[slot] = it.u; });
+    st.equip = eq; st.gold = st.gold || 0; st.chests = st.chests || 0;
+    delete st.unlocked; delete st.owned;
   }
   // Core quests always use the standard wording, even if renamed in an earlier version.
   st.quests.filter((q) => q.core).forEach((q, i) => { if (CORE_QUESTS[i]) Object.assign(q, CORE_QUESTS[i]); });
@@ -156,12 +159,26 @@ function heroParts(equip) {
   };
 }
 function drawSprite(el, cls, equip, opts) { el.innerHTML = heroSVG(heroParts(equip), opts || {}); }
-function gearIcon(g) {
+function gearIcon(g, r) {
   const d = document.createElement("div"); d.className = "gear-icon";
+  if (r != null) { d.style.borderColor = RARITIES[r].colour; d.style.boxShadow = "0 0 0 2px " + RARITIES[r].colour + "55, inset 0 0 14px " + RARITIES[r].colour + "66"; }
   d.innerHTML = itemSVG(g.id, g.color);
   return d;
 }
-const heroLook = () => ({ ...S.equip, ...normLook(S.look) });
+const invItem = (u) => S.inv.find((x) => x.u === u);
+// slot -> gear template id of what's worn (what the art and the guild need)
+function equipIds() {
+  const out = {};
+  SLOTS.forEach((slot) => { const it = invItem(S.equip[slot]); out[slot] = it ? it.id : null; });
+  return out;
+}
+// combined dungeon bonuses from everything worn
+function gearBonus() {
+  const b = { dmg: 0, block: 0, hp: 0, heal: 0, fire: 0 };
+  SLOTS.forEach((slot) => { const it = invItem(S.equip[slot]); if (it) b[SLOT_STATS[slot].key] += SLOT_STATS[slot].vals[it.r]; });
+  return b;
+}
+const heroLook = () => ({ ...equipIds(), ...normLook(S.look) });
 let S = null;
 let me = null;          // Firebase user
 let userRef = null, profileRef = null;
@@ -199,9 +216,7 @@ function upgradeAttr(k) {
   if (skillPoints() < 1) { toast("Complete every quest in a day to earn a skill point"); return; }
   S.attr[k]++; (S.attrLog = S.attrLog || []).push(k);
   logEvent(STATS[k].name + " upgraded to level " + S.attr[k]);
-  const fresh = checkUnlocks();
   save(); render(); toast(STATS[k].name + " is now level " + S.attr[k]);
-  fresh.forEach(showUnlock);
 }
 // If undoing a quest takes away a full clear whose skill point was already spent,
 // take back the most recent upgrade(s) so attributes never exceed the points earned.
@@ -228,28 +243,6 @@ function counts() {
     spent: Object.values(S.attr).reduce((n, l) => n + (l - 1), 0),
   };
 }
-// Unlocks are permanent: once a challenge is met, its gear stays yours even if a quest is later undone.
-// Challenges follow your progress both ways: meeting a goal unlocks its gear, and undoing the
-// quest that met it locks the gear again (and takes it off). Gear bought with gold in older
-// versions stays yours.
-function checkUnlocks() {
-  const c = counts(), fresh = [], lost = [];
-  CHALLENGES.forEach((ch) => {
-    const [have, need] = ch.prog(c);
-    const g = GEAR.find((x) => x.id === ch.gear);
-    if (have >= need && !S.unlocked.includes(ch.gear)) {
-      S.unlocked.push(ch.gear); fresh.push(ch);
-      logEvent("Challenge complete: " + ch.name + ". Unlocked " + g.name);
-    } else if (have < need && S.unlocked.includes(ch.gear) && !(S.owned || []).includes(ch.gear)) {
-      S.unlocked = S.unlocked.filter((id) => id !== ch.gear);
-      if (S.equip[g.slot] === g.id) S.equip[g.slot] = null;
-      lost.push(ch);
-      logEvent("Challenge undone: " + ch.name + ". " + g.name + " locked again");
-    }
-  });
-  if (lost.length) toast(lost.map((ch) => GEAR.find((x) => x.id === ch.gear).name).join(", ") + " locked again");
-  return fresh;
-}
 function unlockedTitles() {
   const L = levelInfo(S.xp).level, bs = bestStreak();
   return TITLES.filter((t) => L >= t.lv).map((t) => t.t).concat(STREAK_TITLES.filter((t) => bs >= t.d).map((t) => t.t));
@@ -268,7 +261,7 @@ function save() {
 async function pushToCloud() {
   if (!userRef || !fb) return;
   const L = levelInfo(S.xp);
-  const equip = {}; SLOTS.forEach((s) => { equip[s] = S.equip[s] || null; }); const lk = normLook(S.look); Object.assign(equip, lk); equip.look = lk.body;
+  const equip = equipIds(); const lk = normLook(S.look); Object.assign(equip, lk); equip.look = lk.body;
   try {
     await Promise.all([
       fb.setDoc(userRef, { save: JSON.stringify(S), at: S.at }),
@@ -310,10 +303,8 @@ function toggleQuest(q, ev) {
   if (after > before) logEvent("Reached level " + after);
   const refunded = refundSkillPoints();
   if (refunded.length) toast("Skill point taken back from " + refunded.map((k) => STATS[k].name).join(", "));
-  const fresh = checkUnlocks();
   save(); render();
   if (after > before) levelUp(after);
-  fresh.forEach(showUnlock);
 }
 // Pop-up cards (level up, challenge complete) queue so several can show one after another.
 const modalQueue = [];
@@ -340,23 +331,66 @@ function levelUp(L) {
     w.querySelector("button").onclick = done;
   });
 }
-function showUnlock(ch) {
-  const g = GEAR.find((x) => x.id === ch.gear);
+// Chests: buy with gold or earn by clearing a dungeon; each gives one random common item.
+function buyChest() {
+  if (S.gold < CHEST_PRICE) { toast("You need " + (CHEST_PRICE - S.gold) + " more gold. Earn gold in the dungeon"); return; }
+  S.gold -= CHEST_PRICE; logEvent("Bought a chest (-" + CHEST_PRICE + " gold)"); openChest(true);
+}
+function openChest(bought) {
+  if (!bought) { if (S.chests < 1) return; S.chests--; }
+  const g = GEAR[Math.floor(Math.random() * GEAR.length)];
+  const item = { u: uid(), id: g.id, r: 0 };
+  S.inv.push(item);
+  logEvent("Opened a chest: " + g.name);
+  save(); render();
+  revealItem("CHEST OPENED", g, item, true);
+}
+function revealItem(tagText, g, item, offerEquip) {
   queueModal((w, done) => {
-    w.innerHTML = '<div class="title-tag">CHALLENGE COMPLETE</div><h1></h1><p class="muted" style="margin:0"></p><div class="unlock-slot"></div><p style="margin:0"></p><div class="actions" style="justify-content:center"><button class="btn gold">Equip now</button><button class="btn ghost">Later</button></div>';
-    w.querySelector("h1").textContent = ch.name;
-    w.querySelectorAll("p")[0].textContent = ch.goal;
-    const icon = gearIcon(g); icon.className = "unlock-icon";
-    w.querySelector(".unlock-slot").replaceWith(icon);
-    w.querySelectorAll("p")[1].textContent = "Unlocked: " + g.name;
-    const [equipBtn, laterBtn] = w.querySelectorAll("button");
-    equipBtn.onclick = () => { S.equip[g.slot] = g.id; save(); render(); done(); };
-    laterBtn.onclick = done;
+    w.innerHTML = '<div class="title-tag"></div><div class="chest-reveal"><div class="chest-burst"></div><div class="reveal-slot"></div></div><h1></h1><span class="rarity-tag"></span><p class="muted" style="margin:0"></p><div class="actions" style="justify-content:center"></div>';
+    w.querySelector(".title-tag").textContent = tagText;
+    const R = RARITIES[item.r];
+    const icon = gearIcon(g, item.r); icon.classList.add("unlock-icon");
+    w.querySelector(".reveal-slot").replaceWith(icon);
+    w.querySelector(".chest-burst").style.background = "radial-gradient(circle," + R.colour + "aa 0,transparent 65%)";
+    w.querySelector("h1").textContent = g.name;
+    const tag = w.querySelector(".rarity-tag"); tag.textContent = R.name; tag.style.background = R.colour;
+    w.querySelector("p").textContent = statText(g.slot, item.r);
+    const a = w.querySelector(".actions");
+    if (offerEquip && S.equip[g.slot] !== item.u) {
+      const eq = document.createElement("button"); eq.className = "btn gold"; eq.textContent = "Equip";
+      eq.onclick = () => { S.equip[g.slot] = item.u; save(); render(); done(); };
+      a.appendChild(eq);
+    }
+    const ok = document.createElement("button"); ok.className = "btn ghost"; ok.textContent = offerEquip ? "Keep" : "Nice";
+    ok.onclick = done; a.appendChild(ok);
   });
 }
-function toggleGear(g) {
-  if (!S.unlocked.includes(g.id)) return;
-  S.equip[g.slot] = S.equip[g.slot] === g.id ? null : g.id; save(); render();
+function toggleGear(it) {
+  const g = GEAR.find((x) => x.id === it.id);
+  S.equip[g.slot] = S.equip[g.slot] === it.u ? null : it.u; save(); render();
+}
+// Merge: the chosen item goes up one rarity by using up two other items of the same slot and rarity.
+// Unworn copies are used, preferring copies of the same item.
+const slotOf = (it) => GEAR.find((y) => y.id === it.id).slot;
+function mergeFodder(it) {
+  const slot = slotOf(it);
+  const pool = S.inv.filter((x) => x.u !== it.u && x.r === it.r && slotOf(x) === slot && S.equip[slot] !== x.u);
+  // use copies of the same item first, then items you have spares of, and unique looks last
+  const copies = (x) => S.inv.filter((y) => y.id === x.id && y.r === x.r).length;
+  const rank = (x) => (x.id === it.id ? 0 : copies(x) > 1 ? 1 : 2);
+  return pool.sort((a, b) => rank(a) - rank(b));
+}
+function mergeItem(it) {
+  const fod = mergeFodder(it);
+  if (it.r >= RARITIES.length - 1 || fod.length < 2) return;
+  const used = fod.slice(0, 2).map((x) => x.u);
+  S.inv = S.inv.filter((x) => !used.includes(x.u));
+  it.r++;
+  const g = GEAR.find((x) => x.id === it.id);
+  logEvent("Merged into " + RARITIES[it.r].name + " " + g.name);
+  save(); render();
+  revealItem("MERGE COMPLETE", g, it, false);
 }
 
 /* ================= UI helpers ================= */
@@ -379,62 +413,86 @@ function addXp(n, reason) {
   S.xp += n; logEvent(reason + " (+" + n + " XP)");
   const after = levelInfo(S.xp).level;
   if (after > before) logEvent("Reached level " + after);
-  const fresh = checkUnlocks();
   render();
   if (after > before) levelUp(after);
-  fresh.forEach(showUnlock);
 }
 const dungeon = setupDungeon({
   getS: () => S, save: () => save(), render: () => render(), toast: (m) => toast(m), logEvent: (t) => logEvent(t),
   addXp, dayStreak: () => dayStreak(), tickets: ticketsLeft, ticketsToday: () => ticketsOn(today()),
+  gearBonus: () => gearBonus(), level: () => levelInfo(S.xp).level,
+  addGold: (n) => { S.gold = (S.gold || 0) + n; },
+  addChest: () => { S.chests = (S.chests || 0) + 1; },
   drawHero: (el) => drawSprite(el, null, heroLook()),
 });
 
 /* ================= gear menus ================= */
-const challengeFor = (g) => CHALLENGES.find((ch) => ch.gear === g.id);
 function renderGearSlots() {
   const box = $("#gearSlots"); box.innerHTML = "";
   GEAR_SLOTS.forEach(({ slot, name }) => {
-    const items = GEAR.filter((g) => g.slot === slot);
-    const have = items.filter((g) => S.unlocked.includes(g.id)).length;
-    const worn = items.find((g) => S.equip[slot] === g.id);
+    const mine = S.inv.filter((x) => slotOf(x) === slot);
+    const worn = invItem(S.equip[slot]);
+    const g = worn && GEAR.find((x) => x.id === worn.id);
     const b = document.createElement("button"); b.type = "button"; b.className = "style-btn slot-btn";
-    b.setAttribute("aria-label", name + ": " + (worn ? worn.name : "nothing equipped") + ", " + have + " of " + items.length + " unlocked");
-    const icon = worn ? gearIcon(worn) : Object.assign(document.createElement("div"), { className: "gear-icon empty" });
+    b.setAttribute("aria-label", name + ": " + (g ? RARITIES[worn.r].name + " " + g.name : "nothing equipped") + ", " + mine.length + " owned");
+    const icon = g ? gearIcon(g, worn.r) : Object.assign(document.createElement("div"), { className: "gear-icon empty" });
     const t = document.createElement("span"); t.className = "slot-name"; t.textContent = name;
-    const c = document.createElement("small"); c.className = "num"; c.textContent = have + " / " + items.length;
+    const c = document.createElement("small"); c.textContent = g ? RARITIES[worn.r].name : mine.length + " owned";
+    if (g) c.style.color = RARITIES[worn.r].colour;
+    const canMerge = mine.some((x) => x.r < RARITIES.length - 1 && mergeFodder(x).length >= 2);
+    if (canMerge) { const dot = document.createElement("span"); dot.className = "merge-dot"; dot.textContent = "Merge"; b.appendChild(dot); }
     b.append(icon, t, c); b.onclick = () => openGearMenu(slot); box.appendChild(b);
   });
 }
 function openGearMenu(slot) {
-  const info = GEAR_SLOTS.find((x) => x.slot === slot);
-  const c = counts();
+  const info = GEAR_SLOTS.find((x) => x.slot === slot), st = SLOT_STATS[slot];
   openSheet((w, close) => {
     const head = document.createElement("div"); head.className = "spread";
     const h = document.createElement("h2"); h.textContent = info.name;
     const x = document.createElement("button"); x.className = "iconbtn"; x.textContent = "Close"; x.onclick = close;
     head.append(h, x); w.appendChild(head);
+    const note = document.createElement("p"); note.className = "note";
+    note.textContent = info.name + " gear adds " + st.label + " in the dungeon. Merge 3 of the same rarity to upgrade one.";
+    w.appendChild(note);
     const list = document.createElement("ul"); list.className = "clist gear-menu";
     GEAR.filter((g) => g.slot === slot).forEach((g) => {
-      const own = S.unlocked.includes(g.id), eq = S.equip[slot] === g.id, ch = challengeFor(g);
-      const li = document.createElement("li"); li.className = "ch" + (own ? " done" : " locked") + (eq ? " equipped" : "");
-      li.appendChild(gearIcon(g));
-      const mid = document.createElement("div"); mid.style.minWidth = "0";
-      const nm = document.createElement("div"); nm.className = "ch-name"; nm.textContent = own ? g.name : "???";
-      const sub = document.createElement("div"); sub.className = "ch-goal";
-      sub.textContent = own ? g.desc : "Unlock: " + (ch ? ch.goal : "a future challenge");
-      mid.append(nm, sub);
-      if (!own && ch) {
-        const [hv, need] = ch.prog(c);
-        const bar = document.createElement("div"); bar.className = "bar"; bar.innerHTML = '<i style="width:' + Math.min(100, (hv / need) * 100) + '%"></i>';
-        const pr = document.createElement("div"); pr.className = "ch-prog num"; pr.textContent = Math.min(hv, need) + " / " + need;
-        mid.append(bar, pr);
+      const copies = S.inv.filter((it) => it.id === g.id).sort((a, b) => b.r - a.r);
+      if (!copies.length) {
+        const li = document.createElement("li"); li.className = "ch locked";
+        li.appendChild(gearIcon(g));
+        const mid = document.createElement("div"); mid.style.minWidth = "0";
+        mid.innerHTML = '<div class="ch-name">???</div><div class="ch-goal">Find it in a chest.</div>';
+        li.append(mid, document.createElement("span")); list.appendChild(li);
+        return;
       }
-      const b = document.createElement("button"); b.className = "btn" + (eq ? " gold" : " ghost");
-      b.textContent = own ? (eq ? "Unequip" : "Equip") : "Locked"; b.disabled = !own;
-      b.setAttribute("aria-label", own ? (eq ? "Unequip " : "Equip ") + g.name : "Locked item");
-      b.onclick = () => { toggleGear(g); openGearMenu(slot); };
-      li.append(mid, b); list.appendChild(li);
+      copies.forEach((it) => {
+        const eq = S.equip[slot] === it.u, R = RARITIES[it.r];
+        const li = document.createElement("li"); li.className = "ch done" + (eq ? " equipped" : "");
+        li.appendChild(gearIcon(g, it.r));
+        const mid = document.createElement("div"); mid.style.minWidth = "0";
+        const nm = document.createElement("div"); nm.className = "ch-name"; nm.textContent = g.name;
+        const rt = document.createElement("span"); rt.className = "rarity-tag small"; rt.textContent = R.name; rt.style.background = R.colour;
+        const sub = document.createElement("div"); sub.className = "ch-goal"; sub.textContent = statText(slot, it.r);
+        mid.append(nm, rt, sub);
+        const btns = document.createElement("div"); btns.className = "gear-btns";
+        const b = document.createElement("button"); b.className = "btn" + (eq ? " gold" : " ghost");
+        b.textContent = eq ? "Unequip" : "Equip"; b.setAttribute("aria-label", (eq ? "Unequip " : "Equip ") + R.name + " " + g.name);
+        b.onclick = () => { toggleGear(it); openGearMenu(slot); };
+        btns.appendChild(b);
+        if (it.r < RARITIES.length - 1) {
+          const have = mergeFodder(it).length;
+          const m = document.createElement("button"); m.className = "btn merge";
+          m.textContent = have >= 2 ? "Merge" : "Merge " + Math.min(have, 2) + "/2";
+          m.disabled = have < 2;
+          m.setAttribute("aria-label", "Merge two other " + R.name + " " + info.name.toLowerCase() + " items into this one");
+          let armed = false;
+          m.onclick = () => {
+            if (!armed) { armed = true; m.textContent = "Sure?"; m.classList.add("danger"); return; }
+            mergeItem(it); openGearMenu(slot);
+          };
+          btns.appendChild(m);
+        }
+        li.append(mid, btns); list.appendChild(li);
+      });
     });
     w.appendChild(list);
   });
@@ -511,12 +569,12 @@ function swatches(container, options, current, onPick, labels) {
 }
 function renderAppearance() {
   const lk = normLook(S.look);
-  drawSprite($("#lookPreview"), null, { ...S.equip, ...lk });
+  drawSprite($("#lookPreview"), null, { ...equipIds(), ...lk });
   segment($("#lookSeg"), { m: { label: "Male" }, f: { label: "Female" } }, lk.body, (k) => setLook({ body: k }));
   const os = $("#outfits"); os.innerHTML = "";
   Object.entries(OUTFITS).forEach(([k, o]) => {
     const b = document.createElement("button"); b.type = "button"; b.className = "style-btn outfit-btn"; b.setAttribute("aria-pressed", String(k === lk.outfit));
-    const c = document.createElement("div"); c.className = "outfit-fig"; drawSprite(c, null, { ...S.equip, ...lk, outfit: k });
+    const c = document.createElement("div"); c.className = "outfit-fig"; drawSprite(c, null, { ...equipIds(), ...lk, outfit: k });
     const t = document.createElement("span"); t.textContent = o.name;
     b.append(c, t); b.onclick = () => setLook({ outfit: k }); os.appendChild(b);
   });
@@ -542,7 +600,23 @@ function render() {
   $("#xpbar i").style.width = (L.into / L.need) * 100 + "%";
   $("#xpbar").setAttribute("aria-valuenow", L.into); $("#xpbar").setAttribute("aria-valuemax", L.need);
   $("#xptext").textContent = L.into + " / " + L.need + " XP to LV " + (L.level + 1);
-  const tq = totalQuests(); $("#qtotal").textContent = tq;
+  $("#goldTop").textContent = S.gold;
+  // shop
+  $("#shopGold").textContent = S.gold;
+  $("#buyChest").classList.toggle("short", S.gold < CHEST_PRICE);
+  $("#chestCount").textContent = S.chests + (S.chests === 1 ? " chest" : " chests");
+  $("#openChest").disabled = S.chests < 1;
+  $("#openChest").textContent = S.chests ? "Open a chest" : "No chests to open";
+  $("#shopDot").hidden = S.chests < 1;
+  const rl = $("#rarityList"); rl.innerHTML = "";
+  RARITIES.forEach((R, i) => {
+    const li = document.createElement("li");
+    li.innerHTML = '<span class="rarity-tag"></span><span></span><span class="muted num"></span>';
+    li.children[0].textContent = R.name; li.children[0].style.background = R.colour;
+    li.children[1].textContent = "Sword +" + SLOT_STATS.hand.vals[i] + " · Helmet +" + SLOT_STATS.head.vals[i] + " HP";
+    li.children[2].textContent = i ? Math.pow(3, i) + " commons" : "from chests";
+    rl.appendChild(li);
+  });
   renderStreak();
   $("#tkTop").textContent = ticketsLeft();
   dungeon.renderTab();
@@ -607,32 +681,6 @@ function render() {
   renderGearSlots();
   $("#acct").textContent = me ? "Signed in as " + (me.email || me.displayName || "Google user") + ". Your progress syncs to every device you sign in on." : "";
 
-  // challenges → gear
-  const c = counts(); const gg = $("#gear"); gg.innerHTML = "";
-  let doneCount = 0;
-  CHALLENGES.forEach((ch) => {
-    const g = GEAR.find((x) => x.id === ch.gear);
-    const [have, need] = ch.prog(c);
-    const own = S.unlocked.includes(g.id), eq = S.equip[g.slot] === g.id;
-    if (own) doneCount++;
-    const li = document.createElement("li"); li.className = "ch" + (own ? " done" : " locked") + (eq ? " equipped" : "");
-    li.appendChild(gearIcon(g));
-    const info = document.createElement("div"); info.style.minWidth = "0";
-    const nm = document.createElement("div"); nm.className = "ch-name"; nm.textContent = g.name;
-    const goal = document.createElement("div"); goal.className = "ch-goal"; goal.textContent = ch.name + ": " + ch.goal;
-    info.append(nm, goal);
-    if (!own) {
-      const bar = document.createElement("div"); bar.className = "bar"; bar.innerHTML = '<i style="width:' + Math.min(100, (have / need) * 100) + '%"></i>';
-      const pr = document.createElement("div"); pr.className = "ch-prog num"; pr.textContent = Math.min(have, need) + " / " + need;
-      info.append(bar, pr);
-    }
-    const b = document.createElement("button"); b.className = "btn" + (eq ? " gold" : " ghost");
-    b.textContent = own ? (eq ? "Unequip" : "Equip") : "Locked"; b.disabled = !own;
-    b.setAttribute("aria-label", (own ? (eq ? "Unequip " : "Equip ") : "Locked: ") + g.name);
-    b.onclick = () => toggleGear(g);
-    li.append(info, b); gg.appendChild(li);
-  });
-  $("#chcount").textContent = doneCount + " / " + CHALLENGES.length + " complete";
 
 
   // log
@@ -760,7 +808,7 @@ $("#chatForm").addEventListener("submit", async (e) => {
 });
 
 /* ================= navigation ================= */
-const TABS = ["quests", "hero", "dungeon", "rewards", "guild", "log"];
+const TABS = ["quests", "hero", "dungeon", "shop", "guild", "log"];
 function showTab(t) {
   document.querySelectorAll(".nav button").forEach((x) => x.setAttribute("aria-current", String(x.dataset.tab === t)));
   TABS.forEach((p) => ($("#p-" + p).hidden = p !== t));
@@ -769,6 +817,8 @@ function showTab(t) {
 }
 document.querySelectorAll(".nav button").forEach((b) => (b.onclick = () => showTab(b.dataset.tab)));
 $("#addq").onclick = () => questForm(null);
+$("#buyChest").onclick = () => buyChest();
+$("#openChest").onclick = () => openChest(false);
 $("#nameIn").addEventListener("input", (e) => { S.name = e.target.value.trim() || "Adventurer"; $("#hname").textContent = S.name; save(); });
 let resetArmed = false;
 $("#resetBtn").onclick = () => {
@@ -905,10 +955,7 @@ async function startFirebase() {
 let entered = false;
 function enterGame() {
   $("#screen-title").hidden = true; $("#screen-game").hidden = false;
-  // Challenges count past progress too, so check for anything already earned.
-  const fresh = checkUnlocks();
   render();
-  if (fresh.length) { save(); fresh.forEach(showUnlock); }
   if (!entered) {
     entered = true;
     const h = location.hash.slice(1); if (TABS.includes(h)) showTab(h);

@@ -1,5 +1,6 @@
 // Questlog dice dungeon.
 // Each run costs one ticket and has 5 floors: a random monster on floors 1–4 and a dragon on floor 5.
+// There are five dungeons, unlocked by player level; each is tougher and pays more gold.
 // Every turn you roll dice and choose which ability each die powers. Abilities have conditions and
 // monsters have twists, so the choice of where each die goes is the game.
 // Attributes power the hero: Strength adds Sword and Twin Strike damage, Intelligence gives rerolls,
@@ -71,6 +72,26 @@ const ENEMY_ART = {
     <path d="M62 38 L62 38.1 M88 38 L88 38.1" stroke="${INK}" stroke-width="3" stroke-linecap="round"/></svg>`,
 };
 
+/* ---------------- dungeons ---------------- */
+// t = tier. Monsters get more HP and hit harder each tier; gold scales with tier.
+export const DUNGEONS = [
+  { id: "cave", name: "Mossy Cave", lv: 1, prefix: "", boss: "Ember Dragon", hue: 0, bg: "#3a2a6b,#5a3f9a" },
+  { id: "crypt", name: "Forgotten Crypt", lv: 5, prefix: "Crypt", boss: "Bone Dragon", hue: 150, bg: "#1f2a4a,#3a4f7a" },
+  { id: "forge", name: "Molten Forge", lv: 10, prefix: "Magma", boss: "Magma Dragon", hue: -25, bg: "#4a1a10,#8a3a1a" },
+  { id: "keep", name: "Frozen Keep", lv: 15, prefix: "Frost", boss: "Frost Dragon", hue: 190, bg: "#1a3a5a,#4a8ab0" },
+  { id: "citadel", name: "Shadow Citadel", lv: 20, prefix: "Shadow", boss: "Shadow Dragon", hue: 250, bg: "#14081f,#3a1a4a" },
+];
+const enemyName = (key, t) => key === "dragon" ? DUNGEONS[t].boss : (DUNGEONS[t].prefix ? DUNGEONS[t].prefix + " " : "") + ENEMIES[key].name;
+const armourOf = (t) => 3 + t;
+const breathOf = (t) => 14 + 5 * t;
+const goldFor = (floor, t) => 10 * floor * (1 + t) + (floor === FLOORS ? 25 * (1 + t) : 0);
+const xpFor = (floor, t) => Math.round(floor * 3 * (1 + 0.5 * t)) + (floor === FLOORS ? 15 : 0);
+function twistText(key, t) {
+  if (key === "golem") return "Armour " + armourOf(t) + ": Sword and Twin Strike deal " + armourOf(t) + " less. Poison and Fireball ignore it.";
+  if (key === "dragon") return "Every third turn it breathes fire for " + breathOf(t) + ". Shield blocks double against fire.";
+  return ENEMIES[key].desc;
+}
+
 /* ---------------- abilities ---------------- */
 const ICONS = {
   sword: itemSVG("sword"),
@@ -82,9 +103,9 @@ const ICONS = {
 };
 const ABILITIES = [
   { id: "sword", name: "Sword", rule: (h) => `Any die. Deal its value${h.str ? " +" + h.str : ""}.` },
-  { id: "shield", name: "Shield", rule: () => "4 or lower. Block that much." },
+  { id: "shield", name: "Shield", rule: (h) => `4 or lower. Block that much${h.block ? " +" + h.block : ""}.` },
   { id: "dagger", name: "Poison Dagger", rule: () => "Any die. +2 poison." },
-  { id: "fireball", name: "Fireball", rule: () => "Exactly 6. Deal 12, ignores armour." },
+  { id: "fireball", name: "Fireball", rule: (h) => `Exactly 6. Deal ${12 + h.fire}, ignores armour.` },
   { id: "twin", name: "Twin Strike", rule: (h) => `Two matching dice. Deal double +${2 + h.str}.` },
   { id: "potion", name: "Potion", rule: (h) => `1 or 2. Heal ${h.heal}.` },
 ];
@@ -110,29 +131,31 @@ export function setupDungeon(ctx) {
     return S.dungeon;
   };
   const hero = () => {
-    const a = ctx.getS().attr;
+    const a = ctx.getS().attr, g = ctx.gearBonus();
     return {
-      str: a.STR - 1,
-      maxHp: 24 + 4 * (a.HLT - 1),
-      heal: 6 + (a.HLT - 1),
+      str: a.STR - 1 + g.dmg,
+      maxHp: 24 + 4 * (a.HLT - 1) + g.hp,
+      heal: 6 + (a.HLT - 1) + g.heal,
+      block: g.block, fire: g.fire,
       rerolls: 1 + Math.floor((a.INT - 1) / 2),
       dice: 3 + (ctx.dayStreak() >= 7 ? 1 : 0),
     };
   };
 
-  function makeEnemy(floor) {
+  function makeEnemy(floor, t) {
     let key = "dragon";
     if (floor < FLOORS) {
       const pool = floor === 1 ? ["slime", "skeleton", "imp"] : ["slime", "skeleton", "imp", "golem"];
       key = pool[rnd(0, pool.length - 1)];
     }
-    const e = ENEMIES[key], scale = 1 + 0.18 * (floor - 1);
-    const bump = key === "dragon" ? 0 : Math.floor((floor - 1) / 2);
-    return { key, hp: Math.round(e.hp * scale), maxHp: Math.round(e.hp * scale), atk: [e.atk[0] + bump, e.atk[1] + bump], poison: 0 };
+    const e = ENEMIES[key], scale = (1 + 0.18 * (floor - 1)) * (1 + 0.85 * t);
+    const bump = (key === "dragon" ? 0 : Math.floor((floor - 1) / 2)) + 2 * t;
+    const hp = Math.round(e.hp * scale);
+    return { key, hp, maxHp: hp, atk: [e.atk[0] + bump, e.atk[1] + bump], poison: 0 };
   }
   function intentFor(run) {
     const en = run.enemy;
-    if (en.key === "dragon" && run.turn % 3 === 0) return { kind: "breath", value: 14 };
+    if (en.key === "dragon" && run.turn % 3 === 0) return { kind: "breath", value: breathOf(run.tier || 0) };
     return { kind: "attack", value: rnd(en.atk[0], en.atk[1]) };
   }
   function newTurn(run) {
@@ -141,31 +164,35 @@ export function setupDungeon(ctx) {
     run.intent = intentFor(run);
   }
   function startFloor(run) {
-    run.enemy = makeEnemy(run.floor);
+    run.enemy = makeEnemy(run.floor, run.tier || 0);
     run.turn = 1; run.rerolls = run.rerollMax; run.state = "fight";
     newTurn(run);
-    run.msg = "Floor " + run.floor + ": a " + ENEMIES[run.enemy.key].name + " appears!";
+    run.msg = "Floor " + run.floor + ": " + (run.floor === FLOORS ? "the " : "a ") + enemyName(run.enemy.key, run.tier || 0) + " appears!";
   }
 
   /* -------- starting and leaving -------- */
-  function enter() {
+  function enter(t) {
     const S = ctx.getS();
     if (S.run) { openBattle(); return; }
+    const dg = DUNGEONS[t];
+    if (ctx.level() < dg.lv) { ctx.toast(dg.name + " opens at level " + dg.lv); return; }
     if (ctx.tickets() < 1) { ctx.toast("You need a ticket. Complete a quest to earn one"); return; }
     const h = hero(), d = D();
     d.spent++; d.runs++;
-    S.run = { floor: 1, hp: h.maxHp, maxHp: h.maxHp, str: h.str, heal: h.heal, rerollMax: h.rerolls, diceCount: h.dice, xp: 0 };
+    S.run = { tier: t, floor: 1, hp: h.maxHp, maxHp: h.maxHp, str: h.str, heal: h.heal, blockBonus: h.block, fire: h.fire, rerollMax: h.rerolls, diceCount: h.dice, xp: 0, gold: 0 };
     startFloor(S.run);
-    ctx.logEvent("Entered the dungeon");
+    ctx.logEvent("Entered the " + dg.name);
     ctx.save(); ctx.render(); openBattle();
   }
   function endRun(outcome) {
     const S = ctx.getS(), run = S.run, d = D();
     if (!run) return;
     const reached = outcome === "clear" ? FLOORS : run.floor - 1;
+    const t = run.tier || 0, name = DUNGEONS[t].name;
     d.best = Math.max(d.best, reached);
-    if (outcome === "clear") d.clears++;
-    ctx.logEvent(outcome === "clear" ? "Cleared the dungeon! (+" + run.xp + " XP)" : outcome === "fled" ? "Fled the dungeon on floor " + run.floor : "Defeated on floor " + run.floor + " (+" + run.xp + " XP)");
+    d.bestBy = d.bestBy || {}; d.bestBy[DUNGEONS[t].id] = Math.max(d.bestBy[DUNGEONS[t].id] || 0, reached);
+    if (outcome === "clear") { d.clears++; d.clearsBy = d.clearsBy || {}; d.clearsBy[DUNGEONS[t].id] = (d.clearsBy[DUNGEONS[t].id] || 0) + 1; }
+    ctx.logEvent(outcome === "clear" ? "Cleared the " + name + "! (+" + run.gold + " gold, +1 chest)" : outcome === "fled" ? "Fled the " + name + " on floor " + run.floor : "Defeated in the " + name + " on floor " + run.floor + " (+" + run.gold + " gold)");
     S.run = null;
     ctx.save(); ctx.render(); closeBattle();
   }
@@ -180,7 +207,7 @@ export function setupDungeon(ctx) {
       return "The Mirror Imp reflects your 6! You take " + amount + ".";
     }
     if (tw === "odd" && physical && die % 2 === 1) return "Odd dice bounce off the Skeleton's bones. No damage.";
-    if (tw === "armour" && physical) amount = Math.max(0, amount - 3);
+    if (tw === "armour" && physical) amount = Math.max(0, amount - armourOf(r.tier || 0));
     en.hp = Math.max(0, en.hp - amount);
     pop("enemy", "-" + amount, "hit");
     return null;
@@ -196,19 +223,19 @@ export function setupDungeon(ctx) {
     switch (abId) {
       case "sword": {
         const dmg = v + r.str;
-        msg = hitEnemy(dmg, "sword", v) || "Sword hits for " + (ENEMIES[r.enemy.key].twist === "armour" ? Math.max(0, dmg - 3) : dmg) + ".";
+        msg = hitEnemy(dmg, "sword", v) || "Sword hits for " + (ENEMIES[r.enemy.key].twist === "armour" ? Math.max(0, dmg - armourOf(r.tier || 0)) : dmg) + ".";
         break;
       }
       case "shield":
         if (v > 4) { ctx.toast("Shield only takes a 4 or lower"); return; }
-        r.block += v; msg = "You raise your shield to block " + v + "."; pop("you", "+" + v + " block", "block");
+        { const b = v + (r.blockBonus || 0); r.block += b; msg = "You raise your shield to block " + b + "."; pop("you", "+" + b + " block", "block"); }
         break;
       case "dagger":
-        r.enemy.poison += 2; msg = "Poison dagger! The " + ENEMIES[r.enemy.key].name + " has " + r.enemy.poison + " poison."; pop("enemy", "+2 poison", "poison");
+        r.enemy.poison += 2; msg = "Poison dagger! The " + enemyName(r.enemy.key, r.tier || 0) + " has " + r.enemy.poison + " poison."; pop("enemy", "+2 poison", "poison");
         break;
       case "fireball":
         if (v !== 6) { ctx.toast("Fireball needs exactly a 6"); return; }
-        msg = hitEnemy(12, "fireball", v) || "Fireball blasts for 12!";
+        { const fb = 12 + (r.fire || 0); msg = hitEnemy(fb, "fireball", v) || "Fireball blasts for " + fb + "!"; }
         break;
       case "potion":
         if (v > 2) { ctx.toast("Potion only takes a 1 or 2"); return; }
@@ -217,7 +244,7 @@ export function setupDungeon(ctx) {
       case "twin":
         if (r.twin == null) { r.twin = i; d.used = true; r.sel = null; r.msg = "Twin Strike is ready. Add a matching " + v + "."; save(); paint(); return; }
         if (r.dice[r.twin].v !== v) { ctx.toast("Twin Strike needs two matching dice"); return; }
-        { const dmg = v * 2 + 2 + r.str; msg = hitEnemy(dmg, "twin", v) || "Twin Strike hits for " + (ENEMIES[r.enemy.key].twist === "armour" ? Math.max(0, dmg - 3) : dmg) + "!"; }
+        { const dmg = v * 2 + 2 + r.str; msg = hitEnemy(dmg, "twin", v) || "Twin Strike hits for " + (ENEMIES[r.enemy.key].twist === "armour" ? Math.max(0, dmg - armourOf(r.tier || 0)) : dmg) + "!"; }
         r.twin = null;
         break;
     }
@@ -249,7 +276,7 @@ export function setupDungeon(ctx) {
   function endTurn() {
     const r = run(); if (!r || r.state !== "fight") return;
     if (r.twin != null) cancelTwin();
-    const en = r.enemy, name = ENEMIES[en.key].name;
+    const en = r.enemy, name = enemyName(en.key, r.tier || 0);
     const lines = [];
     if (en.poison > 0) {
       const p = en.poison; en.hp = Math.max(0, en.hp - p); en.poison--; pop("enemy", "-" + p, "poison");
@@ -261,7 +288,7 @@ export function setupDungeon(ctx) {
     dmg = Math.max(0, dmg - block);
     r.hp = Math.max(0, r.hp - dmg);
     shake("#dHero"); if (dmg) pop("you", "-" + dmg, "bad");
-    lines.push((r.intent.kind === "breath" ? "The dragon breathes fire" : "The " + name + " attacks") + (dmg ? " for " + dmg + "." : ", but you block it all!"));
+    lines.push((r.intent.kind === "breath" ? "The " + name + " breathes fire" : "The " + name + " attacks") + (dmg ? " for " + dmg + "." : ", but you block it all!"));
     r.msg = lines.join(" ");
     if (r.hp <= 0) { r.state = "lost"; save(); paint(); return; }
     r.turn++; newTurn(r);
@@ -275,9 +302,12 @@ export function setupDungeon(ctx) {
   }
   function winFloor() {
     const r = run();
-    const xp = r.floor * 4 + (r.floor === FLOORS ? 20 : 0);
-    r.xp += xp; D().xp += xp; ctx.addXp(xp, "Defeated the " + ENEMIES[r.enemy.key].name + " on floor " + r.floor);
-    r.gain = xp;
+    const t = r.tier || 0, xp = xpFor(r.floor, t), gold = goldFor(r.floor, t);
+    r.xp += xp; r.gold = (r.gold || 0) + gold; D().xp += xp;
+    ctx.addGold(gold);
+    if (r.floor === FLOORS) ctx.addChest();
+    ctx.addXp(xp, "Defeated the " + enemyName(r.enemy.key, t) + " on floor " + r.floor + " (+" + gold + " gold)");
+    r.gain = xp; r.goldGain = gold;
     r.state = r.floor === FLOORS ? "cleared" : "won";
     save(); paint();
   }
@@ -307,16 +337,17 @@ export function setupDungeon(ctx) {
   function paint() {
     const r = run(), box = $("#dungeon");
     if (!r) { closeBattle(); return; }
-    const en = r.enemy, E = ENEMIES[en.key];
-    const h = { str: r.str, heal: r.heal };
+    const en = r.enemy, t = r.tier || 0, dg = DUNGEONS[t];
+    const E = { name: enemyName(en.key, t), desc: twistText(en.key, t) };
+    const h = { str: r.str, heal: r.heal, block: r.blockBonus || 0, fire: r.fire || 0 };
     const intent = r.intent.kind === "breath" ? `<b class="breath">Fire breath ${r.intent.value}</b>` : `<b>Attacks for ${r.intent.value}</b>`;
     box.innerHTML = `
       <div class="dtop">
         <button class="iconbtn" id="dFlee">Flee</button>
-        <div class="dfloor"><span>Floor</span> ${r.floor} / ${FLOORS}</div>
+        <div class="dfloor"><small>${dg.name}</small><span>Floor</span> ${r.floor} / ${FLOORS}</div>
         <div class="drr num">Rerolls ${r.rerolls}</div>
       </div>
-      <div class="darena">
+      <div class="darena" style="background:linear-gradient(${dg.bg.split(",")[0]} 0,${dg.bg.split(",")[1]} 55%,#2f8f45 55%,#1f5a2c)">
         <div class="dside">
           <div class="dunit" id="dHero"><div class="dhero"></div>${r.block ? `<div class="dblock num">${r.intent.kind === "breath" ? r.block * 2 : r.block}</div>` : ""}</div>
           ${bar(r.hp, r.maxHp, "hp")}
@@ -325,7 +356,7 @@ export function setupDungeon(ctx) {
         <div class="dvs">VS</div>
         <div class="dside">
           <div class="dintent">${intent}</div>
-          <div class="dunit" id="dEnemy"><div class="denemy">${ENEMY_ART[en.key]}</div>${en.poison ? `<div class="dpoison num">${en.poison}</div>` : ""}</div>
+          <div class="dunit" id="dEnemy"><div class="denemy" style="filter:hue-rotate(${dg.hue}deg)${t === 4 ? " brightness(.8)" : ""}">${ENEMY_ART[en.key]}</div>${en.poison ? `<div class="dpoison num">${en.poison}</div>` : ""}</div>
           ${bar(en.hp, en.maxHp, "ehp")}
           <div class="dname">${E.name}</div>
         </div>
@@ -376,9 +407,9 @@ export function setupDungeon(ctx) {
     if (go) go.onclick = () => (r.state === "won" ? nextFloor() : endRun(r.state === "cleared" ? "clear" : "lost"));
   }
   function resultCard(r) {
-    if (r.state === "won") return `<div class="dresult"><div class="win"><div class="title-tag">FLOOR CLEARED</div><h1>Victory!</h1><p>+${r.gain} XP</p><button class="btn gold big" id="dResult">Next floor</button></div></div>`;
-    if (r.state === "cleared") return `<div class="dresult"><div class="win"><div class="title-tag">DUNGEON CLEARED</div><h1>Champion!</h1><p>You beat all ${FLOORS} floors. +${r.xp} XP this run.</p><button class="btn gold big" id="dResult">Claim and leave</button></div></div>`;
-    return `<div class="dresult"><div class="win"><div class="title-tag">DEFEATED</div><h1>Knocked out</h1><p>You fell on floor ${r.floor}. You keep the ${r.xp} XP you earned.</p><button class="btn big" id="dResult">Leave dungeon</button></div></div>`;
+    if (r.state === "won") return `<div class="dresult"><div class="win"><div class="title-tag">FLOOR CLEARED</div><h1>Victory!</h1><p class="gain"><span class="g-gold">+${r.goldGain} gold</span> <span>+${r.gain} XP</span></p><button class="btn gold big" id="dResult">Next floor</button></div></div>`;
+    if (r.state === "cleared") return `<div class="dresult"><div class="win"><div class="title-tag">DUNGEON CLEARED</div><h1>Champion!</h1><p>You beat all ${FLOORS} floors of the ${DUNGEONS[r.tier || 0].name}.</p><p class="gain"><span class="g-gold">+${r.gold} gold</span> <span>+${r.xp} XP</span></p><p class="g-chest">+1 free chest. Open it in the Shop.</p><button class="btn gold big" id="dResult">Claim and leave</button></div></div>`;
+    return `<div class="dresult"><div class="win"><div class="title-tag">DEFEATED</div><h1>Knocked out</h1><p>You fell on floor ${r.floor}. You keep the ${r.gold || 0} gold and ${r.xp} XP you earned.</p><button class="btn big" id="dResult">Leave dungeon</button></div></div>`;
   }
 
   /* -------- dungeon tab -------- */
@@ -388,16 +419,38 @@ export function setupDungeon(ctx) {
     $("#dTickets").textContent = t;
     $("#dToday").textContent = today + " / 3 earned today";
     $("#dStats").innerHTML = `
-      <div><b class="num">${h.maxHp}</b><span>Max HP</span><small>Health</small></div>
-      <div><b class="num">+${h.str}</b><span>Sword bonus</span><small>Strength</small></div>
+      <div><b class="num">${h.maxHp}</b><span>Max HP</span><small>Health, helmet, shirt</small></div>
+      <div><b class="num">+${h.str}</b><span>Sword bonus</span><small>Strength, sword</small></div>
+      <div><b class="num">+${h.block}</b><span>Shield bonus</span><small>Shield</small></div>
+      <div><b class="num">${12 + h.fire}</b><span>Fireball</span><small>Cape</small></div>
+      <div><b class="num">${h.heal}</b><span>Potion heal</span><small>Health, pants</small></div>
       <div><b class="num">${h.rerolls}</b><span>Rerolls / fight</span><small>Intelligence</small></div>
       <div><b class="num">${h.dice}</b><span>Dice</span><small>${h.dice > 3 ? "7-day streak bonus" : "4 with a 7-day streak"}</small></div>`;
-    $("#dRecord").textContent = "Runs " + d.runs + " · Clears " + d.clears + " · Deepest floor " + d.best + " · " + d.xp + " XP earned";
-    const btn = $("#dEnter");
-    btn.textContent = S.run ? "Continue · floor " + S.run.floor : "Enter dungeon";
-    btn.disabled = !S.run && t < 1;
+    $("#dRecord").textContent = "Runs " + d.runs + " · Clears " + d.clears + " · " + d.xp + " XP earned";
+    const cont = $("#dContinue");
+    cont.hidden = !S.run;
+    if (S.run) cont.querySelector("span").textContent = DUNGEONS[S.run.tier || 0].name + ", floor " + S.run.floor;
+    const lv = ctx.level(), list = $("#dList"); list.innerHTML = "";
+    DUNGEONS.forEach((dg, i) => {
+      const locked = lv < dg.lv, best = (d.bestBy || {})[dg.id] || (i === 0 ? d.best : 0), clears = (d.clearsBy || {})[dg.id] || (i === 0 && !d.clearsBy ? d.clears : 0);
+      const li = document.createElement("li"); li.className = "dcard" + (locked ? " locked" : "");
+      li.style.background = "linear-gradient(135deg," + dg.bg + ")";
+      const diff = locked ? "" : lv >= dg.lv + 8 ? "Easy" : lv >= dg.lv + 3 ? "Fair" : "Hard";
+      li.innerHTML = `<div class="dcard-art" style="filter:hue-rotate(${dg.hue}deg)">${ENEMY_ART.dragon}</div>
+        <div class="dcard-info"><b></b><small class="num"></small><small class="num dgold"></small></div>
+        <button class="btn${locked ? " ghost" : ""}" type="button"></button>`;
+      li.querySelector("b").textContent = dg.name;
+      li.querySelectorAll("small")[0].textContent = locked ? "Opens at level " + dg.lv : (diff + " · best floor " + best + "/" + FLOORS + (clears ? " · cleared " + clears + "×" : ""));
+      li.querySelectorAll("small")[1].textContent = "Up to " + Array.from({ length: FLOORS }, (_, f) => goldFor(f + 1, i)).reduce((a, b) => a + b, 0) + " gold + chest";
+      const b = li.querySelector("button");
+      b.textContent = locked ? "Lv " + dg.lv : "Enter";
+      b.disabled = locked || !!S.run || t < 1;
+      b.setAttribute("aria-label", locked ? dg.name + " opens at level " + dg.lv : "Enter " + dg.name + " for 1 ticket");
+      b.onclick = () => enter(i);
+      list.appendChild(li);
+    });
   }
 
-  $("#dEnter").onclick = enter;
+  $("#dContinue").querySelector("button").onclick = () => enter(0);
   return { renderTab, resume: () => { if (run() && !$("#dungeon").hidden) paint(); } };
 }
