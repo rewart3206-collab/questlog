@@ -496,7 +496,17 @@ input::placeholder{color:#7f8ccc}
 .dunit.you .bubble{width:92%;height:66%;left:4%;top:8%;margin:0}
 .dunit.you .bubble.up{animation:none;opacity:1}
 .dunit.you .slash{top:34%;width:130px;height:130px;margin:-65px 0 0 -65px}
-.dunit.you .shield-hit{top:34%;width:100px;height:100px;margin:-50px 0 0 -50px}
+.dunit.you .shield-hit{left:22%;top:26%;width:110px;height:110px;margin:-55px 0 0 -55px}
+.brace{animation:braceA .3s ease-out}
+@keyframes braceA{40%{transform:translateY(8px) scale(.98)}100%{transform:none}}
+/* monster art: the body (recoloured per variant) with an optional crown laid over it */
+.denemy,.dcard-art{position:relative}
+.dbody{width:100%;height:100%}
+.dbody svg{width:100%;height:100%;display:block}
+.dcrown{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+/* bosses stand a little bigger */
+.dunit.foe.boss{width:52%;max-width:230px;height:200px;top:calc(44% - 180px);right:6%}
+@media (max-height:700px){.dunit.foe.boss{height:160px;top:calc(44% - 144px)}}
 /* bottom panel: message box and buttons */
 .dpanel{flex:none;display:flex;flex-direction:column;gap:10px;padding:10px 12px calc(12px + env(safe-area-inset-bottom,0px));background:linear-gradient(#24305e,#151a3a);border-top:4px solid var(--gold);box-shadow:0 -3px 0 var(--deep)}
 .dbox{border:3px solid var(--deep);border-radius:12px;background:#0f1430;padding:8px 12px;min-height:68px;display:flex;flex-direction:column;justify-content:center;gap:3px}
@@ -641,7 +651,7 @@ input::placeholder{color:#7f8ccc}
   <section class="panel stack" id="p-dungeon" hidden>
     <div class="win dgate">
       <div class="spread"><h2>Dungeon</h2><span class="pill dtk"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7 Q3 5 5 5 L19 5 Q21 5 21 7 L21 9.5 Q19 10 19 12 Q19 14 21 14.5 L21 17 Q21 19 19 19 L5 19 Q3 19 3 17 L3 14.5 Q5 14 5 12 Q5 10 3 9.5 Z" fill="#ffcf4a" stroke="#1c1430" stroke-width="2" stroke-linejoin="round"/><path d="M9 8 L9 16" stroke="#1c1430" stroke-width="1.6" stroke-dasharray="2 2"/><path d="M14 9.5 l1 2 2.2.3-1.6 1.5.4 2.2-2-1.1-2 1.1.4-2.2-1.6-1.5 2.2-.3z" fill="#e2384a"/></svg></span><b class="num" id="dTickets">0</b><small>tickets</small></span></div>
-      <p class="note" style="margin-top:10px">You get a new ticket every 4 hours and can hold up to 6. A ticket gets you one run of five floors. Every floor you beat pays gold, and beating the dragon on floor 5 earns a free chest.</p>
+      <p class="note" style="margin-top:10px">You get a new ticket every 4 hours and can hold up to 6. A ticket gets you one run of five floors. Every floor you beat pays gold, and beating the boss on floor 5 earns a free chest. Clear a dungeon to open the next one.</p>
       <p class="clear" id="dToday" style="margin:8px 0 0"></p>
       <div class="dcontinue" id="dContinue" hidden><div><b>Run in progress</b><span></span></div><button class="btn gold" type="button">Continue</button></div>
       <ul class="dlist" id="dList"></ul>

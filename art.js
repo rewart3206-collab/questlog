@@ -266,11 +266,15 @@ function hairBackView(style, c) {
     default: return "";
   }
 }
-export function heroBackSVG(p0) {
+// opts.guard: the hero has raised the shield up in front to block
+export function heroBackSVG(p0, opts = {}) {
   const p = split(p0), s = p.skin, sd = shade(s, -0.22);
   const arm = p.shirt != null ? armourArt(p.shirt, true) : null;
   // held out in front: shield on the left arm, sword angled up past the right shoulder
-  const shield = p.off != null ? `<g transform="translate(-5 -14)">${shieldBackArt(p.off)}</g>` : "";
+  const guard = !!opts.guard;
+  const shield = p.off == null ? "" : guard
+    ? `<g transform="translate(31 46) scale(1.25) rotate(-10) translate(-24 -100)">${shieldBackArt(p.off)}</g>`
+    : `<g transform="translate(-5 -14)">${shieldBackArt(p.off)}</g>`;
   const sword = p.hand != null ? `<g transform="translate(-8 -8) rotate(28 74 100)">${swordArt(p.hand)}</g>` : "";
   const headBack = `<path d="M44 48 L56 48 L57 58 L43 58 Z" ${st(sd)}/>` +
     `<ellipse cx="32.5" cy="34" rx="3.6" ry="5.2" ${st(s)}/><ellipse cx="67.5" cy="34" rx="3.6" ry="5.2" ${st(s)}/>` + part(HEAD_D, s, "M33 27 Q33 12 42 10 Q37 22 38 36 Q39 46 45 52 Q36 48 33 35 Z", null);
@@ -280,7 +284,7 @@ export function heroBackSVG(p0) {
     ${shield}${sword}
     ${legsArt(p, true)}${torsoArt(p, true)}${arm ? arm.torso : ""}
     ${p.back != null ? capeArt(p.back) : ""}
-    ${sleeveL()}${limb("M30 70 L26 84", s, 9)}${handAt(24, 87, s)}
+    ${sleeveL()}${guard ? limb("M30 68 L27 54", s, 9) + handAt(27, 50, s) : limb("M30 70 L26 84", s, 9) + handAt(24, 87, s)}
     ${sleeveR()}${limb("M70 70 L67 84", s, 9)}${handAt(66, 87, s)}
     ${arm ? arm.arms.replace(/<rect[^>]*\/>/g, "") : ""}
     ${headBack}${helm ? "" : hairBackView(p.hair, p.hairColor)}${p.head != null ? headArt(p.head, true) : ""}

@@ -505,7 +505,7 @@ const dungeon = setupDungeon({
   gearBonus: () => gearBonus(), level: () => levelInfo(S.xp).level,
   addGold: (n) => { S.gold = (S.gold || 0) + n; },
   addChest: () => { S.chests = (S.chests || 0) + 1; },
-  drawHero: (el, o) => { el.innerHTML = o && o.back ? heroBackSVG(heroParts(heroLook())) : heroSVG(heroParts(heroLook()), {}); },
+  drawHero: (el, o) => { el.innerHTML = o && o.back ? heroBackSVG(heroParts(heroLook()), o) : heroSVG(heroParts(heroLook()), {}); },
 });
 
 /* ================= gear menus ================= */

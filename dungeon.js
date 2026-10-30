@@ -1,6 +1,6 @@
 // Questlog dungeon.
-// Each run costs one ticket (one refills every 4 hours, up to 6) and has 5 floors: a random monster on floors 1–4 and a dragon on floor 5.
-// There are five dungeons, unlocked by player level; each is tougher and pays more gold.
+// Each run costs one ticket (one refills every 4 hours, up to 6) and has 5 floors: four themed monsters, then the boss.
+// There are five themed dungeons with fixed fights and a boss; clearing one opens the next.
 // Each turn the hero chooses one action:
 //   Attack – weapon damage, may crit (capes add crit chance). Every attack charges the equipped spell.
 //   Spell  – usable once charged. Fireball is the starter spell; others come from chests.
@@ -34,7 +34,13 @@ const ENEMIES = {
   skeleton: { name: "Skeleton", hp: 18, atk: [3, 6], charge: 4, mult: 3, special: "Bone Storm", twist: "nopoison", desc: "Bones don't bleed: immune to poison." },
   imp: { name: "Mirror Imp", hp: 16, atk: [3, 6], charge: 3, mult: 2.5, special: "Hex Blast", twist: "dodge", desc: "Slippery: dodges 1 in 4 attacks. Spells always hit." },
   golem: { name: "Stone Golem", hp: 24, atk: [4, 7], charge: 4, mult: 3, special: "Earthquake", twist: "armour", desc: "Armoured: attacks deal less. Spells ignore armour." },
-  dragon: { name: "Ember Dragon", hp: 48, atk: [4, 8], charge: 3, mult: 0, special: "Fire Breath", twist: "breath", desc: "Breathes fire when its flames have built up." },
+  dragon: { name: "Elder Dragon", hp: 48, atk: [4, 8], charge: 3, mult: 0, special: "Fire Breath", twist: "breath", desc: "Breathes fire when its flames have built up." },
+  whelp: { name: "Dragon Whelp", art: "dragon", hp: 20, atk: [4, 7], charge: 3, mult: 2.5, special: "Flame Spit", twist: null, desc: "A young dragon. Its flames build up fast." },
+  // bosses guard floor 5 of each dungeon
+  king_slime: { name: "King Slime", art: "slime", crown: [60, 31], hp: 44, atk: [4, 6], charge: 3, mult: 3, special: "Royal Slam", twist: null, desc: "The biggest blob of them all." },
+  skeleton_king: { name: "Skeleton King", art: "skeleton", crown: [60, 10], hp: 46, atk: [4, 7], charge: 4, mult: 3, special: "Bone Storm", twist: "nopoison", desc: "Bones don't bleed: immune to poison." },
+  imp_queen: { name: "Imp Queen", art: "imp", crown: [60, 22], hp: 42, atk: [4, 7], charge: 3, mult: 3, special: "Hex Storm", twist: "dodge", desc: "Slippery: dodges 1 in 4 attacks. Spells always hit." },
+  golem_titan: { name: "Golem Titan", art: "golem", crown: [65, 11], hp: 52, atk: [5, 8], charge: 4, mult: 3, special: "Earthquake", twist: "armour", desc: "Armoured: attacks deal less. Spells ignore armour." },
 };
 
 const ENEMY_ART = {
@@ -90,21 +96,57 @@ const ENEMY_ART = {
 };
 
 /* ---------------- dungeons ---------------- */
-// t = tier. Monsters get more HP and hit harder each tier; gold scales with tier.
+// Each dungeon has a theme and the same five fights every run, ending with its boss.
+// Clearing a dungeon opens the next one. t = tier: monsters get more HP and hit harder each tier.
+// fx is a CSS filter that recolours the monster for each variant.
 export const DUNGEONS = [
-  { id: "cave", name: "Mossy Cave", lv: 1, prefix: "", boss: "Ember Dragon", hue: 0, bg: "#3a2a6b,#5a3f9a" },
-  { id: "crypt", name: "Forgotten Crypt", lv: 5, prefix: "Crypt", boss: "Bone Dragon", hue: 150, bg: "#1f2a4a,#3a4f7a" },
-  { id: "forge", name: "Molten Forge", lv: 10, prefix: "Magma", boss: "Magma Dragon", hue: -25, bg: "#4a1a10,#8a3a1a" },
-  { id: "keep", name: "Frozen Keep", lv: 15, prefix: "Frost", boss: "Frost Dragon", hue: 190, bg: "#1a3a5a,#4a8ab0" },
-  { id: "citadel", name: "Shadow Citadel", lv: 20, prefix: "Shadow", boss: "Shadow Dragon", hue: 250, bg: "#14081f,#3a1a4a" },
+  { id: "cave", name: "Slime Cave", bg: "#2a4a3a,#3f7a52", floors: [
+    { key: "slime", name: "Green Slime" }, { key: "slime", name: "Green Slime" },
+    { key: "slime", name: "Blue Slime", fx: "hue-rotate(95deg)" }, { key: "slime", name: "Red Slime", fx: "hue-rotate(-115deg) saturate(1.3)" },
+    { key: "king_slime", name: "King Slime", fx: "hue-rotate(160deg) saturate(1.3)" }] },
+  { id: "crypt", name: "Bone Crypt", bg: "#1f2a4a,#3a4f7a", floors: [
+    { key: "skeleton", name: "Skeleton" }, { key: "skeleton", name: "Skeleton" },
+    { key: "skeleton", name: "Mossy Skeleton", fx: "sepia(.7) hue-rotate(50deg) saturate(1.6)" }, { key: "skeleton", name: "Skeleton Knight", fx: "brightness(.75) contrast(1.2)" },
+    { key: "skeleton_king", name: "Skeleton King" }] },
+  { id: "forge", name: "Imp Hollow", bg: "#2a1440,#5a2a7a", floors: [
+    { key: "imp", name: "Mirror Imp" }, { key: "imp", name: "Mirror Imp" },
+    { key: "imp", name: "Fire Imp", fx: "hue-rotate(95deg) saturate(1.4)" }, { key: "imp", name: "Shadow Imp", fx: "brightness(.6) contrast(1.3)" },
+    { key: "imp_queen", name: "Imp Queen", fx: "hue-rotate(-40deg) saturate(1.3)" }] },
+  { id: "keep", name: "Golem Forge", bg: "#4a1a10,#8a3a1a", floors: [
+    { key: "golem", name: "Stone Golem" }, { key: "golem", name: "Stone Golem" },
+    { key: "golem", name: "Iron Golem", fx: "sepia(.5) hue-rotate(170deg) saturate(1.8)" }, { key: "golem", name: "Magma Golem", fx: "sepia(1) saturate(3) hue-rotate(-25deg)" },
+    { key: "golem_titan", name: "Golem Titan", fx: "sepia(.6) saturate(1.6) hue-rotate(-10deg) brightness(.95)" }] },
+  { id: "citadel", name: "Dragon Peak", bg: "#14081f,#3a1a4a", floors: [
+    { key: "whelp", name: "Dragon Whelp" }, { key: "whelp", name: "Dragon Whelp" },
+    { key: "whelp", name: "Frost Drake", fx: "hue-rotate(190deg)" }, { key: "whelp", name: "Shadow Drake", fx: "hue-rotate(250deg) brightness(.8)" },
+    { key: "dragon", name: "Elder Dragon" }] },
 ];
-
-const enemyName = (key, t) => key === "dragon" ? DUNGEONS[t].boss : (DUNGEONS[t].prefix ? DUNGEONS[t].prefix + " " : "") + ENEMIES[key].name;
+const BOSS_OF = (t) => DUNGEONS[t].floors[FLOORS - 1];
+// a monster's picture: its base art, a crown for bosses, recoloured for its variant
+const CROWN = `<path d="M-18 0 L-21 -17 L-9 -8 L0 -22 L9 -8 L21 -17 L18 0 Z" ${st("#f2bf2e", 2.6)}/><rect x="-19" y="-3" width="38" height="6" rx="2" ${st("#e0a520", 2.2)}/><circle cx="0" cy="-12" r="2.6" fill="#e8233f"/><circle cx="-10" cy="0" r="1.8" fill="#4fa8ff"/><circle cx="10" cy="0" r="1.8" fill="#5fd36a"/>`;
+// The colour filter goes on the body only, so a boss's crown stays gold: the crown is a second
+// picture with the same frame laid over the top.
+function artFor(key, fx) {
+  const e = ENEMIES[key], svg = ENEMY_ART[e.art || key];
+  const body = (s) => `<div class="dbody" style="filter:${fx || "none"}">${s}</div>`;
+  if (!e.crown) return body(svg);
+  // make room above the head, then put the crown on
+  let box = "";
+  const tall = svg.replace(/viewBox="0 0 (\d+) (\d+)"/, (m, w, h) => { box = `0 -24 ${w} ${+h + 24}`; return `viewBox="${box}"`; });
+  return body(tall) + `<svg class="dcrown" viewBox="${box}" aria-hidden="true"><g transform="translate(${e.crown[0]} ${e.crown[1]})">${CROWN}</g></svg>`;
+}
+const enemyName = (en) => en.name || ENEMIES[en.key].name;
+// Dungeon i opens once the one before it has been cleared (or if you've already played it).
+function isOpen(d, i) {
+  if (i === 0) return true;
+  const prev = DUNGEONS[i - 1].id, cb = d.clearsBy || {};
+  return (cb[prev] || 0) > 0 || (i === 1 && !d.clearsBy && d.clears > 0) || ((d.bestBy || {})[DUNGEONS[i].id] || 0) > 0;
+}
 const armourOf = (t) => 3 + t;
 const breathOf = (t) => 15 + Math.round(3.6 * t);
 const goldFor = (floor, t) => 10 * floor * (1 + t) + (floor === FLOORS ? 25 * (1 + t) : 0);
 function twistText(key, t) {
-  if (key === "golem") return "Armoured: attacks deal " + armourOf(t) + " less. Spells ignore armour.";
+  if (ENEMIES[key].twist === "armour") return "Armoured: attacks deal " + armourOf(t) + " less. Spells ignore armour.";
   return ENEMIES[key].desc;
 }
 const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
@@ -138,16 +180,13 @@ export function setupDungeon(ctx) {
   };
 
   function makeEnemy(floor, t) {
-    let key = "dragon";
-    if (floor < FLOORS) {
-      const pool = floor === 1 ? ["slime", "skeleton", "imp"] : ["slime", "skeleton", "imp", "golem"];
-      key = pool[rnd(0, pool.length - 1)];
-    }
+    const f = DUNGEONS[t].floors[floor - 1], key = f.key;
     // tuned by simulation so each dungeon is a fair fight around its unlock level with matching gear
     const e = ENEMIES[key], scale = (1 + 0.15 * (floor - 1)) * (1 + 0.5 * t);
-    const bump = (key === "dragon" ? 0 : Math.floor((floor - 1) / 2)) + Math.round(1.2 * t);
+    const boss = floor === FLOORS;
+    const bump = (boss ? 0 : Math.floor((floor - 1) / 2)) + Math.round(1.2 * t);
     const hp = Math.round(e.hp * scale);
-    return { key, hp, maxHp: hp, atk: [e.atk[0] + bump, e.atk[1] + bump], poison: 0, charge: 0 };
+    return { key, name: f.name, fx: f.fx || "", boss, hp, maxHp: hp, atk: [e.atk[0] + bump, e.atk[1] + bump], poison: 0, charge: 0 };
   }
   function specialDmg(r) {
     const en = r.enemy, e = ENEMIES[en.key];
@@ -157,7 +196,7 @@ export function setupDungeon(ctx) {
   function startFloor(run) {
     run.enemy = makeEnemy(run.floor, run.tier || 0);
     run.turn = 1; run.state = "fight";
-    run.msg = "Floor " + run.floor + ": " + (run.floor === FLOORS ? "the " : "a ") + enemyName(run.enemy.key, run.tier || 0) + " appears!";
+    run.msg = "Floor " + run.floor + ": " + (run.floor === FLOORS ? "the boss, " : "a ") + enemyName(run.enemy) + (run.floor === FLOORS ? ", blocks the way!" : " appears!");
   }
 
   /* -------- starting and leaving -------- */
@@ -165,7 +204,7 @@ export function setupDungeon(ctx) {
     const S = ctx.getS();
     if (S.run) { openBattle(); return; }
     const dg = DUNGEONS[t];
-    if (ctx.level() < dg.lv) { ctx.toast(dg.name + " opens at level " + dg.lv); return; }
+    if (!isOpen(D(), t)) { ctx.toast("Clear the " + DUNGEONS[t - 1].name + " to open the " + dg.name); return; }
     if (!ctx.spendTicket()) { ctx.toast("No tickets left. Next one in " + fmtWait(ctx.nextTicketIn())); return; }
     const h = hero(), d = D();
     d.runs++;
@@ -195,7 +234,7 @@ export function setupDungeon(ctx) {
   async function act(kind) {
     const r = run();
     if (!r || r.state !== "fight" || busy) return;
-    const en = r.enemy, E = ENEMIES[en.key], t = r.tier || 0, name = enemyName(en.key, t);
+    const en = r.enemy, E = ENEMIES[en.key], t = r.tier || 0, name = enemyName(en);
     const sp = spellOf(r);
     if (kind === "spell" && r.charge < sp.charge) { ctx.toast(sp.name + " needs " + (sp.charge - r.charge) + " more " + (sp.charge - r.charge === 1 ? "attack" : "attacks") + " to charge"); return; }
     busy = true;
@@ -271,7 +310,7 @@ export function setupDungeon(ctx) {
     if (r.floor === FLOORS) ctx.addChest();
     r.goldGain = gold;
     r.state = r.floor === FLOORS ? "cleared" : "won";
-    ctx.logEvent("Defeated the " + enemyName(r.enemy.key, t) + " on floor " + r.floor + " (+" + gold + " gold)");
+    ctx.logEvent("Defeated the " + enemyName(r.enemy) + " on floor " + r.floor + " (+" + gold + " gold)");
     save(); paint(); ctx.render();
   }
   function nextFloor() {
@@ -332,7 +371,7 @@ export function setupDungeon(ctx) {
         overlay(arena, "proj fire green", 500, POISON_SVG); await wait(410);
         overlay(enemy, "poison-cloud", 900); await wait(200); break;
       case "tick": overlay(enemy, "bubbles", 700, "<i></i><i></i><i></i>"); await wait(300); break;
-      case "shield": overlay(hero, "bubble hold", 2000); await wait(260); break;
+      case "shield": ctx.drawHero(hero.querySelector(".dhero"), { back: true, guard: true }); restart(hero, "brace"); await wait(300); break;
       case "enemy":
         restart(enemy, "lunge-l"); await wait(230);
         overlay(hero, "slash claw", 360); if (flag) overlay(hero, "shield-hit", 400); await wait(200); break;
@@ -368,13 +407,13 @@ export function setupDungeon(ctx) {
           <div class="drr num">Turn ${r.turn}</div>
         </div>
         <div class="dinfo foe">
-          <div class="dinfo-name"><b>${enemyName(en.key, t)}</b>${en.poison ? `<span class="dpois num">☠ ${en.poison}</span>` : ""}</div>
+          <div class="dinfo-name"><b>${enemyName(en)}</b>${en.poison ? `<span class="dpois num">☠ ${en.poison}</span>` : ""}</div>
           ${bar(en.hp, en.maxHp, "ehp")}
         </div>
         <div class="dpad foe"></div>
-        <div class="dunit foe charge-${lvl}" id="dEnemy"><div class="aura"></div><div class="denemy" style="filter:hue-rotate(${dg.hue}deg)${t === 4 ? " brightness(.8)" : ""}">${ENEMY_ART[en.key]}</div>${lvl === 3 ? '<div class="sparks"><i></i><i></i><i></i><i></i></div>' : ""}</div>
+        <div class="dunit foe charge-${lvl}${en.boss ? " boss" : ""}" id="dEnemy"><div class="aura"></div><div class="denemy">${artFor(en.key, en.fx)}</div>${lvl === 3 ? '<div class="sparks"><i></i><i></i><i></i><i></i></div>' : ""}</div>
         <div class="dpad you"></div>
-        <div class="dunit you" id="dHero"><div class="dhero"></div>${shieldUp && busy ? '<div class="bubble up"></div>' : ""}</div>
+        <div class="dunit you" id="dHero"><div class="dhero"></div></div>
         <div class="dinfo you">
           <div class="dinfo-name"><b>You</b><small class="num">Lv ${ctx.level()}</small></div>
           ${bar(r.hp, r.maxHp, "hp")}
@@ -392,7 +431,7 @@ export function setupDungeon(ctx) {
     box.querySelector(".dmsg").textContent = r.msg || "Attack to charge your spell. Shield when the monster is about to strike hard.";
     box.querySelector("#dSpell b").textContent = sp.name;
     box.querySelector("#dSpell").setAttribute("aria-label", sp.name + (ready ? ", ready" : ", charging " + r.charge + " of " + sp.charge));
-    ctx.drawHero(box.querySelector(".dhero"), { back: true });
+    ctx.drawHero(box.querySelector(".dhero"), { back: true, guard: shieldUp && busy });
     box.querySelector("#dAttack").onclick = () => act("attack");
     box.querySelector("#dSpell").onclick = () => act("spell");
     box.querySelector("#dShield").onclick = () => act("shield");
@@ -434,20 +473,20 @@ export function setupDungeon(ctx) {
     if (S.run) cont.querySelector("span").textContent = DUNGEONS[S.run.tier || 0].name + ", floor " + S.run.floor;
     const lv = ctx.level(), list = $("#dList"); list.innerHTML = "";
     DUNGEONS.forEach((dg, i) => {
-      const locked = lv < dg.lv, best = (d.bestBy || {})[dg.id] || (i === 0 ? d.best : 0), clears = (d.clearsBy || {})[dg.id] || (i === 0 && !d.clearsBy ? d.clears : 0);
+      const locked = !isOpen(d, i), best = (d.bestBy || {})[dg.id] || (i === 0 ? d.best : 0), clears = (d.clearsBy || {})[dg.id] || (i === 0 && !d.clearsBy ? d.clears : 0);
       const li = document.createElement("li"); li.className = "dcard" + (locked ? " locked" : "");
       li.style.background = "linear-gradient(135deg," + dg.bg + ")";
-      const diff = locked ? "" : lv >= dg.lv + 8 ? "Easy" : lv >= dg.lv + 3 ? "Fair" : "Hard";
-      li.innerHTML = `<div class="dcard-art" style="filter:hue-rotate(${dg.hue}deg)">${ENEMY_ART.dragon}</div>
+      const boss = BOSS_OF(i);
+      li.innerHTML = `<div class="dcard-art">${artFor(boss.key, boss.fx)}</div>
         <div class="dcard-info"><b></b><small class="num"></small><small class="num dgold"></small></div>
         <button class="btn${locked ? " ghost" : ""}" type="button"></button>`;
       li.querySelector("b").textContent = dg.name;
-      li.querySelectorAll("small")[0].textContent = locked ? "Opens at level " + dg.lv : (diff + " · best floor " + best + "/" + FLOORS + (clears ? " · cleared " + clears + "×" : ""));
+      li.querySelectorAll("small")[0].textContent = locked ? "Clear the " + DUNGEONS[i - 1].name + " to open" : ("Boss: " + boss.name + " · best floor " + best + "/" + FLOORS + (clears ? " · cleared " + clears + "×" : ""));
       li.querySelectorAll("small")[1].textContent = "Up to " + Array.from({ length: FLOORS }, (_, f) => goldFor(f + 1, i)).reduce((a, b) => a + b, 0) + " gold + chest";
       const b = li.querySelector("button");
-      b.textContent = locked ? "Lv " + dg.lv : "Enter";
+      b.textContent = locked ? "Locked" : "Enter";
       b.disabled = locked || !!S.run || t < 1;
-      b.setAttribute("aria-label", locked ? dg.name + " opens at level " + dg.lv : "Enter " + dg.name + " for 1 ticket");
+      b.setAttribute("aria-label", locked ? dg.name + " opens when you clear the " + DUNGEONS[i - 1].name : "Enter " + dg.name + " for 1 ticket");
       b.onclick = () => enter(i);
       list.appendChild(li);
     });
