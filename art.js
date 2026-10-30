@@ -232,16 +232,17 @@ function split(p) {
 export function heroSVG(p0, opts = {}) {
   const p = split(p0), s = p.skin;
   const arm = p.shirt != null ? armourArt(p.shirt, false) : null;
-  const box = opts.head ? "24 -14 52 70" : "4 -26 92 178";
+  // head-only portraits (guild list, chat) leave out the hand-held gear and make room for tall hats
+  const box = opts.head ? (p.head === 3 ? "18 -28 64 84" : "24 -14 52 70") : "4 -26 92 178";
   const shadow = opts.head ? "" : `<ellipse cx="50" cy="147" rx="30" ry="4.5" fill="#000" opacity=".3"/>`;
   return `<svg viewBox="${box}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
     ${shadow}${p.back != null ? capeArt(p.back) : ""}${hairBack(p.hair, p.hairColor)}
     ${legsArt(p, false)}${torsoArt(p, false)}${arm ? arm.torso : ""}
     ${sleeveL()}${limb("M30 72 L27 96", s, 9)}${handAt(27, 99, s)}
     ${sleeveR()}${limb("M70 72 L73 96", s, 9)}
-    ${arm ? arm.arms : ""}${p.off != null ? shieldArt(p.off) : ""}
+    ${arm ? arm.arms : ""}${p.off != null && !opts.head ? shieldArt(p.off) : ""}
     ${head(p)}${p.head === 1 || p.head === 2 ? "" : hairFront(p.hair, p.hairColor)}${p.head != null ? headArt(p.head, false) : ""}
-    ${p.hand != null ? swordArt(p.hand) : ""}${handAt(73, 99, s)}
+    ${p.hand != null && !opts.head ? swordArt(p.hand) : ""}${handAt(73, 99, s)}
   </svg>`;
 }
 // Seen from behind in the dungeon. The sword and shield are held out in front of the hero, so the
