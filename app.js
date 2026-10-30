@@ -437,7 +437,7 @@ function segment(container, opts, value, onPick) {
 }
 function armedDelete(btn, onConfirm) {
   let armed = false;
-  btn.onclick = () => { if (!armed) { armed = true; btn.textContent = "Tap again to delete"; btn.className = "btn danger"; return; } onConfirm(); };
+  btn.onclick = () => { if (!armed) { armed = true; btn.textContent = "Sure?"; btn.className = "btn danger"; return; } onConfirm(); };
 }
 function questForm(q) {
   const isNew = !q; q = q || { id: uid(), name: "", desc: "", core: false };
