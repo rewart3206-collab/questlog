@@ -157,6 +157,7 @@ function migrate(st) {
   const RCOST = { heal: 200, poison: 300, frost: 600, ward: 900, lightning: 1200, drain: 2000 };
   if (st.research) { if (!GOLD_UNLIMITED) st.gold = (st.gold || 0) + (RCOST[st.research.key] || 0); delete st.research; }
   if (st.spellChests == null) st.spellChests = 0;
+  delete st.levelDebt;
   if (!st.frags) st.frags = {};
   if (st.run && st.run.dice) { delete st.run; if (st.dungeon && st.dungeon.spent) st.dungeon.spent--; }
   if (st.look) delete st.look.outfit;
@@ -322,17 +323,12 @@ function openPrestige() {
     go.style.width = "100%"; go.style.marginTop = "12px"; w.appendChild(go);
   });
 }
-// Fighting level: after a prestige you keep your real level, but you fight as a lower level so the
-// dungeons have to be earned again. Tuned with a simulation for day-one gear (mostly commons):
-// ★1 fights as level 6 (Slime Cave easy, Bone Crypt a struggle), ★2 as 12 (Imp Hollow a struggle),
-// ★3 as 22 (Golem Forge), ★4 as 30 (Dragon Peak), ★5 as 38 (Slime Cave II), then +5 per prestige.
-// The gap is fixed at prestige time, so every level you gain afterwards still counts.
-const fightLevelAfter = (P) => P <= 0 ? Infinity : P <= 5 ? [0, 6, 12, 22, 30, 38][P] : 38 + 5 * (P - 5);
-const fightLevel = () => Math.max(1, levelInfo(S.xp).level - (S.levelDebt || 0));
+// (A lower "fighting level" after prestige was tried and removed: you always fight at your real level.)
+const fightLevel = () => levelInfo(S.xp).level;
 function doPrestige() {
   if (!canPrestige()) return;
   S.prestige = (S.prestige || 0) + 1;
-  S.levelDebt = Math.max(0, levelInfo(S.xp).level - fightLevelAfter(S.prestige));
+  delete S.levelDebt;
   // spells start over too: back to the two starter spells
   S.spells = ["fireball", "poison"]; S.spell = "fireball"; S.frags = {}; S.spellChests = 0;
   S.inv = [];
