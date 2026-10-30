@@ -443,6 +443,11 @@ function revealItem(tagText, item, offerEquip) {
       eq.onclick = () => { S.equip[item.slot] = item.u; save(); render(); done(); };
       a.appendChild(eq);
     }
+    if (offerEquip) {
+      const s = armedButton("Sell " + sellPrice(item), "sell", () => { sellItem(item); done(); });
+      s.setAttribute("aria-label", "Sell " + rarityName(item) + " " + itemName(item) + " for " + sellPrice(item) + " gold");
+      a.appendChild(s);
+    }
     const ok = document.createElement("button"); ok.className = "btn ghost"; ok.textContent = offerEquip ? "Keep" : "Nice";
     ok.onclick = done; a.appendChild(ok);
   });
@@ -462,10 +467,10 @@ function mergeFodder(it) {
   if (it.r !== LEG) return [];
   return S.inv.filter((x) => x.u !== it.u && x.slot === it.slot && x.r === LEG && S.equip[x.slot] !== x.u).sort((a, b) => (a.p || 0) - (b.p || 0));
 }
-function mergeItem(it) {
-  const fod = mergeFodder(it);
-  if (fod.length < 2) return;
-  const used = fod.slice(0, 2).map((x) => x.u);
+function mergeItem(it, chosen) {
+  const fod = mergeFodder(it).map((x) => x.u);
+  const used = (chosen || fod).filter((u) => fod.includes(u)).slice(0, 2);
+  if (used.length < 2) return;
   S.inv = S.inv.filter((x) => !used.includes(x.u));
   it.p = (it.p || 0) + 1;
   logEvent("Merged into " + itemName(it));
@@ -600,15 +605,72 @@ function openGearMenu(slot) {
         btns.appendChild(s);
       }
       if (it.r === LEG) {
-        const have = mergeFodder(it).length;
-        const m = armedButton(have >= 2 ? "Merge" : "Merge " + Math.min(have, 2) + "/2", "merge", () => { mergeItem(it); openGearMenu(slot); });
-        m.disabled = have < 2;
-        m.setAttribute("aria-label", "Merge two other legendary " + info.name.toLowerCase() + " items into this one");
+        const have = Math.min(3, 1 + mergeFodder(it).length);
+        const m = document.createElement("button"); m.className = "btn merge";
+        m.textContent = "Merge " + have + "/3";
+        m.onclick = () => openMergeMenu(it);
+        m.setAttribute("aria-label", "Merge: you have " + have + " of the 3 legendary " + info.name.toLowerCase() + " items needed");
         btns.appendChild(m);
       }
       li.append(mid, btns); list.appendChild(li);
     });
     w.appendChild(list);
+  });
+}
+// Merge screen: shows the item being upgraded and lets you pick the two legendaries to use up.
+function openMergeMenu(it) {
+  const info = GEAR_SLOTS.find((x) => x.slot === it.slot);
+  const picked = [];
+  openSheet((w, close) => {
+    const head = document.createElement("div"); head.className = "spread";
+    const h = document.createElement("h2"); h.textContent = "Merge";
+    const back = document.createElement("button"); back.className = "iconbtn"; back.textContent = "Back";
+    back.onclick = () => openGearMenu(it.slot);
+    head.append(h, back); w.appendChild(head);
+    // the item being upgraded, now and after
+    const top = document.createElement("div"); top.className = "merge-top";
+    const icon = gearIcon(it.slot, it.r); icon.classList.add("merge-icon");
+    const txt = document.createElement("div"); txt.style.minWidth = "0";
+    const nm = document.createElement("div"); nm.className = "ch-name"; nm.textContent = itemName(it);
+    const arrow = document.createElement("div"); arrow.className = "merge-after";
+    arrow.innerHTML = '<span class="num"></span><span class="merge-arrow">→</span><b class="num"></b>';
+    arrow.children[0].textContent = statText(it.slot, it.r, it.p);
+    arrow.children[2].textContent = GEAR_NAMES[it.slot][it.r] + " +" + ((it.p || 0) + 1) + ": " + statText(it.slot, it.r, (it.p || 0) + 1);
+    txt.append(nm, arrow); top.append(icon, txt); w.appendChild(top);
+    const pool = mergeFodder(it);
+    const note = document.createElement("p"); note.className = "note";
+    note.textContent = pool.length >= 2
+      ? "Pick 2 other legendary " + info.name.toLowerCase() + " items to merge in. They'll be used up."
+      : "You need 2 more legendary " + info.name.toLowerCase() + " items to merge. Find them in chests. Items you're wearing can't be merged in.";
+    w.appendChild(note);
+    const list = document.createElement("ul"); list.className = "clist gear-menu";
+    const go = document.createElement("button"); go.className = "btn merge big"; go.style.width = "100%"; go.style.marginTop = "12px";
+    const refresh = () => {
+      go.textContent = picked.length === 2 ? "Merge into " + GEAR_NAMES[it.slot][it.r] + " +" + ((it.p || 0) + 1) : "Merge (" + (1 + picked.length) + "/3)";
+      go.disabled = picked.length !== 2;
+      [...list.children].forEach((li) => {
+        const u = li.dataset.u, on = picked.includes(u), b = li.querySelector("button");
+        li.classList.toggle("equipped", on);
+        b.textContent = on ? "Selected" : "Select"; b.className = "btn" + (on ? " gold" : " ghost");
+        b.disabled = !on && picked.length >= 2;
+        b.setAttribute("aria-pressed", String(on));
+      });
+    };
+    pool.forEach((x) => {
+      const li = document.createElement("li"); li.className = "ch done"; li.dataset.u = x.u;
+      li.appendChild(gearIcon(x.slot, x.r));
+      const mid = document.createElement("div"); mid.style.minWidth = "0";
+      const n2 = document.createElement("div"); n2.className = "ch-name"; n2.textContent = itemName(x);
+      const rt = document.createElement("span"); rt.className = "rarity-tag small"; rt.textContent = rarityName(x); rt.style.background = RARITIES[x.r].colour;
+      const sub = document.createElement("div"); sub.className = "ch-goal"; sub.textContent = statText(x.slot, x.r, x.p);
+      mid.append(n2, rt, sub);
+      const b = document.createElement("button");
+      b.onclick = () => { const i = picked.indexOf(x.u); if (i >= 0) picked.splice(i, 1); else if (picked.length < 2) picked.push(x.u); refresh(); };
+      li.append(mid, b); list.appendChild(li);
+    });
+    go.onclick = () => { if (picked.length !== 2) return; close(); mergeItem(it, picked.slice()); };
+    w.append(list, go);
+    refresh();
   });
 }
 // Vanity: pick a look for each slot that shows over your gear. It never changes stats.
