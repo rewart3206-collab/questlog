@@ -78,6 +78,10 @@ const TK_MAX = 6, TK_EVERY = 4 * 60 * 60 * 1000;
 const TK_UNLIMITED = true;
 // While testing: unlimited gold, so chests are free. Set to false to go back to spending real gold.
 const GOLD_UNLIMITED = true;
+// While testing: every rarity of every slot (plus a Legendary +1 of each) shows in the gear menus.
+// These test items are never saved into the inventory, so setting this to false removes them cleanly
+// (anything equipped from them simply comes off).
+const GEAR_TEST = true;
 function freshState(name) {
   return {
     v: 1, at: Date.now(), name: name || "Adventurer", xp: 0,
@@ -190,7 +194,14 @@ function gearIcon(slot, r) {
   d.innerHTML = itemSVG(slot + (r == null ? 0 : r));
   return d;
 }
-const invItem = (u) => (u == null ? null : S.inv.find((x) => x.u === u));
+function testItems(slot) {
+  if (!GEAR_TEST) return [];
+  const out = [0, 1, 2, 3, 4].map((r) => ({ u: "t-" + slot + r, slot, r, test: true }));
+  out.push({ u: "t-" + slot + "4p1", slot, r: LEG, p: 1, test: true });
+  return out;
+}
+const testItem = (u) => { const m = /^t-(head|shirt|pants|back|hand|off)/.exec(u || ""); return m ? testItems(m[1]).find((x) => x.u === u) || null : null; };
+const invItem = (u) => (u == null ? null : String(u).startsWith("t-") ? testItem(u) : S.inv.find((x) => x.u === u));
 // slot -> design id that shows on the hero: a vanity look if one is chosen, otherwise the worn item
 function lookIds() {
   const out = {}, v = S.vanity || {};
@@ -578,7 +589,7 @@ function openGearMenu(slot) {
       (SET_SLOTS.includes(slot) ? " Celestial set: wear the Celestial Helm, Plate and Greaves, all at +1 or higher, for a chance to dodge any hit (more at higher + levels)." : "");
     w.appendChild(note);
     const list = document.createElement("ul"); list.className = "clist gear-menu";
-    const mine = S.inv.filter((x) => x.slot === slot).sort((a, b) => b.r - a.r || (b.p || 0) - (a.p || 0));
+    const mine = S.inv.filter((x) => x.slot === slot).sort((a, b) => b.r - a.r || (b.p || 0) - (a.p || 0)).concat(testItems(slot).reverse());
     if (!mine.length) {
       const li = document.createElement("li"); li.className = "ch locked";
       li.appendChild(gearIcon(slot, null));
@@ -594,17 +605,18 @@ function openGearMenu(slot) {
       const rt = document.createElement("span"); rt.className = "rarity-tag small"; rt.textContent = rarityName(it); rt.style.background = R.colour;
       const sub = document.createElement("div"); sub.className = "ch-goal"; sub.textContent = statText(slot, it.r, it.p);
       mid.append(nm, rt, sub);
+      if (it.test) { const tt = document.createElement("span"); tt.className = "rarity-tag small test-tag"; tt.textContent = "Test"; rt.after(tt); }
       const btns = document.createElement("div"); btns.className = "gear-btns";
       const b = document.createElement("button"); b.className = "btn" + (eq ? " gold" : " ghost");
       b.textContent = eq ? "Unequip" : "Equip"; b.setAttribute("aria-label", (eq ? "Unequip " : "Equip ") + rarityName(it) + " " + itemName(it));
       b.onclick = () => { toggleGear(it); openGearMenu(slot); };
       btns.appendChild(b);
-      if (!eq) {
+      if (!eq && !it.test) {
         const s = armedButton("Sell " + sellPrice(it), "sell", () => { sellItem(it); openGearMenu(slot); });
         s.setAttribute("aria-label", "Sell " + rarityName(it) + " " + itemName(it) + " for " + sellPrice(it) + " gold");
         btns.appendChild(s);
       }
-      if (it.r === LEG) {
+      if (it.r === LEG && !it.test) {
         const have = Math.min(3, 1 + mergeFodder(it).length);
         const m = document.createElement("button"); m.className = "btn merge";
         m.textContent = "Merge " + have + "/3";
@@ -682,7 +694,7 @@ function openVanityMenu(slot) {
     note.textContent = "Choose how your " + info.name.toLowerCase() + " looks. Your stats always come from the gear you have equipped.";
     w.appendChild(note);
     const list = document.createElement("ul"); list.className = "clist gear-menu";
-    const cur = (S.vanity || {})[slot], seen = (S.seen || {})[slot] || [];
+    const cur = (S.vanity || {})[slot], seen = GEAR_TEST ? [0, 1, 2, 3, 4] : (S.seen || {})[slot] || [];
     const pick = (val) => { S.vanity = S.vanity || {}; if (val == null) delete S.vanity[slot]; else S.vanity[slot] = val; save(); render(); openVanityMenu(slot); };
     const row = (icon, name, sub, val, locked, colour) => {
       const on = val === cur || (val == null && cur == null);
