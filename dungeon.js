@@ -212,43 +212,45 @@ export function setupDungeon(ctx) {
     pop("enemy", "-" + amount, "hit");
     return null;
   }
-  function useDie(abId) {
+  async function useDie(abId) {
     const r = run();
-    if (!r || r.state !== "fight") return;
+    if (!r || r.state !== "fight" || busy) return;
     const i = r.sel;
     if (i == null) { ctx.toast("Tap a die first, then an ability"); return; }
     const d = r.dice[i], v = d.v;
     if (r.used[abId]) { ctx.toast("Each ability can be used once per turn"); return; }
+    const err = abId === "shield" && v > 4 ? "Shield only takes a 4 or lower"
+      : abId === "fireball" && v !== 6 ? "Fireball needs exactly a 6"
+      : abId === "potion" && v > 2 ? "Potion only takes a 1 or 2"
+      : abId === "twin" && r.twin != null && r.dice[r.twin].v !== v ? "Twin Strike needs two matching dice" : null;
+    if (err) { ctx.toast(err); return; }
+    if (abId === "twin" && r.twin == null) { r.twin = i; d.used = true; r.sel = null; r.msg = "Twin Strike is ready. Add a matching " + v + "."; save(); paint(); return; }
+    // show the die as spent, play the attack, then apply it
+    busy = true; d.used = true; r.sel = null; paint();
+    const mirrored = ENEMIES[r.enemy.key].twist === "mirror" && v === 6 && abId !== "dagger" && abId !== "shield" && abId !== "potion";
+    await play(abId, mirrored);
     let msg = "";
+    const armour = ENEMIES[r.enemy.key].twist === "armour" ? armourOf(r.tier || 0) : 0;
     switch (abId) {
       case "sword": {
         const dmg = v + r.str;
-        msg = hitEnemy(dmg, "sword", v) || "Sword hits for " + (ENEMIES[r.enemy.key].twist === "armour" ? Math.max(0, dmg - armourOf(r.tier || 0)) : dmg) + ".";
+        msg = hitEnemy(dmg, "sword", v) || "Sword hits for " + Math.max(0, dmg - armour) + ".";
         break;
       }
-      case "shield":
-        if (v > 4) { ctx.toast("Shield only takes a 4 or lower"); return; }
-        { const b = v + (r.blockBonus || 0); r.block += b; msg = "You raise your shield to block " + b + "."; pop("you", "+" + b + " block", "block"); }
-        break;
+      case "shield": { const b = v + (r.blockBonus || 0); r.block += b; msg = "You raise your shield to block " + b + "."; pop("you", "+" + b + " block", "block"); break; }
       case "dagger":
         r.enemy.poison += 2; msg = "Poison dagger! The " + enemyName(r.enemy.key, r.tier || 0) + " has " + r.enemy.poison + " poison."; pop("enemy", "+2 poison", "poison");
         break;
-      case "fireball":
-        if (v !== 6) { ctx.toast("Fireball needs exactly a 6"); return; }
-        { const fb = 12 + (r.fire || 0); msg = hitEnemy(fb, "fireball", v) || "Fireball blasts for " + fb + "!"; }
-        break;
-      case "potion":
-        if (v > 2) { ctx.toast("Potion only takes a 1 or 2"); return; }
-        { const before = r.hp; r.hp = Math.min(r.maxHp, r.hp + r.heal); pop("you", "+" + (r.hp - before), "heal"); msg = "You drink a potion and heal " + (r.hp - before) + "."; }
-        break;
-      case "twin":
-        if (r.twin == null) { r.twin = i; d.used = true; r.sel = null; r.msg = "Twin Strike is ready. Add a matching " + v + "."; save(); paint(); return; }
-        if (r.dice[r.twin].v !== v) { ctx.toast("Twin Strike needs two matching dice"); return; }
-        { const dmg = v * 2 + 2 + r.str; msg = hitEnemy(dmg, "twin", v) || "Twin Strike hits for " + (ENEMIES[r.enemy.key].twist === "armour" ? Math.max(0, dmg - armourOf(r.tier || 0)) : dmg) + "!"; }
+      case "fireball": { const fb = 12 + (r.fire || 0); msg = hitEnemy(fb, "fireball", v) || "Fireball blasts for " + fb + "!"; break; }
+      case "potion": { const before = r.hp; r.hp = Math.min(r.maxHp, r.hp + r.heal); pop("you", "+" + (r.hp - before), "heal"); msg = "You drink a potion and heal " + (r.hp - before) + "."; break; }
+      case "twin": {
+        const dmg = v * 2 + 2 + r.str;
+        msg = hitEnemy(dmg, "twin", v) || "Twin Strike hits for " + Math.max(0, dmg - armour) + "!";
         r.twin = null;
         break;
+      }
     }
-    d.used = true; r.used[abId] = true; r.sel = null; r.msg = msg;
+    r.used[abId] = true; r.msg = msg; busy = false;
     afterAction();
   }
   function cancelTwin() {
@@ -256,43 +258,56 @@ export function setupDungeon(ctx) {
     r.dice[r.twin].used = false; r.twin = null; r.msg = "Twin Strike cancelled."; save(); paint();
   }
   function splitDie() {
-    const r = run(); if (!r || r.state !== "fight") return;
+    const r = run(); if (!r || r.state !== "fight" || busy) return;
     if (r.split) { ctx.toast("You can split once per turn"); return; }
     if (r.sel == null) { ctx.toast("Tap a die to split first"); return; }
-    const v = r.dice[r.sel].v;
+    const i = r.sel, v = r.dice[i].v;
     if (v < 2) { ctx.toast("A 1 can't be split"); return; }
-    r.dice.splice(r.sel, 1, { v: Math.ceil(v / 2), used: false }, { v: Math.floor(v / 2), used: false });
+    r.dice.splice(i, 1, { v: Math.ceil(v / 2), used: false }, { v: Math.floor(v / 2), used: false });
+    if (r.twin != null && r.twin > i) r.twin++;
     r.split = true; r.sel = null; r.msg = "Split a " + v + " into " + Math.ceil(v / 2) + " and " + Math.floor(v / 2) + ".";
+    rolling = new Set([i, i + 1]);
     save(); paint();
   }
+  // Reroll spends one reroll on the single die you've selected.
   function reroll() {
-    const r = run(); if (!r || r.state !== "fight") return;
+    const r = run(); if (!r || r.state !== "fight" || busy) return;
     if (r.rerolls < 1) { ctx.toast("No rerolls left this fight. Intelligence gives more"); return; }
-    if (!r.dice.some((d) => !d.used)) { ctx.toast("No dice left to reroll"); return; }
-    r.dice.forEach((d) => { if (!d.used) d.v = roll(); });
-    r.rerolls--; r.sel = null; r.msg = "You reroll your unused dice."; shake("#dtray");
+    if (r.sel == null) { ctx.toast("Tap a die to reroll it"); return; }
+    const i = r.sel, old = r.dice[i].v;
+    r.dice[i].v = roll(); r.rerolls--; r.sel = null;
+    r.msg = "You reroll a " + old + " and get a " + r.dice[i].v + ".";
+    rolling = new Set([i]);
     save(); paint();
   }
-  function endTurn() {
-    const r = run(); if (!r || r.state !== "fight") return;
-    if (r.twin != null) cancelTwin();
+  async function endTurn() {
+    const r = run(); if (!r || r.state !== "fight" || busy) return;
+    busy = true;
+    if (r.twin != null) { r.dice[r.twin].used = false; r.twin = null; }
+    r.sel = null;
     const en = r.enemy, name = enemyName(en.key, r.tier || 0);
     const lines = [];
     if (en.poison > 0) {
+      await play("poison");
       const p = en.poison; en.hp = Math.max(0, en.hp - p); en.poison--; pop("enemy", "-" + p, "poison");
-      lines.push("Poison deals " + p + ".");
+      lines.push("Poison deals " + p + "."); r.msg = lines.join(" ");
+      paint(); await wait(420);
     }
-    if (en.hp <= 0) { r.msg = lines.join(" "); return winFloor(); }
+    if (en.hp <= 0) { busy = false; return winFloor(); }
+    const breath = r.intent.kind === "breath";
+    await play(breath ? "breath" : "enemy");
     let dmg = r.intent.value, block = r.block;
-    if (r.intent.kind === "breath") block *= 2;
+    if (breath) block *= 2;
     dmg = Math.max(0, dmg - block);
     r.hp = Math.max(0, r.hp - dmg);
-    shake("#dHero"); if (dmg) pop("you", "-" + dmg, "bad");
-    lines.push((r.intent.kind === "breath" ? "The " + name + " breathes fire" : "The " + name + " attacks") + (dmg ? " for " + dmg + "." : ", but you block it all!"));
+    if (dmg) pop("you", "-" + dmg, "bad"); else pop("you", "Blocked!", "block");
+    lines.push((breath ? "The " + name + " breathes fire" : "The " + name + " attacks") + (dmg ? " for " + dmg + "." : ", but you block it all!"));
     r.msg = lines.join(" ");
-    if (r.hp <= 0) { r.state = "lost"; save(); paint(); return; }
+    if (r.hp <= 0) { r.state = "lost"; busy = false; save(); paint(); return; }
+    paint(); await wait(520);
     r.turn++; newTurn(r);
-    save(); paint();
+    rolling = new Set(r.dice.map((_, k) => k));
+    busy = false; save(); paint();
   }
   function afterAction() {
     const r = run();
@@ -306,28 +321,80 @@ export function setupDungeon(ctx) {
     r.xp += xp; r.gold = (r.gold || 0) + gold; D().xp += xp;
     ctx.addGold(gold);
     if (r.floor === FLOORS) ctx.addChest();
-    ctx.addXp(xp, "Defeated the " + enemyName(r.enemy.key, t) + " on floor " + r.floor + " (+" + gold + " gold)");
     r.gain = xp; r.goldGain = gold;
     r.state = r.floor === FLOORS ? "cleared" : "won";
     save(); paint();
+    // let the knockout play before any level-up card appears
+    const name = enemyName(r.enemy.key, t), floor = r.floor;
+    setTimeout(() => ctx.addXp(xp, "Defeated the " + name + " on floor " + floor + " (+" + gold + " gold)"), reduce() ? 0 : 900);
   }
   function nextFloor() {
     const r = run(); if (!r || r.state !== "won") return;
     r.floor++; const healed = Math.min(5, r.maxHp - r.hp); r.hp += healed;
     startFloor(r);
     if (healed) r.msg += " You rest and heal " + healed + ".";
+    rolling = new Set(r.dice.map((_, k) => k));
     save(); paint();
   }
 
-  /* -------- effects -------- */
-  function pop(who, text, kind) {
-    const host = document.getElementById(who === "you" ? "dHero" : "dEnemy");
-    if (!host) return;
-    const f = document.createElement("div"); f.className = "dpop " + kind; f.textContent = text;
-    host.appendChild(f); setTimeout(() => f.remove(), 900);
-    if (who === "enemy" && kind === "hit") shake("#dEnemy");
+  /* -------- animation -------- */
+  // Number pop-ups and hit flashes are queued while the state changes, then played on the newly
+  // drawn screen. Attack moves (lunges, projectiles, fire breath) play on the current screen first.
+  let busy = false, fx = [], rolling = new Set(), resultShown = false;
+  const reduce = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const wait = (ms) => new Promise((res) => setTimeout(res, reduce() ? 0 : ms));
+  function pop(who, text, kind) { fx.push({ who, text, kind }); }
+  function restart(el, cls) { if (!el) return; el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+  function overlay(host, cls, ms, html = "") {
+    if (!host) return null;
+    const el = document.createElement("div"); el.className = cls; el.innerHTML = html;
+    host.appendChild(el); setTimeout(() => el.remove(), ms);
+    return el;
   }
-  function shake(sel) { const el = $(sel); if (!el) return; el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake"); }
+  function flushFx() {
+    const list = fx; fx = [];
+    list.forEach((f) => {
+      const unit = document.getElementById(f.who === "you" ? "dHero" : "dEnemy");
+      if (!unit) return;
+      const el = overlay(unit, "dpop " + f.kind, 900);
+      el.textContent = f.text;
+      if (f.kind === "hit" || f.kind === "bad") { restart(unit, "shake"); restart(unit.firstElementChild, "hitflash"); }
+    });
+  }
+  const FIRE_SVG = '<svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="13" fill="#ff7a2b" stroke="#1c1430" stroke-width="2.4"/><circle cx="20" cy="20" r="7" fill="#ffe14a"/></svg>';
+  const DAGGER_SVG = '<svg viewBox="0 0 40 40"><path d="M6 20 L26 16 L34 20 L26 24 Z" fill="#d6dce8" stroke="#1c1430" stroke-width="2.2" stroke-linejoin="round"/><rect x="2" y="16" width="5" height="8" rx="1.5" fill="#7a4bd6" stroke="#1c1430" stroke-width="2"/><circle cx="30" cy="20" r="3" fill="#5fd36a"/></svg>';
+  async function play(kind, mirrored) {
+    if (reduce()) return;
+    const arena = document.querySelector(".darena"), hero = $("#dHero"), enemy = $("#dEnemy");
+    if (!arena || !hero || !enemy) return;
+    const target = mirrored ? hero : enemy;
+    switch (kind) {
+      case "sword":
+        restart(hero, "lunge-r"); await wait(210);
+        if (mirrored) { overlay(enemy, "mirror-glint", 400); await wait(120); }
+        overlay(target, "slash", 360); await wait(200); break;
+      case "twin":
+        restart(hero, "lunge-r"); await wait(190);
+        if (mirrored) { overlay(enemy, "mirror-glint", 400); await wait(120); }
+        overlay(target, "slash", 360); await wait(110); overlay(target, "slash s2", 360); await wait(200); break;
+      case "dagger":
+        restart(hero, "throw"); overlay(arena, "proj dagger", 450, DAGGER_SVG); await wait(400);
+        overlay(enemy, "poison-splash", 500); await wait(120); break;
+      case "fireball":
+        restart(hero, "cast"); await wait(140);
+        overlay(arena, "proj fire" + (mirrored ? " back" : ""), 900, FIRE_SVG); await wait(mirrored ? 760 : 400);
+        overlay(target, "burst", 450); await wait(160); break;
+      case "shield": overlay(hero, "bubble", 700); await wait(300); break;
+      case "potion": overlay(hero, "sparkle", 800, "<i>+</i><i>+</i><i>+</i>"); await wait(380); break;
+      case "poison": overlay(enemy, "bubbles", 700, "<i></i><i></i><i></i>"); await wait(380); break;
+      case "enemy":
+        restart(enemy, "lunge-l"); await wait(230);
+        overlay(hero, "slash claw", 360); await wait(180); break;
+      case "breath":
+        restart(enemy, "rear"); await wait(200);
+        overlay(arena, "breathfx", 700); await wait(560); break;
+    }
+  }
   const save = () => ctx.save();
 
   /* -------- battle screen -------- */
@@ -367,10 +434,10 @@ export function setupDungeon(ctx) {
       <div class="dabilities" id="dabs"></div>
       <div class="dactions">
         <button class="btn ghost" id="dSplit"${r.split ? " disabled" : ""}>Split</button>
-        <button class="btn ghost" id="dReroll"${r.rerolls < 1 ? " disabled" : ""}>Reroll (${r.rerolls})</button>
+        <button class="btn ghost" id="dReroll"${r.rerolls < 1 ? " disabled" : ""}>Reroll die (${r.rerolls})</button>
         <button class="btn" id="dEnd">End turn</button>
       </div>
-      ${r.state !== "fight" ? resultCard(r) : ""}`;
+      ${r.state !== "fight" ? resultCard(r).replace('class="dresult"', 'class="dresult' + (resultShown ? "" : " late") + '"') : ""}`;
     box.querySelector(".dmsg").textContent = r.msg || "Tap a die, then tap an ability to use it.";
     ctx.drawHero(box.querySelector(".dhero"));
     const tray = box.querySelector("#dtray");
@@ -379,7 +446,8 @@ export function setupDungeon(ctx) {
       b.className = "die" + (d.used ? " used" : "") + (r.sel === i ? " sel" : "") + (r.twin === i ? " held" : "");
       b.innerHTML = dieFace(d.v); b.setAttribute("aria-label", "Die showing " + d.v + (d.used ? ", used" : ""));
       b.disabled = d.used && r.twin !== i;
-      b.onclick = () => { if (r.twin === i) return cancelTwin(); r.sel = r.sel === i ? null : i; paint(); };
+      if (rolling.has(i)) b.classList.add("rolling");
+      b.onclick = () => { if (busy) return; if (r.twin === i) return cancelTwin(); r.sel = r.sel === i ? null : i; paint(); };
       tray.appendChild(b);
     });
     const abs = box.querySelector("#dabs");
@@ -403,6 +471,14 @@ export function setupDungeon(ctx) {
     const flee = box.querySelector("#dFlee");
     let armed = false;
     flee.onclick = () => { if (!armed) { armed = true; flee.textContent = "Sure?"; flee.classList.add("danger"); setTimeout(() => { armed = false; flee.textContent = "Flee"; flee.classList.remove("danger"); }, 3000); return; } endRun("fled"); };
+    rolling = new Set();
+    // knockouts play once when a fight ends
+    if (r.state !== "fight") {
+      const loser = box.querySelector(r.state === "lost" ? "#dHero" : "#dEnemy");
+      if (loser) loser.classList.add(resultShown ? "down" : "ko");
+      resultShown = true;
+    } else resultShown = false;
+    flushFx();
     const go = box.querySelector("#dResult");
     if (go) go.onclick = () => (r.state === "won" ? nextFloor() : endRun(r.state === "cleared" ? "clear" : "lost"));
   }
