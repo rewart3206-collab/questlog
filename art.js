@@ -68,110 +68,184 @@ function hairFront(style, c) {
   }
 }
 
-/* ---------------- base clothes and armour ---------------- */
-// Everyone wears a T-shirt and trousers. Armour (from chests) is drawn over the T-shirt.
-function base(p) {
-  const pc = p.pantsColor || PANTS, skin = p.skin, tee = TEE, teeD = shade(tee, -0.3);
-  const f = p.body === "f";
-  const legs = limb("M44 94 L42 128", pc, 12) + limb("M56 94 L58 128", pc, 12) +
-    `<path d="M38 120 Q42 124 47 120 M53 120 Q58 124 62 120" fill="none" stroke="${shade(pc, -0.35)}" stroke-width="2" stroke-linecap="round"/>` +
-    part("M33 126 L48 126 L48 146 L30 146 Q29 140 33 137 Z", SHOE, "M33 126 L38 126 L38 146 L30 146 Q29 140 33 137 Z", null) +
-    part("M52 126 L67 126 L67 137 Q71 140 70 146 L52 146 Z", SHOE, "M52 126 L56 126 L56 146 L52 146 Z", null);
-  const shorts = part("M34 86 L66 86 L67 100 L52 102 L50 96 L48 102 L33 100 Z", pc, "M34 86 L39 86 L38 101 L33 100 Z", null);
-  const torso = part(f ? "M33 60 Q35 53 43 53 L57 53 Q65 53 67 60 L66 90 L34 90 Z" : "M32 60 Q34 53 43 53 L57 53 Q66 53 68 60 L67 90 L33 90 Z", tee,
-      "M32 60 Q34 54 40 53 Q37 70 39 90 L33 90 Z", "M58 56 Q63 57 65 61 L64 68 Q61 63 57 60 Z") +
-    `<path d="M44 53 Q50 59 56 53" ${st(skin)}/>` +
-    `<rect x="33" y="86" width="34" height="5" rx="1.5" ${st("#3b2a1e")}/><rect x="47" y="85" width="6" height="7" rx="1.5" ${st("#c9a06a")}/>`;
-  const sleeve = (d, c) => part(d, c, null, null);
-  const armL = sleeve("M33 56 Q26 58 25 70 L35 72 Q35 64 37 60 Z", teeD) + limb("M30 72 L27 96", skin, 9);
-  const armR = sleeve("M67 56 Q74 58 75 70 L65 72 Q65 64 63 60 Z", tee) + limb("M70 72 L73 96", skin, 9);
-  return { legs: legs + shorts, torso, armL, armR, handL: [27, 99, skin], handR: [73, 99, skin] };
-}
-const ARMOUR = {
-  // leather vest over the T-shirt, with bracers
-  armour_leather: () => ({
-    torso: part("M35 56 Q41 54 45 55 L48 88 L35 88 Z", LEATHER, "M35 56 Q38 55 40 55 L40 88 L35 88 Z", null) +
-      part("M65 56 Q59 54 55 55 L52 88 L65 88 Z", LEATHER, null, "M60 57 Q63 57 64 60 L63 66 Q61 62 59 60 Z") +
-      `<path d="M37 66 L45 66 M37 74 L46 74 M63 66 L55 66 M63 74 L54 74" stroke="${DLEATHER}" stroke-width="2" stroke-linecap="round"/>
-       <circle cx="47" cy="70" r="1.6" ${ff(GOLD)}/><circle cx="53" cy="70" r="1.6" ${ff(GOLD)}/>`,
-    arms: `<rect x="23" y="82" width="9" height="11" rx="2" transform="rotate(-6 27 88)" ${st(DLEATHER)}/><rect x="68" y="82" width="9" height="11" rx="2" transform="rotate(6 73 88)" ${st(DLEATHER)}/>`,
-  }),
-  // chainmail shirt with a grey sleeve and a cloth tabard strip
-  armour_chain: () => ({
-    torso: part("M32 60 Q34 53 43 53 L57 53 Q66 53 68 60 L67 90 L33 90 Z", "#9aa4b5", "M32 60 Q34 54 40 53 Q37 70 39 90 L33 90 Z", null) +
-      `<path d="M36 62 Q50 66 64 62 M35 70 Q50 74 65 70 M35 78 Q50 82 65 78" fill="none" stroke="#6c7686" stroke-width="1.6" stroke-dasharray="2 2"/>` +
-      part("M44 56 L56 56 L57 92 L50 96 L43 92 Z", "#8a2f36", "M44 56 L47 56 L46 94 L43 92 Z", null) +
-      `<path d="M50 62 L53 66 L50 70 L47 66 Z" ${ff(GOLD)}/>`,
-    arms: part("M33 56 Q24 58 23 74 L35 74 Q35 64 37 60 Z", "#8a94a5", null, null) + part("M67 56 Q76 58 77 74 L65 74 Q65 64 63 60 Z", "#9aa4b5", null, null),
-  }),
-  // steel breastplate, pauldrons and gauntlets
-  armour_plate: () => ({
-    torso: part("M34 58 Q50 51 66 58 L65 84 Q50 92 35 84 Z", STEEL, "M34 58 Q38 56 42 55 Q39 70 41 89 Q37 87 35 84 Z", "M56 57 Q62 58 64 61 L63 72 Q60 66 56 62 Z") +
-      `<path d="M35 84 Q50 92 65 84" fill="none" stroke="${GOLD}" stroke-width="2.4"/><path d="M50 62 L54 68 L50 76 L46 68 Z" ${st(GOLD)}/>`,
-    arms: part("M22 58 Q30 48 41 55 L39 66 Q30 63 23 67 Z", STEEL, "M22 58 Q25 54 29 52 L30 64 Q26 65 23 67 Z", null) +
-      part("M78 58 Q70 48 59 55 L61 66 Q70 63 77 67 Z", STEEL, null, "M70 52 Q75 54 77 57 L73 58 Q71 55 68 54 Z") +
-      `<rect x="22" y="82" width="10" height="13" rx="3" transform="rotate(-6 27 88)" ${st(STEEL)}/><rect x="68" y="82" width="10" height="13" rx="3" transform="rotate(6 73 88)" ${st(STEEL)}/>`,
-  }),
-};
-export const ARMOUR_IDS = Object.keys(ARMOUR);
+/* ---------------- gear designs ----------------
+   Every slot has one design per rarity (0 common … 4 legendary), so all commons look alike, all
+   uncommons look alike and so on. A design id is the slot plus the rarity, e.g. "hand3". */
+const R_GLOW = [null, null, null, "#b46cff", "#ffcf4a"];
+export const DESIGN_SLOTS = ["head", "shirt", "pants", "back", "hand", "off"];
+const des = (id) => { const m = /^(head|shirt|pants|back|hand|off)([0-4])$/.exec(id || ""); return m ? [m[1], +m[2]] : null; };
 
-/* ---------------- gear ---------------- */
-const SHIELD_D = "M12 80 L36 80 L36 100 Q36 114 24 120 Q12 114 12 100 Z";
-const CAPE_D = "M33 56 L67 56 L80 132 Q50 140 20 132 Z";
-const ITEMS = {
-  sword: () => `<path d="M74 44 L78 50 L78 92 L70 92 L70 50 Z" ${st("#e6ecf6")}/><path d="M74 50 L74 90" stroke="#9fadc6" stroke-width="1.8"/>
-    <rect x="64" y="91" width="20" height="5" rx="2" ${st(GOLD)}/><rect x="71.5" y="95" width="5" height="10" ${st("#5b3920")}/>`,
-  staff: () => `<rect x="71" y="26" width="5" height="120" rx="2.5" ${st("#8a5a2b")}/>
-    <circle cx="73.5" cy="20" r="11" ${ff("#5ff0ff", 'opacity=".25"')}/>
-    <path d="M73.5 10 L81 20 L73.5 30 L66 20 Z" ${st("#4fe3ff")}/><path d="M73.5 13 L77 20 L73.5 20 Z" ${ff("#fff", 'opacity=".8"')}/>
-    <rect x="68" y="28" width="11" height="4" rx="1.5" ${st(GOLD)}/>`,
-  shield: () => `<path d="${SHIELD_D}" ${ff("#a8642c")}/><path d="M12 80 L18 80 L18 116 Q13 110 12 100 Z" ${ff(shade("#a8642c", -0.3))}/>${ol(SHIELD_D)}
-    <path d="M24 84 L24 114 M15 96 L33 96" stroke="${GOLD}" stroke-width="3"/>`,
-  cape: () => part(CAPE_D, "#c8362f", "M33 56 L40 56 L32 138 Q25 136 20 132 Z", null) + `<path d="M22 128 Q50 136 78 128" fill="none" stroke="${GOLD}" stroke-width="2.4"/>`,
-  goldcape: () => part(CAPE_D, "#6a34b0", "M33 56 L40 56 L32 138 Q25 136 20 132 Z", null) + `<path d="M21 128 Q50 136 79 128 L80 132 Q50 140 20 132 Z" ${st(GOLD)}/>`,
-  cape_forest: () => part(CAPE_D, "#2f6b3c", "M33 56 L40 56 L32 138 Q25 136 20 132 Z", null) + `<path d="M24 120 L30 132 M40 124 L42 136 M60 124 L58 136 M76 120 L70 132" stroke="${shade("#2f6b3c", -0.35)}" stroke-width="2.4" stroke-linecap="round"/>`,
-  sword_gold: () => `<path d="M74 40 L79 48 L79 92 L69 92 L69 48 Z" ${st("#ffe27a")}/><path d="M74 48 L74 90" stroke="#d99a1a" stroke-width="2"/>
-    <path d="M62 90 Q74 96 86 90 L86 96 Q74 100 62 96 Z" ${st("#7a4bd6")}/><rect x="71.5" y="96" width="5" height="10" ${st("#3a1f5e")}/><circle cx="74" cy="108" r="3" ${st("#ffe27a")}/>`,
-  shield_steel: () => `<circle cx="24" cy="98" r="15" ${st(STEEL)}/><path d="M12 92 Q16 84 24 83" fill="none" stroke="#fff" stroke-width="2.4" opacity=".7" stroke-linecap="round"/>
-    <circle cx="24" cy="98" r="10" fill="none" stroke="${shade(STEEL, -0.3)}" stroke-width="2.4"/><circle cx="24" cy="98" r="4" ${st(GOLD)}/>`,
-  shield_royal: () => `<path d="${SHIELD_D}" ${ff("#2f56c8")}/><path d="M12 80 L18 80 L18 116 Q13 110 12 100 Z" ${ff(shade("#2f56c8", -0.3))}/>${ol(SHIELD_D)}
-    <path d="M14 80 L34 80" stroke="${GOLD}" stroke-width="3"/><path d="M17 92 L17 104 L31 104 L31 92 L27.5 97 L24 90 L20.5 97 Z" ${st(GOLD)}/>`,
-  hat: () => `<ellipse cx="50" cy="12" rx="30" ry="6.5" ${st("#3f3596")}/>` +
-    part("M34 10 Q42 -10 58 -24 Q53 -12 57 -2 Q62 5 66 10 Z", "#4a3fb0", "M34 10 Q42 -10 58 -24 Q47 -8 42 10 Z", null) +
-    `<path d="M35 7 Q50 12 65 7" fill="none" stroke="${GOLD}" stroke-width="3" stroke-linecap="round"/>`,
-  helm: () => part("M28 34 Q28 2 50 2 Q72 2 72 34 L72 44 L64 44 L64 24 L36 24 L36 44 L28 44 Z", STEEL,
+// swords: drawn in the right hand with the grip centred on (74, 100)
+const SWORDS = [
+  { blade: "#c9d0dc", len: 0, w: 0, guard: "#8a5430", grip: "#5b3920" },
+  { blade: "#e6ecf6", len: 3, w: 0, guard: STEEL, grip: "#3a3a4a", gem: "#5fd36a" },
+  { blade: "#eef3fb", len: 7, w: 1, guard: GOLD, grip: "#5b3920", gem: "#4fa8ff" },
+  { blade: "#d9c6ff", len: 9, w: 1, guard: "#3a2a5e", grip: "#241a3a", gem: "#c58bff", runes: "#8a3fd6", glow: "#b46cff" },
+  { blade: "#ffe27a", len: 11, w: 1.5, guard: "#c8851a", grip: "#5a1a1a", gem: "#e8233f", wing: true, glow: "#ffcf4a" },
+];
+function swordArt(r) {
+  const s = SWORDS[r], top = 44 - s.len, L = 70 - s.w, Rr = 78 + s.w;
+  const blade = `M74 ${top} L${Rr} ${top + 6} L${Rr} 92 L${L} 92 L${L} ${top + 6} Z`;
+  const glow = s.glow ? `<path d="${blade}" fill="none" stroke="${s.glow}" stroke-width="7" opacity=".4" stroke-linejoin="round"/>` : "";
+  const runes = s.runes ? `<path d="M74 ${top + 14} l-2 3 l2 3 M74 ${top + 28} l2 3 l-2 3 M74 ${top + 42} l-2 3 l2 3" fill="none" stroke="${s.runes}" stroke-width="1.6" stroke-linecap="round"/>` : "";
+  const guard = s.wing
+    ? `<path d="M60 88 Q66 94 74 92 Q82 94 88 88 L86 96 Q80 99 74 97 Q68 99 62 96 Z" ${st(s.guard)}/>`
+    : `<rect x="${r >= 2 ? 62 : 64}" y="91" width="${r >= 2 ? 24 : 20}" height="5" rx="2" ${st(s.guard)}/>`;
+  return `${glow}<path d="${blade}" ${st(s.blade)}/><path d="M74 ${top + 6} L74 90" stroke="${shade(s.blade, -0.3)}" stroke-width="1.8"/>${runes}
+    ${guard}<rect x="71.5" y="95" width="5" height="10" ${st(s.grip)}/><circle cx="74" cy="107" r="3" ${st(s.guard)}/>
+    ${s.gem ? `<circle cx="74" cy="93.5" r="2.2" ${st(s.gem, 'stroke-width="1.4"')}/>` : ""}`;
+}
+// shields: held on the left arm, centred around (24, 100)
+const HEATER = "M11 80 L37 80 L37 100 Q37 115 24 121 Q11 115 11 100 Z";
+const KITE = "M10 78 L38 78 L38 98 Q38 116 24 124 Q10 116 10 98 Z";
+const SHIELDS = [
+  { col: "#a8642c", shape: HEATER },
+  { col: STEEL, round: true },
+  { col: "#2f56c8", shape: HEATER },
+  { col: "#5a2a8a", shape: KITE, glow: "#b46cff" },
+  { col: "#f2b631", shape: KITE, glow: "#ffcf4a" },
+];
+function shieldArt(r) {
+  const s = SHIELDS[r];
+  if (s.round) return `<circle cx="24" cy="98" r="15" ${st(STEEL)}/><path d="M12 92 Q16 84 24 83" fill="none" stroke="#fff" stroke-width="2.4" opacity=".7" stroke-linecap="round"/>
+    <circle cx="24" cy="98" r="10" fill="none" stroke="${shade(STEEL, -0.3)}" stroke-width="2.4"/><circle cx="24" cy="98" r="4" ${st("#5fd36a")}/>`;
+  const glow = s.glow ? `<path d="${s.shape}" fill="none" stroke="${s.glow}" stroke-width="7" opacity=".4"/>` : "";
+  const face = `${glow}<path d="${s.shape}" ${ff(s.col)}/><path d="M11 80 L17 80 L17 116 Q12 110 11 100 Z" ${ff(shade(s.col, -0.3))}/>${ol(s.shape)}`;
+  if (r === 0) return face + `<path d="M19 81 L19 117 M29 81 L29 117" stroke="${shade(s.col, -0.4)}" stroke-width="1.8"/><path d="M11 92 L37 92" stroke="#6c7686" stroke-width="3.4"/>`;
+  if (r === 2) return face + `<path d="M24 84 L24 115 M14 96 L34 96" stroke="#e6ecf6" stroke-width="4"/><path d="M11 80 L37 80" stroke="#e6ecf6" stroke-width="3"/>`;
+  if (r === 3) return face + `<path d="${s.shape}" fill="none" stroke="${GOLD}" stroke-width="2.4" transform="translate(24 100) scale(.82) translate(-24 -100)"/>
+    <ellipse cx="24" cy="98" rx="7" ry="9" ${st("#ffd34a")}/><ellipse cx="24" cy="98" rx="2" ry="7" ${ff(INK)}/>`;
+  return face + `<path d="${s.shape}" fill="none" stroke="#fff6c8" stroke-width="2.4" transform="translate(24 100) scale(.82) translate(-24 -100)"/>
+    <path d="M24 86 L27 95 L36 96 L29 101 L31 110 L24 105 L17 110 L19 101 L12 96 L21 95 Z" ${st("#fff1a8", 'stroke-width="1.6"')}/><circle cx="24" cy="99" r="3.6" ${st("#e8233f", 'stroke-width="1.6"')}/>`;
+}
+function shieldBackArt(r) {
+  const s = SHIELDS[r], d = shade(s.col, -0.45);
+  const face = s.round ? `<circle cx="24" cy="98" r="15" ${st(d)}/>` : `<path d="${s.shape}" ${st(d)}/>`;
+  const rim = s.round ? "" : `<path d="${s.shape}" fill="none" stroke="${shade(s.col, -0.1)}" stroke-width="2" transform="translate(24 100) scale(.9) translate(-24 -100)"/>`;
+  return face + rim + `<rect x="15" y="91" width="18" height="6" rx="2" ${st(DLEATHER)}/><rect x="15" y="102" width="18" height="6" rx="2" ${st(DLEATHER)}/>`;
+}
+// headgear
+function headArt(r, back) {
+  if (r === 0) {
+    const cap = back ? "M30 34 Q28 4 50 3 Q72 4 70 34 Q60 38 50 38 Q40 38 30 34 Z" : "M30 30 Q30 3 50 3 Q70 3 70 30 L66 30 Q63 15 50 14 Q37 15 34 30 Z";
+    return part(cap, LEATHER, "M30 30 Q30 6 42 4 Q35 14 34 30 Z", "M50 5 Q62 6 66 14 Q58 9 50 9 Z") + `<path d="M31 ${back ? 30 : 24} Q50 ${back ? 34 : 18} 69 ${back ? 30 : 24}" fill="none" stroke="${DLEATHER}" stroke-width="3" stroke-linecap="round"/>`;
+  }
+  if (r === 1 || r === 2) {
+    const plume = r === 2 ? `<path d="M50 2 Q46 -8 54 -14 Q59 -4 53 2 Z" ${st("#c42a3e")}/>` : "";
+    const band = r === 2 ? `<path d="M28 ${back ? 34 : 24} L72 ${back ? 34 : 24}" stroke="${GOLD}" stroke-width="3"/>` : "";
+    if (back) return part("M28 36 Q28 2 50 2 Q72 2 72 36 L72 46 Q50 54 28 46 Z", STEEL, "M28 36 Q28 8 40 4 Q34 22 36 50 Q31 49 28 46 Z", "M54 5 Q66 8 68 20 L62 20 Q60 11 54 8 Z") +
+      `<path d="M50 2 L50 50" stroke="${shade(STEEL, -0.3)}" stroke-width="2.4"/>${band}${plume}`;
+    return part("M28 34 Q28 2 50 2 Q72 2 72 34 L72 44 L64 44 L64 24 L36 24 L36 44 L28 44 Z", STEEL,
       "M28 34 Q28 8 40 4 Q34 16 36 24 L36 44 L28 44 Z", "M54 5 Q66 8 68 20 L62 20 Q60 11 54 8 Z") +
-    `<path d="M28 24 L72 24" stroke="${INK}" stroke-width="${SW}"/><path d="M50 2 Q46 -8 54 -14 Q59 -4 53 2 Z" ${st("#c42a3e")}/>`,
-  crown: () => part("M34 10 L32 -6 L42 2 L50 -10 L58 2 L68 -6 L66 10 Z", "#f2bf2e", "M34 10 L32 -6 L37 -2 L38 10 Z", null) +
-    `<rect x="47.5" y="-2" width="5" height="5" transform="rotate(45 50 0.5)" ${st("#d8233f")}/>`,
-};
-// how each item is framed when shown on its own: [x, y, w, h]
-const ITEM_BOX = {
-  cape_forest: [14, 52, 72, 92], sword_gold: [58, 36, 32, 76], shield_steel: [6, 80, 36, 36], shield_royal: [8, 76, 32, 48],
-  sword: [60, 40, 28, 68], staff: [58, 6, 30, 70], shield: [8, 76, 32, 48], cape: [14, 52, 72, 92],
-  goldcape: [14, 52, 72, 92], hat: [16, -28, 68, 44], helm: [22, -18, 56, 66], crown: [28, -14, 44, 28],
-};
+      `<path d="M28 24 L72 24" stroke="${INK}" stroke-width="${SW}"/>${band}${plume}`;
+  }
+  if (r === 3) return `<ellipse cx="50" cy="12" rx="30" ry="6.5" ${st("#3f3596")}/>` +
+    part("M34 10 Q42 -10 58 -24 Q53 -12 57 -2 Q62 5 66 10 Z", "#4a3fb0", "M34 10 Q42 -10 58 -24 Q47 -8 42 10 Z", null) +
+    `<path d="M35 7 Q50 12 65 7" fill="none" stroke="${GOLD}" stroke-width="3" stroke-linecap="round"/><path d="M52 -6 l1.5 3 3 .5 -2.2 2 .6 3 -2.9 -1.5 -2.9 1.5 .6 -3 -2.2 -2 3 -.5 z" ${ff("#ffe27a")}/>`;
+  return `<path d="M32 12 L30 -8 L41 1 L50 -12 L59 1 L70 -8 L68 12 Z" fill="none" stroke="#ffcf4a" stroke-width="7" opacity=".35" stroke-linejoin="round"/>` +
+    part("M32 12 L30 -8 L41 1 L50 -12 L59 1 L70 -8 L68 12 Z", "#f2bf2e", "M32 12 L30 -8 L36 -3 L37 12 Z", null) +
+    `<rect x="31" y="7" width="38" height="6" rx="2" ${st("#e0a520")}/><circle cx="40" cy="10" r="1.8" ${ff("#4fa8ff")}/><circle cx="60" cy="10" r="1.8" ${ff("#5fd36a")}/>` +
+    `<rect x="47.5" y="-1" width="5" height="5" transform="rotate(45 50 1.5)" ${st("#d8233f")}/>`;
+}
+// armour pieces, drawn over the T-shirt
+const PLATES = [null, null, { col: STEEL, trim: GOLD, gem: GOLD }, { col: "#5c5884", trim: "#c58bff", gem: "#b46cff" }, { col: "#f2c94a", trim: "#fff6c8", gem: "#e8233f" }];
+function armourArt(r, back) {
+  if (r === 0) {
+    const torso = back
+      ? part("M35 56 Q50 52 65 56 L64 88 L36 88 Z", LEATHER, "M35 56 Q38 55 41 54 L41 88 L36 88 Z", null) + `<path d="M38 64 L62 64 M38 76 L62 76" stroke="${DLEATHER}" stroke-width="2.4" stroke-linecap="round"/>`
+      : part("M35 56 Q41 54 45 55 L48 88 L35 88 Z", LEATHER, "M35 56 Q38 55 40 55 L40 88 L35 88 Z", null) +
+        part("M65 56 Q59 54 55 55 L52 88 L65 88 Z", LEATHER, null, "M60 57 Q63 57 64 60 L63 66 Q61 62 59 60 Z") +
+        `<path d="M37 66 L45 66 M37 74 L46 74 M63 66 L55 66 M63 74 L54 74" stroke="${DLEATHER}" stroke-width="2" stroke-linecap="round"/><circle cx="47" cy="70" r="1.6" ${ff(GOLD)}/><circle cx="53" cy="70" r="1.6" ${ff(GOLD)}/>`;
+    return { torso, arms: `<rect x="23" y="82" width="9" height="11" rx="2" transform="rotate(-6 27 88)" ${st(DLEATHER)}/><rect x="68" y="82" width="9" height="11" rx="2" transform="rotate(6 73 88)" ${st(DLEATHER)}/>` };
+  }
+  if (r === 1) {
+    const torso = part("M32 60 Q34 53 43 53 L57 53 Q66 53 68 60 L67 90 L33 90 Z", "#9aa4b5", "M32 60 Q34 54 40 53 Q37 70 39 90 L33 90 Z", null) +
+      `<path d="M36 62 Q50 66 64 62 M35 70 Q50 74 65 70 M35 78 Q50 82 65 78" fill="none" stroke="#6c7686" stroke-width="1.6" stroke-dasharray="2 2"/>` +
+      (back ? "" : part("M44 56 L56 56 L57 92 L50 96 L43 92 Z", "#8a2f36", "M44 56 L47 56 L46 94 L43 92 Z", null) + `<path d="M50 62 L53 66 L50 70 L47 66 Z" ${ff(GOLD)}/>`);
+    return { torso, arms: part("M33 56 Q24 58 23 74 L35 74 Q35 64 37 60 Z", "#8a94a5", null, null) + part("M67 56 Q76 58 77 74 L65 74 Q65 64 63 60 Z", "#9aa4b5", null, null) };
+  }
+  const p = PLATES[r], dk = shade(p.col, -0.3);
+  const torso = back
+    ? part("M34 58 Q50 52 66 58 L65 86 Q50 90 35 86 Z", p.col, "M34 58 Q38 56 42 55 Q39 70 41 89 Q37 87 35 86 Z", null) +
+      `<path d="M50 56 L50 88" stroke="${dk}" stroke-width="2.4"/><path d="M35 86 Q50 90 65 86" fill="none" stroke="${p.trim}" stroke-width="2.4"/>`
+    : part("M34 58 Q50 51 66 58 L65 84 Q50 92 35 84 Z", p.col, "M34 58 Q38 56 42 55 Q39 70 41 89 Q37 87 35 84 Z", "M56 57 Q62 58 64 61 L63 72 Q60 66 56 62 Z") +
+      `<path d="M35 84 Q50 92 65 84" fill="none" stroke="${p.trim}" stroke-width="2.4"/><path d="M50 62 L54 68 L50 76 L46 68 Z" ${st(p.gem)}/>`;
+  const glow = r === 4 ? `<path d="M34 58 Q50 51 66 58 L65 86 Q50 92 35 86 Z" fill="none" stroke="#ffcf4a" stroke-width="6" opacity=".35"/>` : "";
+  const arms = part("M22 58 Q30 48 41 55 L39 66 Q30 63 23 67 Z", p.col, "M22 58 Q25 54 29 52 L30 64 Q26 65 23 67 Z", null) +
+    part("M78 58 Q70 48 59 55 L61 66 Q70 63 77 67 Z", p.col, null, "M70 52 Q75 54 77 57 L73 58 Q71 55 68 54 Z") +
+    `<path d="M24 64 Q30 61 38 63 M76 64 Q70 61 62 63" fill="none" stroke="${p.trim}" stroke-width="2" stroke-linecap="round"/>` +
+    `<rect x="22" y="82" width="10" height="13" rx="3" transform="rotate(-6 27 88)" ${st(p.col)}/><rect x="68" y="82" width="10" height="13" rx="3" transform="rotate(6 73 88)" ${st(p.col)}/>`;
+  return { torso: glow + torso, arms };
+}
+// trousers: a colour per rarity; rare and up get a trim stripe, epic and up knee guards
+const PANTS_COL = ["#7a6448", "#2f6b3c", "#2f4fb0", "#4a2a7a", "#c8962a"];
+const PANTS_TRIM = [null, null, GOLD, "#c58bff", "#fff1a8"];
+// capes
+const CAPES = ["#7a5a3a", "#2f6b3c", "#c8362f", "#6a34b0", "#ff8a2a"];
+function capeArt(r) {
+  const c = CAPES[r], dark = "M33 56 L40 56 L32 138 Q25 136 20 132 Z";
+  if (r === 0) return part(CAPE_D, c, dark, null) + `<path d="M28 100 L26 112 M72 100 L74 112" stroke="${shade(c, -0.35)}" stroke-width="2" stroke-linecap="round"/>`;
+  if (r === 1) return part(CAPE_D, c, dark, null) + `<path d="M24 120 L30 132 M40 124 L42 136 M60 124 L58 136 M76 120 L70 132" stroke="${shade(c, -0.35)}" stroke-width="2.4" stroke-linecap="round"/>`;
+  if (r === 2) return part(CAPE_D, c, dark, null) + `<path d="M22 128 Q50 136 78 128" fill="none" stroke="${GOLD}" stroke-width="2.4"/>`;
+  if (r === 3) return part(CAPE_D, c, dark, null) + `<path d="M21 128 Q50 136 79 128 L80 132 Q50 140 20 132 Z" ${st(GOLD)}/>`;
+  return `<path d="${CAPE_D}" fill="none" stroke="#ffcf4a" stroke-width="7" opacity=".35"/>` +
+    `<defs><linearGradient id="phx" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd34a"/><stop offset="1" stop-color="#e8452a"/></linearGradient></defs>` +
+    `<path d="${CAPE_D}" fill="url(#phx)"/><path d="${dark}" ${ff("#c8501a", 'opacity=".6"')}/>${ol(CAPE_D)}` +
+    `<path d="M22 126 Q28 116 32 128 Q38 112 44 128 Q50 110 56 128 Q62 112 68 128 Q72 116 78 126" fill="none" stroke="#fff1a8" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>`;
+}
+const CAPE_D = "M33 56 L67 56 L80 132 Q50 140 20 132 Z";
+
+/* ---------------- body ---------------- */
+// Everyone wears a T-shirt and trousers; armour (from chests) goes over the T-shirt.
+function legsArt(p, back) {
+  const pr = p.pants != null ? p.pants : -1, pc = pr >= 0 ? PANTS_COL[pr] : PANTS, trim = pr >= 0 ? PANTS_TRIM[pr] : null;
+  let s = limb("M44 94 L42 128", pc, 12) + limb("M56 94 L58 128", pc, 12);
+  if (trim) s += `<path d="M38.5 100 L37 126 M61.5 100 L63 126" stroke="${trim}" stroke-width="2" stroke-linecap="round"/>`;
+  if (pr >= 3) s += `<ellipse cx="42.6" cy="113" rx="6.4" ry="5" ${st(pr === 4 ? "#f2c94a" : "#7a74a8")}/><ellipse cx="57.4" cy="113" rx="6.4" ry="5" ${st(pr === 4 ? "#f2c94a" : "#7a74a8")}/>`;
+  if (!back) s += `<path d="M38 120 Q42 124 47 120 M53 120 Q58 124 62 120" fill="none" stroke="${shade(pc, -0.35)}" stroke-width="2" stroke-linecap="round"/>`;
+  s += back
+    ? part("M33 126 L48 126 L48 146 L32 146 Q30 140 33 137 Z", SHOE, "M33 140 L48 140 L48 146 L32 146 Z", null) + part("M52 126 L67 126 L67 137 Q70 140 68 146 L52 146 Z", SHOE, "M52 140 L67 140 L68 146 L52 146 Z", null)
+    : part("M33 126 L48 126 L48 146 L30 146 Q29 140 33 137 Z", SHOE, "M33 126 L38 126 L38 146 L30 146 Q29 140 33 137 Z", null) + part("M52 126 L67 126 L67 137 Q71 140 70 146 L52 146 Z", SHOE, "M52 126 L56 126 L56 146 L52 146 Z", null);
+  s += part("M34 86 L66 86 L67 100 L52 102 L50 96 L48 102 L33 100 Z", pc, back ? "M34 86 L66 86 L66 90 L34 90 Z" : "M34 86 L39 86 L38 101 L33 100 Z", null);
+  if (back) s += `<path d="M50 88 L50 97" stroke="${shade(pc, -0.35)}" stroke-width="2"/>`;
+  return s;
+}
+function torsoArt(p, back) {
+  const f = p.body === "f", tee = TEE;
+  let s = part(f ? "M33 60 Q35 53 43 53 L57 53 Q65 53 67 60 L66 90 L34 90 Z" : "M32 60 Q34 53 43 53 L57 53 Q66 53 68 60 L67 90 L33 90 Z", tee,
+    "M32 60 Q34 54 40 53 Q37 70 39 90 L33 90 Z", back ? null : "M58 56 Q63 57 65 61 L64 68 Q61 63 57 60 Z");
+  s += back ? `<path d="M43 74 Q50 77 57 74" fill="none" stroke="${shade(tee, -0.3)}" stroke-width="2" stroke-linecap="round"/>` : `<path d="M44 53 Q50 59 56 53" ${st(p.skin)}/>`;
+  s += `<rect x="33" y="86" width="34" height="5" rx="1.5" ${st("#3b2a1e")}/>` + (back ? "" : `<rect x="47" y="85" width="6" height="7" rx="1.5" ${st("#c9a06a")}/>`);
+  return s;
+}
+const sleeveL = () => part("M33 56 Q26 58 25 70 L35 72 Q35 64 37 60 Z", shade(TEE, -0.3), null, null);
+const sleeveR = () => part("M67 56 Q74 58 75 70 L65 72 Q65 64 63 60 Z", TEE, null, null);
+const handAt = (x, y, c) => `<circle cx="${x}" cy="${y}" r="5" ${st(c)}/>`;
 
 /* ---------------- public ---------------- */
-// p: { body, hair, hairColor, skin, tunic, outfit, head, back, hand, off }
-export function heroSVG(p, opts = {}) {
-  const o = base(p), arm = p.armour && ARMOUR[p.armour] ? ARMOUR[p.armour]() : null;
-  const it = (k) => (k && ITEMS[k] ? ITEMS[k]() : "");
-  const hand = ([x, y, c]) => `<circle cx="${x}" cy="${y}" r="5" ${st(c)}/>`;
+// p: { body, hair, hairColor, skin, head, shirt, pants, back, hand, off }
+// Gear fields are design ids ("hand3") or rarities already split out by heroParts in the app.
+function split(p) {
+  const r = (k) => { const d = des(p[k]); return d && d[0] === k ? d[1] : null; };
+  return { ...p, head: r("head"), shirt: r("shirt"), pants: r("pants"), back: r("back"), hand: r("hand"), off: r("off") };
+}
+export function heroSVG(p0, opts = {}) {
+  const p = split(p0), s = p.skin;
+  const arm = p.shirt != null ? armourArt(p.shirt, false) : null;
   const box = opts.head ? "24 -14 52 70" : "4 -26 92 178";
   const shadow = opts.head ? "" : `<ellipse cx="50" cy="147" rx="30" ry="4.5" fill="#000" opacity=".3"/>`;
   return `<svg viewBox="${box}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-    ${shadow}${it(p.back)}${hairBack(p.hair, p.hairColor)}
-    ${o.legs}${o.torso}${arm ? arm.torso : ""}
-    ${o.armL}${hand(o.handL)}
-    ${o.armR}
-    ${arm ? arm.arms : ""}${it(p.off)}
-    ${head(p)}${hairFront(p.hair, p.hairColor)}${it(p.head)}
-    ${it(p.hand)}${hand(o.handR)}
+    ${shadow}${p.back != null ? capeArt(p.back) : ""}${hairBack(p.hair, p.hairColor)}
+    ${legsArt(p, false)}${torsoArt(p, false)}${arm ? arm.torso : ""}
+    ${sleeveL()}${limb("M30 72 L27 96", s, 9)}${handAt(27, 99, s)}
+    ${sleeveR()}${limb("M70 72 L73 96", s, 9)}
+    ${arm ? arm.arms : ""}${p.off != null ? shieldArt(p.off) : ""}
+    ${head(p)}${p.head === 1 || p.head === 2 ? "" : hairFront(p.hair, p.hairColor)}${p.head != null ? headArt(p.head, false) : ""}
+    ${p.hand != null ? swordArt(p.hand) : ""}${handAt(73, 99, s)}
   </svg>`;
 }
-/* ---------------- back view (dungeon, seen over the shoulder) ---------------- */
-// Same proportions as the front view. The shield arm stays on the viewer's left, the weapon on the right.
+// Seen from behind in the dungeon. The sword and shield are held out in front of the hero, so the
+// body hides part of them: they are drawn first and everything else goes on top.
 const HEAD_D = "M33 27 Q33 9 50 9 Q67 9 67 27 L67 35 Q66 47 57 51 Q50 54 43 51 Q34 47 33 35 Z";
 function hairBackView(style, c) {
   const d = shade(c, -0.3), l = shade(c, 0.25);
@@ -188,95 +262,48 @@ function hairBackView(style, c) {
     case "bun": return capPart + `<circle cx="50" cy="16" r="10" ${st(c)}/><path d="M44 12 Q50 8 56 12" fill="none" stroke="${d}" stroke-width="1.8" stroke-linecap="round"/>`;
     case "spiky": return part("M31 36 L27 22 L20 18 L29 13 L27 0 L38 6 L42 -6 L50 2 L58 -8 L62 4 L73 -2 L71 12 L80 18 L71 24 L69 36 Q66 48 50 50 Q34 48 31 36 Z",
       c, "M31 36 L27 22 L20 18 L29 13 L27 0 L36 5 Q34 24 38 46 Q33 42 31 36 Z", null) + strands;
-    default: return ""; // bald: the skin head shows
+    default: return "";
   }
 }
-const BACK_ITEMS = {
-  helm: () => part("M28 36 Q28 2 50 2 Q72 2 72 36 L72 46 Q50 54 28 46 Z", STEEL, "M28 36 Q28 8 40 4 Q34 22 36 50 Q31 49 28 46 Z", "M54 5 Q66 8 68 20 L62 20 Q60 11 54 8 Z") +
-    `<path d="M50 2 L50 50" stroke="${shade(STEEL, -0.3)}" stroke-width="2.4"/><path d="M50 2 Q46 -8 54 -14 Q59 -4 53 2 Z" ${st("#c42a3e")}/>`,
-};
-// the back of a shield: darker face, a leather strap and the arm through it
-function shieldBack(id) {
-  const col = { shield: "#a8642c", shield_steel: STEEL, shield_royal: "#2f56c8" }[id];
-  if (!col) return "";
-  const face = id === "shield_steel" ? `<circle cx="24" cy="98" r="15" ${st(shade(col, -0.35))}/>` : `<path d="${SHIELD_D}" ${st(shade(col, -0.4))}/>`;
-  return face + `<rect x="15" y="92" width="18" height="6" rx="2" ${st(DLEATHER)}/><rect x="15" y="102" width="18" height="6" rx="2" ${st(DLEATHER)}/>`;
-}
-function baseBack(p) {
-  const pc = p.pantsColor || PANTS, skin = p.skin, tee = TEE, teeD = shade(tee, -0.3), f = p.body === "f";
-  const legs = limb("M44 94 L42 128", pc, 12) + limb("M56 94 L58 128", pc, 12) +
-    part("M33 126 L48 126 L48 146 L32 146 Q30 140 33 137 Z", SHOE, "M33 140 L48 140 L48 146 L32 146 Z", null) +
-    part("M52 126 L67 126 L67 137 Q70 140 68 146 L52 146 Z", SHOE, "M52 140 L67 140 L68 146 L52 146 Z", null);
-  const seat = part("M34 86 L66 86 L67 100 L52 102 L50 96 L48 102 L33 100 Z", pc, "M34 86 L66 86 L66 90 L34 90 Z", null) +
-    `<path d="M50 88 L50 97" stroke="${shade(pc, -0.35)}" stroke-width="2"/>`;
-  const torso = part(f ? "M33 60 Q35 53 43 53 L57 53 Q65 53 67 60 L66 90 L34 90 Z" : "M32 60 Q34 53 43 53 L57 53 Q66 53 68 60 L67 90 L33 90 Z", tee,
-      "M32 60 Q34 54 40 53 Q37 70 39 90 L33 90 Z", null) +
-    `<path d="M43 74 Q50 77 57 74" fill="none" stroke="${teeD}" stroke-width="2" stroke-linecap="round"/>` +
-    `<rect x="33" y="86" width="34" height="5" rx="1.5" ${st("#3b2a1e")}/>`;
-  const armL = part("M33 56 Q26 58 25 70 L35 72 Q35 64 37 60 Z", teeD, null, null) + limb("M30 72 L27 96", skin, 9);
-  const armR = part("M67 56 Q74 58 75 70 L65 72 Q65 64 63 60 Z", tee, null, null) + limb("M70 72 L73 96", skin, 9);
-  return { legs: legs + seat, torso, armL, armR };
-}
-const ARMOUR_BACK = {
-  armour_leather: () => part("M35 56 Q50 52 65 56 L64 88 L36 88 Z", LEATHER, "M35 56 Q38 55 41 54 L41 88 L36 88 Z", null) +
-    `<path d="M38 64 L62 64 M38 76 L62 76" stroke="${DLEATHER}" stroke-width="2.4" stroke-linecap="round"/>` +
-    `<rect x="23" y="82" width="9" height="11" rx="2" transform="rotate(-6 27 88)" ${st(DLEATHER)}/><rect x="68" y="82" width="9" height="11" rx="2" transform="rotate(6 73 88)" ${st(DLEATHER)}/>`,
-  armour_chain: () => part("M32 60 Q34 53 43 53 L57 53 Q66 53 68 60 L67 90 L33 90 Z", "#9aa4b5", "M32 60 Q34 54 40 53 Q37 70 39 90 L33 90 Z", null) +
-    `<path d="M36 62 Q50 66 64 62 M35 70 Q50 74 65 70 M35 78 Q50 82 65 78" fill="none" stroke="#6c7686" stroke-width="1.6" stroke-dasharray="2 2"/>` +
-    part("M33 56 Q24 58 23 74 L35 74 Q35 64 37 60 Z", "#8a94a5", null, null) + part("M67 56 Q76 58 77 74 L65 74 Q65 64 63 60 Z", "#9aa4b5", null, null),
-  armour_plate: () => part("M34 58 Q50 52 66 58 L65 86 Q50 90 35 86 Z", STEEL, "M34 58 Q38 56 42 55 Q39 70 41 89 Q37 87 35 86 Z", null) +
-    `<path d="M50 56 L50 88" stroke="${shade(STEEL, -0.3)}" stroke-width="2.4"/><path d="M35 86 Q50 90 65 86" fill="none" stroke="${GOLD}" stroke-width="2.4"/>` +
-    part("M22 58 Q30 48 41 55 L39 66 Q30 63 23 67 Z", STEEL, "M22 58 Q25 54 29 52 L30 64 Q26 65 23 67 Z", null) +
-    part("M78 58 Q70 48 59 55 L61 66 Q70 63 77 67 Z", STEEL, null, null) +
-    `<rect x="22" y="82" width="10" height="13" rx="3" transform="rotate(-6 27 88)" ${st(STEEL)}/><rect x="68" y="82" width="10" height="13" rx="3" transform="rotate(6 73 88)" ${st(STEEL)}/>`,
-};
-export function heroBackSVG(p) {
-  const o = baseBack(p), s = p.skin, sd = shade(s, -0.22);
-  const it = (k) => (k ? (BACK_ITEMS[k] ? BACK_ITEMS[k]() : ITEMS[k] ? ITEMS[k]() : "") : "");
-  const hand = (x, y) => `<circle cx="${x}" cy="${y}" r="5" ${st(s)}/>`;
+export function heroBackSVG(p0) {
+  const p = split(p0), s = p.skin, sd = shade(s, -0.22);
+  const arm = p.shirt != null ? armourArt(p.shirt, true) : null;
+  // held out in front: shield on the left arm, sword angled up past the right shoulder
+  const shield = p.off != null ? `<g transform="translate(-5 -14)">${shieldBackArt(p.off)}</g>` : "";
+  const sword = p.hand != null ? `<g transform="translate(-8 -8) rotate(28 74 100)">${swordArt(p.hand)}</g>` : "";
   const headBack = `<path d="M44 48 L56 48 L57 58 L43 58 Z" ${st(sd)}/>` +
     `<ellipse cx="32.5" cy="34" rx="3.6" ry="5.2" ${st(s)}/><ellipse cx="67.5" cy="34" rx="3.6" ry="5.2" ${st(s)}/>` + part(HEAD_D, s, "M33 27 Q33 12 42 10 Q37 22 38 36 Q39 46 45 52 Q36 48 33 35 Z", null);
-  const helm = p.head === "helm";
+  const helm = p.head === 1 || p.head === 2;
   return `<svg viewBox="4 -26 92 178" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
     <ellipse cx="50" cy="147" rx="30" ry="4.5" fill="#000" opacity=".3"/>
-    ${o.legs}${o.torso}${p.armour && ARMOUR_BACK[p.armour] ? ARMOUR_BACK[p.armour]() : ""}
-    ${p.back && ITEMS[p.back] ? it(p.back) : ""}
-    ${o.armL}${hand(27, 99)}${o.armR}${hand(73, 99)}
-    ${headBack}${helm ? "" : hairBackView(p.hair, p.hairColor)}${it(p.head)}
-    ${shieldBack(p.off)}${it(p.hand)}
+    ${shield}${sword}
+    ${legsArt(p, true)}${torsoArt(p, true)}${arm ? arm.torso : ""}
+    ${p.back != null ? capeArt(p.back) : ""}
+    ${sleeveL()}${limb("M30 70 L26 84", s, 9)}${handAt(24, 87, s)}
+    ${sleeveR()}${limb("M70 70 L67 84", s, 9)}${handAt(66, 87, s)}
+    ${arm ? arm.arms.replace(/<rect[^>]*\/>/g, "") : ""}
+    ${headBack}${helm ? "" : hairBackView(p.hair, p.hairColor)}${p.head != null ? headArt(p.head, true) : ""}
   </svg>`;
 }
-export function itemSVG(id, colour) {
-  if (ARMOUR[id]) {
-    const a = ARMOUR[id]();
-    return `<svg viewBox="18 46 64 50" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${a.torso}${id === "armour_leather" ? "" : a.arms.replace(/<rect[^>]*>/g, "")}</svg>`;
+// a single gear icon for menus
+const ICON_BOX = { hand: [42, 40, 64, 64], off: [6, 74, 36, 52], head: [24, -26, 52, 74], back: [14, 52, 72, 92] };
+export function itemSVG(id) {
+  const d = des(id); if (!d) return "";
+  const [slot, r] = d;
+  const wrap = (box, inner) => `<svg viewBox="${box}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${inner}</svg>`;
+  if (slot === "shirt") { const a = armourArt(r, false); return wrap("18 46 64 50", a.torso + (r === 0 ? "" : a.arms.replace(/<rect[^>]*\/>/g, ""))); }
+  if (slot === "pants") {
+    const c = PANTS_COL[r], t = PANTS_TRIM[r];
+    return wrap("0 0 60 60", `<path d="M16 8 L44 8 L48 54 L34 54 L30 26 L26 54 L12 54 Z" ${st(c)}/><path d="M16 8 L22 8 L19 54 L12 54 Z" ${ff(shade(c, -0.3))}/>` +
+      (t ? `<path d="M15 14 L13 52 M45 14 L47 52" stroke="${t}" stroke-width="2.4"/>` : "") +
+      (r >= 3 ? `<ellipse cx="19" cy="38" rx="5.5" ry="4.5" ${st(r === 4 ? "#f2c94a" : "#7a74a8")}/><ellipse cx="41" cy="38" rx="5.5" ry="4.5" ${st(r === 4 ? "#f2c94a" : "#7a74a8")}/>` : "") +
+      `<rect x="15" y="6" width="30" height="7" rx="1.5" ${st(DLEATHER)}/><rect x="27" y="5" width="6" height="9" rx="1.5" ${st(GOLD)}/>`);
   }
-  if (id.startsWith("dye") || id.startsWith("shirt")) {
-    return `<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <path d="M20 8 L40 8 L52 16 L48 28 L42 26 L42 54 L18 54 L18 26 L12 28 L8 16 Z" ${st(colour)}/>
-      <path d="M18 26 L18 54 L24 54 L24 22 Z" ${ff(shade(colour, -0.3))}/>
-      <path d="M24 8 L30 18 L36 8" ${st(shade(colour, -0.3))}/>
-      <path d="M30 26 L34 32 L30 40 L26 32 Z" ${st(GOLD)}/>
-    </svg>`;
-  }
-  if (id.startsWith("pants")) {
-    return `<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <path d="M16 8 L44 8 L48 54 L34 54 L30 26 L26 54 L12 54 Z" ${st(colour)}/>
-      <path d="M16 8 L22 8 L19 54 L12 54 Z" ${ff(shade(colour, -0.3))}/>
-      <rect x="15" y="6" width="30" height="7" rx="1.5" ${st(DLEATHER)}/><rect x="27" y="5" width="6" height="9" rx="1.5" ${st(GOLD)}/>
-    </svg>`;
-  }
-  if (id.startsWith("dye")) {
-    return `<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <rect x="23" y="6" width="14" height="10" rx="3" ${st("#c9a06a")}/>
-      <path d="M24 16 L36 16 L36 22 Q50 28 50 40 Q50 54 30 54 Q10 54 10 40 Q10 28 24 22 Z" ${st("#e8eefc")}/>
-      <path d="M12.5 40 Q14 34 20 36 Q30 40 40 36 Q47 34 47.5 40 Q47 51 30 51 Q13 51 12.5 40 Z" ${ff(colour)}/>
-      <ellipse cx="20" cy="30" rx="3" ry="5" ${ff("#ffffff", 'opacity=".7"')}/>
-    </svg>`;
-  }
-  const [x, y, w, h] = ITEM_BOX[id];
-  return `<svg viewBox="${x} ${y} ${w} ${h}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${ITEMS[id]()}</svg>`;
+  const [x, y, w, h] = ICON_BOX[slot];
+  const inner = slot === "hand" ? `<g transform="rotate(40 74 72)">${swordArt(r)}</g>` : slot === "off" ? shieldArt(r) : slot === "head" ? headArt(r, false) : capeArt(r);
+  return wrap(`${x} ${y} ${w} ${h}`, inner);
 }
+
 export function flameSVG() {
   return `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M12 2c2 4 7 6 7 12a7 7 0 0 1-14 0c0-4 3-6 3-9 2 2 3 2 4-3z" fill="#ff7a2b" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/><path d="M12 12c1.4 2 3 3 3 5a3 3 0 0 1-6 0c0-2 2-3 3-5z" fill="#ffd34a"/></svg>`;
 }

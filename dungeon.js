@@ -109,8 +109,8 @@ function twistText(key, t) {
 }
 const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
 
-const SWORD_ICON = itemSVG("sword");
-const SHIELD_ICON = itemSVG("shield");
+const SWORD_ICON = itemSVG("hand0");
+const SHIELD_ICON = itemSVG("off0");
 
 /* ---------------- module ---------------- */
 // ctx: { getS, save, render, toast, logEvent, addXp, addGold, addChest, drawHero(el), dayStreak,

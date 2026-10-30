@@ -22,46 +22,51 @@ const TITLES = [
 ];
 const STREAK_TITLES = [{ d: 7, t: "Week Warden" }, { d: 30, t: "Moon Marathoner" }];
 // Gear by slot. Armour is drawn over the T-shirt; pants recolour the trousers.
-const GEAR = [
-  { id: "helm", slot: "head", name: "Knight Helm", desc: "Steel visor for the hardest quests." },
-  { id: "hat", slot: "head", name: "Wizard Hat", desc: "Pointy. Increases perceived wisdom." },
-  { id: "crown", slot: "head", name: "Golden Crown", desc: "Ruler of your own routine." },
-  { id: "armour_leather", slot: "shirt", name: "Leather Vest", desc: "Light, quiet and better than nothing." },
-  { id: "armour_chain", slot: "shirt", name: "Chainmail", desc: "Rings of steel under a red tabard." },
-  { id: "armour_plate", slot: "shirt", name: "Steel Plate", desc: "Heavy, shiny and very hard to hit through." },
-  { id: "pants_shadow", slot: "pants", name: "Shadow Trousers", desc: "Dark and quiet, worn by new adventurers.", color: "#23233a" },
-  { id: "pants_royal", slot: "pants", name: "Royal Leggings", desc: "Regal blue for a rising star.", color: "#3a46b8" },
-  { id: "pants_ember", slot: "pants", name: "Ember Breeches", desc: "Glowing red, like a week-long streak.", color: "#9a2d1c" },
-  { id: "cape", slot: "back", name: "Hero's Cape", desc: "Flutters dramatically on morning walks." },
-  { id: "goldcape", slot: "back", name: "Royal Mantle", desc: "Golden trim earned through consistency." },
-  { id: "cape_forest", slot: "back", name: "Ranger Cloak", desc: "Green and weathered from fifty quests." },
-  { id: "sword", slot: "hand", name: "Iron Sword", desc: "A trusty blade for your first dungeon." },
-  { id: "staff", slot: "hand", name: "Arcane Staff", desc: "Topped with a glowing focus orb." },
-  { id: "sword_gold", slot: "hand", name: "Golden Blade", desc: "Forged from a hundred finished quests." },
-  { id: "shield", slot: "off", name: "Oak Shield", desc: "Blocks excuses. Mostly." },
-  { id: "shield_steel", slot: "off", name: "Steel Buckler", desc: "Light, round and well trained." },
-  { id: "shield_royal", slot: "off", name: "Royal Aegis", desc: "Carried by those with perfect weeks." },
-];
+// Every slot has one design per rarity: all commons look alike, all uncommons look alike, and so on.
+const GEAR_NAMES = {
+  head: ["Leather Cap", "Iron Helm", "Knight Helm", "Wizard Hat", "Golden Crown"],
+  shirt: ["Leather Vest", "Chainmail", "Steel Plate", "Shadow Plate", "Golden Plate"],
+  pants: ["Traveller's Trousers", "Ranger Trousers", "Royal Leggings", "Shadow Greaves", "Golden Greaves"],
+  back: ["Traveller's Cloak", "Ranger Cloak", "Hero's Cape", "Royal Mantle", "Phoenix Cape"],
+  hand: ["Iron Sword", "Steel Sword", "Knight's Blade", "Runeblade", "Golden Blade"],
+  off: ["Wooden Shield", "Iron Buckler", "Knight's Shield", "Dragon Shield", "Golden Aegis"],
+};
+// Item ids from earlier versions: [slot, rarity of the matching design]. Used for old saves and old guild profiles.
+const OLD_GEAR = {
+  helm: ["head", 2], hat: ["head", 3], crown: ["head", 4],
+  armour_leather: ["shirt", 0], armour_chain: ["shirt", 1], armour_plate: ["shirt", 2],
+  dye_shadow: ["shirt", 0], shirt_forest: ["shirt", 1], dye_gold: ["shirt", 2],
+  pants_shadow: ["pants", 3], pants_royal: ["pants", 2], pants_ember: ["pants", 4],
+  cape: ["back", 2], goldcape: ["back", 3], cape_forest: ["back", 1],
+  sword: ["hand", 0], staff: ["hand", 2], sword_gold: ["hand", 4],
+  shield: ["off", 0], shield_steel: ["off", 1], shield_royal: ["off", 2],
+};
 const GEAR_SLOTS = [
   { slot: "head", name: "Helmet" }, { slot: "shirt", name: "Armour" }, { slot: "pants", name: "Pants" },
   { slot: "back", name: "Cape" }, { slot: "hand", name: "Sword" }, { slot: "off", name: "Shield" },
 ];
-// Gear comes from chests as common items. Merging 3 items of the same slot and rarity turns the one
-// you choose into the next rarity. Each slot powers one part of dungeon combat.
+// Chests can give any rarity. Items sell for gold; three legendaries of the same slot merge into a
+// stronger one (Legendary +1, +2 …). Each slot powers one part of dungeon combat.
 const RARITIES = [
-  { name: "Common", colour: "#b9c0cf" }, { name: "Uncommon", colour: "#5fd36a" }, { name: "Rare", colour: "#4fa8ff" },
-  { name: "Epic", colour: "#b46cff" }, { name: "Legendary", colour: "#ffb020" },
+  { name: "Common", colour: "#b9c0cf", drop: 60, sell: 20 }, { name: "Uncommon", colour: "#5fd36a", drop: 25, sell: 50 },
+  { name: "Rare", colour: "#4fa8ff", drop: 10, sell: 120 }, { name: "Epic", colour: "#b46cff", drop: 4, sell: 300 },
+  { name: "Legendary", colour: "#ffb020", drop: 1, sell: 800 },
 ];
+const LEG = RARITIES.length - 1;
 const SLOT_STATS = {
-  hand: { key: "dmg", label: "Attack damage", vals: [1, 2, 3, 5, 7] },
-  off: { key: "block", label: "Shield block", vals: [1, 2, 3, 4, 6] },
-  head: { key: "hp", label: "Max HP", vals: [3, 6, 9, 13, 18] },
-  shirt: { key: "def", label: "Defence", vals: [1, 2, 3, 4, 6] },
-  pants: { key: "hp", label: "Max HP", vals: [2, 4, 6, 9, 12] },
-  back: { key: "crit", label: "Crit chance", vals: [5, 8, 12, 16, 22], pct: true },
+  hand: { key: "dmg", label: "Attack damage", vals: [1, 2, 3, 5, 7], plus: 2 },
+  off: { key: "block", label: "Shield block", vals: [1, 2, 3, 4, 6], plus: 1 },
+  head: { key: "hp", label: "Max HP", vals: [3, 6, 9, 13, 18], plus: 4 },
+  shirt: { key: "def", label: "Defence", vals: [1, 2, 3, 4, 6], plus: 1 },
+  pants: { key: "hp", label: "Max HP", vals: [2, 4, 6, 9, 12], plus: 3 },
+  back: { key: "crit", label: "Crit chance", vals: [5, 8, 12, 16, 22], plus: 3, pct: true },
 };
 const CHEST_PRICE = 100;
-const statText = (slot, r) => "+" + SLOT_STATS[slot].vals[r] + (SLOT_STATS[slot].pct ? "% " : " ") + SLOT_STATS[slot].label;
+const statVal = (slot, r, p) => SLOT_STATS[slot].vals[r] + (r === LEG ? (p || 0) * SLOT_STATS[slot].plus : 0);
+const statText = (slot, r, p) => "+" + statVal(slot, r, p) + (SLOT_STATS[slot].pct ? "% " : " ") + SLOT_STATS[slot].label;
+const itemName = (it) => GEAR_NAMES[it.slot][it.r] + (it.p ? " +" + it.p : "");
+const rarityName = (it) => RARITIES[it.r].name + (it.p ? " +" + it.p : "");
+const sellPrice = (it) => RARITIES[it.r].sell * (it.r === LEG ? 1 + 2 * (it.p || 0) : 1);
 const SLOTS = ["head", "shirt", "pants", "back", "hand", "off"];
 
 const dkey = (d) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
@@ -113,7 +118,7 @@ function migrate(st) {
   // Gear v2: gear lives in an inventory with rarities. Anything already unlocked becomes a common copy
   // (worn items stay worn), and gear bought with gold in the first version too.
   if (!st.inv) {
-    const ids = [...new Set([...(st.unlocked || []), ...(st.owned || [])])].filter((id) => GEAR.some((g) => g.id === id));
+    const ids = [...new Set([...(st.unlocked || []), ...(st.owned || [])])].filter((id) => OLD_GEAR[id]);
     st.inv = ids.map((id) => ({ u: uid(), id, r: 0 }));
     const eq = {};
     Object.entries(st.equip || {}).forEach(([slot, id]) => { const it = st.inv.find((x) => x.id === id); if (it) eq[slot] = it.u; });
@@ -121,7 +126,10 @@ function migrate(st) {
     delete st.unlocked; delete st.owned;
   }
   // Armour v3: tunics become armour, spells are owned and equipped, old dice runs are refunded.
-  (st.inv || []).forEach((it) => { if (ARMOUR_RENAME[it.id]) it.id = ARMOUR_RENAME[it.id]; });
+  // Gear v3: designs follow rarity, so an item is just a slot and a rarity (plus a + level for legendaries).
+  (st.inv || []).forEach((it) => { if (it.id) { const o = OLD_GEAR[it.id]; it.slot = o ? o[0] : "hand"; delete it.id; } });
+  if (!st.seen) { st.seen = {}; (st.inv || []).forEach((it) => { const l = (st.seen[it.slot] = st.seen[it.slot] || []); if (!l.includes(it.r)) l.push(it.r); }); }
+  if (!st.vanity) st.vanity = {};
   if (!st.spells) { st.spells = ["fireball"]; st.spell = "fireball"; }
   if (st.run && st.run.dice) { delete st.run; if (st.dungeon && st.dungeon.spent) st.dungeon.spent--; }
   if (st.look) delete st.look.outfit;
@@ -161,40 +169,47 @@ function normLook(l) {
   }
   return l === "f" ? { ...DEFAULT_LOOK, body: "f", hair: "long" } : { ...DEFAULT_LOOK };
 }
-// The coloured tunics of earlier versions became armour pieces of the same rarity.
-const ARMOUR_RENAME = { dye_shadow: "armour_leather", shirt_forest: "armour_chain", dye_gold: "armour_plate" };
-// Turn saved gear + look into what the art needs, then draw the hero into an element.
+// Turn saved gear + look into what the art needs. Gear values are design ids ("hand3");
+// ids from older versions (in old saves or friends' guild cards) are translated.
+function toDesign(slot, v) {
+  if (v == null) return null;
+  if (new RegExp("^" + slot + "[0-4]$").test(v)) return v;
+  const o = OLD_GEAR[v]; return o && o[0] === slot ? slot + o[1] : null;
+}
 function heroParts(equip) {
   equip = equip || {};
   const look = normLook(equip.body ? { body: equip.body, hair: equip.hair, hc: equip.hc, skin: equip.skin } : equip.look);
-  const armour = ARMOUR_RENAME[equip.shirt] || equip.shirt;
-  const pants = GEAR.find((g) => g.id === equip.pants);
-  return {
-    body: look.body, hair: look.hair, hairColor: HAIR_COLOURS[look.hc], skin: SKIN_TONES[look.skin],
-    armour, pantsColor: pants ? pants.color : null, head: equip.head, back: equip.back, hand: equip.hand, off: equip.off,
-  };
+  const out = { body: look.body, hair: look.hair, hairColor: HAIR_COLOURS[look.hc], skin: SKIN_TONES[look.skin] };
+  SLOTS.forEach((slot) => (out[slot] = toDesign(slot, equip[slot] != null ? equip[slot] : slot === "shirt" ? equip.armour : null)));
+  return out;
 }
 function drawSprite(el, cls, equip, opts) { el.innerHTML = heroSVG(heroParts(equip), opts || {}); }
-function gearIcon(g, r) {
+function gearIcon(slot, r) {
   const d = document.createElement("div"); d.className = "gear-icon";
   if (r != null) { d.style.borderColor = RARITIES[r].colour; d.style.boxShadow = "0 0 0 2px " + RARITIES[r].colour + "55, inset 0 0 14px " + RARITIES[r].colour + "66"; }
-  d.innerHTML = itemSVG(g.id, g.color);
+  d.innerHTML = itemSVG(slot + (r == null ? 0 : r));
   return d;
 }
 const invItem = (u) => (u == null ? null : S.inv.find((x) => x.u === u));
-// slot -> gear template id of what's worn (what the art and the guild need)
-function equipIds() {
-  const out = {};
-  SLOTS.forEach((slot) => { const it = invItem(S.equip[slot]); out[slot] = it ? it.id : null; });
+// slot -> design id that shows on the hero: a vanity look if one is chosen, otherwise the worn item
+function lookIds() {
+  const out = {}, v = S.vanity || {};
+  SLOTS.forEach((slot) => {
+    if (v[slot] === -1) out[slot] = null;
+    else if (v[slot] != null) out[slot] = slot + v[slot];
+    else { const it = invItem(S.equip[slot]); out[slot] = it ? slot + it.r : null; }
+  });
   return out;
 }
-// combined dungeon bonuses from everything worn
+// combined dungeon bonuses from everything worn (vanity never changes stats)
 function gearBonus() {
   const b = { dmg: 0, block: 0, hp: 0, def: 0, crit: 0 };
-  SLOTS.forEach((slot) => { const it = invItem(S.equip[slot]); if (it) b[SLOT_STATS[slot].key] += SLOT_STATS[slot].vals[it.r]; });
+  SLOTS.forEach((slot) => { const it = invItem(S.equip[slot]); if (it) b[SLOT_STATS[slot].key] += statVal(slot, it.r, it.p); });
   return b;
 }
-const heroLook = () => ({ ...equipIds(), ...normLook(S.look) });
+// every design you've ever owned can be used as a vanity look
+function markSeen(it) { S.seen = S.seen || {}; const l = (S.seen[it.slot] = S.seen[it.slot] || []); if (!l.includes(it.r)) l.push(it.r); }
+const heroLook = () => ({ ...lookIds(), ...normLook(S.look) });
 let S = null;
 let me = null;          // Firebase user
 let userRef = null, profileRef = null;
@@ -277,7 +292,7 @@ function save() {
 async function pushToCloud() {
   if (!userRef || !fb) return;
   const L = levelInfo(S.xp);
-  const equip = equipIds(); const lk = normLook(S.look); Object.assign(equip, lk); equip.look = lk.body;
+  const equip = lookIds(); const lk = normLook(S.look); Object.assign(equip, lk); equip.look = lk.body;
   try {
     await Promise.all([
       fb.setDoc(userRef, { save: JSON.stringify(S), at: S.at }),
@@ -347,11 +362,16 @@ function levelUp(L) {
     w.querySelector("button").onclick = done;
   });
 }
-// Chests: buy with gold or earn by clearing a dungeon; each gives one random common item.
+// Chests: buy with gold or earn by clearing a dungeon. Each gives one random item of any rarity.
 function buyChest() {
   if (GOLD_UNLIMITED) { logEvent("Opened a chest (free while testing)"); openChest(true); return; }
   if (S.gold < CHEST_PRICE) { toast("You need " + (CHEST_PRICE - S.gold) + " more gold. Earn gold in the dungeon"); return; }
   S.gold -= CHEST_PRICE; logEvent("Bought a chest (-" + CHEST_PRICE + " gold)"); openChest(true);
+}
+function rollRarity() {
+  let n = Math.random() * 100;
+  for (let r = 0; r < RARITIES.length; r++) { n -= RARITIES[r].drop; if (n < 0) return r; }
+  return 0;
 }
 function openChest(bought) {
   if (!bought) { if (S.chests < 1) return; S.chests--; }
@@ -362,12 +382,11 @@ function openChest(bought) {
     S.spells.push(k); logEvent("Opened a chest: learned " + SPELLS[k].name);
     save(); render(); revealSpell(k); return;
   }
-  const g = GEAR[Math.floor(Math.random() * GEAR.length)];
-  const item = { u: uid(), id: g.id, r: 0 };
-  S.inv.push(item);
-  logEvent("Opened a chest: " + g.name);
+  const item = { u: uid(), slot: SLOTS[Math.floor(Math.random() * SLOTS.length)], r: rollRarity() };
+  S.inv.push(item); markSeen(item);
+  logEvent("Opened a chest: " + RARITIES[item.r].name + " " + itemName(item));
   save(); render();
-  revealItem("CHEST OPENED", g, item, true);
+  revealItem("CHEST OPENED", item, true);
 }
 function revealSpell(k) {
   const sp = SPELLS[k];
@@ -397,52 +416,51 @@ function renderSpells() {
     li.append(mid, b); box.appendChild(li);
   });
 }
-function revealItem(tagText, g, item, offerEquip) {
+function revealItem(tagText, item, offerEquip) {
   queueModal((w, done) => {
     w.innerHTML = '<div class="title-tag"></div><div class="chest-reveal"><div class="chest-burst"></div><div class="reveal-slot"></div></div><h1></h1><span class="rarity-tag"></span><p class="muted" style="margin:0"></p><div class="actions" style="justify-content:center"></div>';
     w.querySelector(".title-tag").textContent = tagText;
     const R = RARITIES[item.r];
-    const icon = gearIcon(g, item.r); icon.classList.add("unlock-icon");
+    const icon = gearIcon(item.slot, item.r); icon.classList.add("unlock-icon");
     w.querySelector(".reveal-slot").replaceWith(icon);
     w.querySelector(".chest-burst").style.background = "radial-gradient(circle," + R.colour + "aa 0,transparent 65%)";
-    w.querySelector("h1").textContent = g.name;
-    const tag = w.querySelector(".rarity-tag"); tag.textContent = R.name; tag.style.background = R.colour;
-    w.querySelector("p").textContent = statText(g.slot, item.r);
+    w.querySelector("h1").textContent = itemName(item);
+    const tag = w.querySelector(".rarity-tag"); tag.textContent = rarityName(item); tag.style.background = R.colour;
+    w.querySelector("p").textContent = statText(item.slot, item.r, item.p);
     const a = w.querySelector(".actions");
-    if (offerEquip && S.equip[g.slot] !== item.u) {
+    if (offerEquip && S.equip[item.slot] !== item.u) {
       const eq = document.createElement("button"); eq.className = "btn gold"; eq.textContent = "Equip";
-      eq.onclick = () => { S.equip[g.slot] = item.u; save(); render(); done(); };
+      eq.onclick = () => { S.equip[item.slot] = item.u; save(); render(); done(); };
       a.appendChild(eq);
     }
     const ok = document.createElement("button"); ok.className = "btn ghost"; ok.textContent = offerEquip ? "Keep" : "Nice";
     ok.onclick = done; a.appendChild(ok);
   });
 }
-function toggleGear(it) {
-  const g = GEAR.find((x) => x.id === it.id);
-  S.equip[g.slot] = S.equip[g.slot] === it.u ? null : it.u; save(); render();
+function toggleGear(it) { S.equip[it.slot] = S.equip[it.slot] === it.u ? null : it.u; save(); render(); }
+function sellItem(it) {
+  if (S.equip[it.slot] === it.u) { toast("Unequip it first"); return; }
+  const g = sellPrice(it);
+  S.inv = S.inv.filter((x) => x.u !== it.u);
+  S.gold = (S.gold || 0) + g;
+  logEvent("Sold " + RARITIES[it.r].name + " " + itemName(it) + " (+" + g + " gold)");
+  save(); render(); toast("Sold for " + g + " gold");
 }
-// Merge: the chosen item goes up one rarity by using up two other items of the same slot and rarity.
-// Unworn copies are used, preferring copies of the same item.
-const slotOf = (it) => GEAR.find((y) => y.id === it.id).slot;
+// Legendary merge: the chosen legendary goes up one + level by using up two other unworn legendaries
+// of the same slot, lowest + levels first.
 function mergeFodder(it) {
-  const slot = slotOf(it);
-  const pool = S.inv.filter((x) => x.u !== it.u && x.r === it.r && slotOf(x) === slot && S.equip[slot] !== x.u);
-  // use copies of the same item first, then items you have spares of, and unique looks last
-  const copies = (x) => S.inv.filter((y) => y.id === x.id && y.r === x.r).length;
-  const rank = (x) => (x.id === it.id ? 0 : copies(x) > 1 ? 1 : 2);
-  return pool.sort((a, b) => rank(a) - rank(b));
+  if (it.r !== LEG) return [];
+  return S.inv.filter((x) => x.u !== it.u && x.slot === it.slot && x.r === LEG && S.equip[x.slot] !== x.u).sort((a, b) => (a.p || 0) - (b.p || 0));
 }
 function mergeItem(it) {
   const fod = mergeFodder(it);
-  if (it.r >= RARITIES.length - 1 || fod.length < 2) return;
+  if (fod.length < 2) return;
   const used = fod.slice(0, 2).map((x) => x.u);
   S.inv = S.inv.filter((x) => !used.includes(x.u));
-  it.r++;
-  const g = GEAR.find((x) => x.id === it.id);
-  logEvent("Merged into " + RARITIES[it.r].name + " " + g.name);
+  it.p = (it.p || 0) + 1;
+  logEvent("Merged into " + itemName(it));
   save(); render();
-  revealItem("MERGE COMPLETE", g, it, false);
+  revealItem("MERGE COMPLETE", it, false);
 }
 
 /* ================= UI helpers ================= */
@@ -491,73 +509,126 @@ const dungeon = setupDungeon({
 });
 
 /* ================= gear menus ================= */
+function slotButton(slot, name, icon, sub, subColour, onClick, badge) {
+  const b = document.createElement("button"); b.type = "button"; b.className = "style-btn slot-btn";
+  const t = document.createElement("span"); t.className = "slot-name"; t.textContent = name;
+  const c = document.createElement("small"); c.textContent = sub; if (subColour) c.style.color = subColour;
+  if (badge) { const dot = document.createElement("span"); dot.className = "merge-dot"; dot.textContent = badge; b.appendChild(dot); }
+  b.append(icon, t, c); b.onclick = onClick;
+  return b;
+}
 function renderGearSlots() {
   const box = $("#gearSlots"); box.innerHTML = "";
   GEAR_SLOTS.forEach(({ slot, name }) => {
-    const mine = S.inv.filter((x) => slotOf(x) === slot);
+    const mine = S.inv.filter((x) => x.slot === slot);
     const worn = invItem(S.equip[slot]);
-    const g = worn && GEAR.find((x) => x.id === worn.id);
-    const b = document.createElement("button"); b.type = "button"; b.className = "style-btn slot-btn";
-    b.setAttribute("aria-label", name + ": " + (g ? RARITIES[worn.r].name + " " + g.name : "nothing equipped") + ", " + mine.length + " owned");
-    const icon = g ? gearIcon(g, worn.r) : Object.assign(document.createElement("div"), { className: "gear-icon empty" });
-    const t = document.createElement("span"); t.className = "slot-name"; t.textContent = name;
-    const c = document.createElement("small"); c.textContent = g ? RARITIES[worn.r].name : mine.length + " owned";
-    if (g) c.style.color = RARITIES[worn.r].colour;
-    const canMerge = mine.some((x) => x.r < RARITIES.length - 1 && mergeFodder(x).length >= 2);
-    if (canMerge) { const dot = document.createElement("span"); dot.className = "merge-dot"; dot.textContent = "Merge"; b.appendChild(dot); }
-    b.append(icon, t, c); b.onclick = () => openGearMenu(slot); box.appendChild(b);
+    const icon = worn ? gearIcon(slot, worn.r) : Object.assign(document.createElement("div"), { className: "gear-icon empty" });
+    const canMerge = mine.some((x) => mergeFodder(x).length >= 2);
+    const b = slotButton(slot, name, icon, worn ? rarityName(worn) : mine.length + " owned", worn && RARITIES[worn.r].colour, () => openGearMenu(slot), canMerge && "Merge");
+    b.setAttribute("aria-label", name + ": " + (worn ? rarityName(worn) + " " + itemName(worn) : "nothing equipped") + ", " + mine.length + " owned");
+    box.appendChild(b);
   });
+  const vb = $("#vanitySlots"); if (!vb) return; vb.innerHTML = "";
+  const v = S.vanity || {};
+  GEAR_SLOTS.forEach(({ slot, name }) => {
+    const on = v[slot] != null;
+    const icon = v[slot] == null || v[slot] === -1 ? Object.assign(document.createElement("div"), { className: "gear-icon empty" }) : gearIcon(slot, v[slot]);
+    const sub = !on ? "Shows gear" : v[slot] === -1 ? "Hidden" : GEAR_NAMES[slot][v[slot]];
+    const b = slotButton(slot, name, icon, sub, on && v[slot] >= 0 ? RARITIES[v[slot]].colour : null, () => openVanityMenu(slot));
+    b.setAttribute("aria-label", name + " look: " + sub);
+    vb.appendChild(b);
+  });
+}
+function sheetHead(w, title, close) {
+  const head = document.createElement("div"); head.className = "spread";
+  const h = document.createElement("h2"); h.textContent = title;
+  const x = document.createElement("button"); x.className = "iconbtn"; x.textContent = "Close"; x.onclick = close;
+  head.append(h, x); w.appendChild(head);
+}
+function armedButton(label, cls, onGo) {
+  const m = document.createElement("button"); m.className = "btn " + cls; m.textContent = label;
+  let armed = false;
+  m.onclick = () => {
+    if (!armed) { armed = true; m.textContent = "Sure?"; m.classList.add("danger"); setTimeout(() => { armed = false; m.textContent = label; m.classList.remove("danger"); }, 3000); return; }
+    onGo();
+  };
+  return m;
 }
 function openGearMenu(slot) {
   const info = GEAR_SLOTS.find((x) => x.slot === slot), st = SLOT_STATS[slot];
   openSheet((w, close) => {
-    const head = document.createElement("div"); head.className = "spread";
-    const h = document.createElement("h2"); h.textContent = info.name;
-    const x = document.createElement("button"); x.className = "iconbtn"; x.textContent = "Close"; x.onclick = close;
-    head.append(h, x); w.appendChild(head);
+    sheetHead(w, info.name, close);
     const note = document.createElement("p"); note.className = "note";
-    note.textContent = info.name + " gear adds " + st.label + " in the dungeon. Merge 3 of the same rarity to upgrade one.";
+    note.textContent = info.name + " gear adds " + st.label + " in the dungeon. Sell what you don't need for gold. Three legendaries make a Legendary +1.";
     w.appendChild(note);
     const list = document.createElement("ul"); list.className = "clist gear-menu";
-    GEAR.filter((g) => g.slot === slot).forEach((g) => {
-      const copies = S.inv.filter((it) => it.id === g.id).sort((a, b) => b.r - a.r);
-      if (!copies.length) {
-        const li = document.createElement("li"); li.className = "ch locked";
-        li.appendChild(gearIcon(g));
-        const mid = document.createElement("div"); mid.style.minWidth = "0";
-        mid.innerHTML = '<div class="ch-name">???</div><div class="ch-goal">Find it in a chest.</div>';
-        li.append(mid, document.createElement("span")); list.appendChild(li);
-        return;
+    const mine = S.inv.filter((x) => x.slot === slot).sort((a, b) => b.r - a.r || (b.p || 0) - (a.p || 0));
+    if (!mine.length) {
+      const li = document.createElement("li"); li.className = "ch locked";
+      li.appendChild(gearIcon(slot, null));
+      const mid = document.createElement("div"); mid.innerHTML = '<div class="ch-name">Nothing yet</div><div class="ch-goal">Open chests in the Shop to find some.</div>';
+      li.append(mid, document.createElement("span")); list.appendChild(li);
+    }
+    mine.forEach((it) => {
+      const eq = S.equip[slot] === it.u, R = RARITIES[it.r];
+      const li = document.createElement("li"); li.className = "ch done" + (eq ? " equipped" : "");
+      li.appendChild(gearIcon(slot, it.r));
+      const mid = document.createElement("div"); mid.style.minWidth = "0";
+      const nm = document.createElement("div"); nm.className = "ch-name"; nm.textContent = itemName(it);
+      const rt = document.createElement("span"); rt.className = "rarity-tag small"; rt.textContent = rarityName(it); rt.style.background = R.colour;
+      const sub = document.createElement("div"); sub.className = "ch-goal"; sub.textContent = statText(slot, it.r, it.p);
+      mid.append(nm, rt, sub);
+      const btns = document.createElement("div"); btns.className = "gear-btns";
+      const b = document.createElement("button"); b.className = "btn" + (eq ? " gold" : " ghost");
+      b.textContent = eq ? "Unequip" : "Equip"; b.setAttribute("aria-label", (eq ? "Unequip " : "Equip ") + rarityName(it) + " " + itemName(it));
+      b.onclick = () => { toggleGear(it); openGearMenu(slot); };
+      btns.appendChild(b);
+      if (!eq) {
+        const s = armedButton("Sell " + sellPrice(it), "sell", () => { sellItem(it); openGearMenu(slot); });
+        s.setAttribute("aria-label", "Sell " + rarityName(it) + " " + itemName(it) + " for " + sellPrice(it) + " gold");
+        btns.appendChild(s);
       }
-      copies.forEach((it) => {
-        const eq = S.equip[slot] === it.u, R = RARITIES[it.r];
-        const li = document.createElement("li"); li.className = "ch done" + (eq ? " equipped" : "");
-        li.appendChild(gearIcon(g, it.r));
-        const mid = document.createElement("div"); mid.style.minWidth = "0";
-        const nm = document.createElement("div"); nm.className = "ch-name"; nm.textContent = g.name;
-        const rt = document.createElement("span"); rt.className = "rarity-tag small"; rt.textContent = R.name; rt.style.background = R.colour;
-        const sub = document.createElement("div"); sub.className = "ch-goal"; sub.textContent = statText(slot, it.r);
-        mid.append(nm, rt, sub);
-        const btns = document.createElement("div"); btns.className = "gear-btns";
-        const b = document.createElement("button"); b.className = "btn" + (eq ? " gold" : " ghost");
-        b.textContent = eq ? "Unequip" : "Equip"; b.setAttribute("aria-label", (eq ? "Unequip " : "Equip ") + R.name + " " + g.name);
-        b.onclick = () => { toggleGear(it); openGearMenu(slot); };
-        btns.appendChild(b);
-        if (it.r < RARITIES.length - 1) {
-          const have = mergeFodder(it).length;
-          const m = document.createElement("button"); m.className = "btn merge";
-          m.textContent = have >= 2 ? "Merge" : "Merge " + Math.min(have, 2) + "/2";
-          m.disabled = have < 2;
-          m.setAttribute("aria-label", "Merge two other " + R.name + " " + info.name.toLowerCase() + " items into this one");
-          let armed = false;
-          m.onclick = () => {
-            if (!armed) { armed = true; m.textContent = "Sure?"; m.classList.add("danger"); return; }
-            mergeItem(it); openGearMenu(slot);
-          };
-          btns.appendChild(m);
-        }
-        li.append(mid, btns); list.appendChild(li);
-      });
+      if (it.r === LEG) {
+        const have = mergeFodder(it).length;
+        const m = armedButton(have >= 2 ? "Merge" : "Merge " + Math.min(have, 2) + "/2", "merge", () => { mergeItem(it); openGearMenu(slot); });
+        m.disabled = have < 2;
+        m.setAttribute("aria-label", "Merge two other legendary " + info.name.toLowerCase() + " items into this one");
+        btns.appendChild(m);
+      }
+      li.append(mid, btns); list.appendChild(li);
+    });
+    w.appendChild(list);
+  });
+}
+// Vanity: pick a look for each slot that shows over your gear. It never changes stats.
+function openVanityMenu(slot) {
+  const info = GEAR_SLOTS.find((x) => x.slot === slot);
+  openSheet((w, close) => {
+    sheetHead(w, info.name + " look", close);
+    const note = document.createElement("p"); note.className = "note";
+    note.textContent = "Choose how your " + info.name.toLowerCase() + " looks. Your stats always come from the gear you have equipped.";
+    w.appendChild(note);
+    const list = document.createElement("ul"); list.className = "clist gear-menu";
+    const cur = (S.vanity || {})[slot], seen = (S.seen || {})[slot] || [];
+    const pick = (val) => { S.vanity = S.vanity || {}; if (val == null) delete S.vanity[slot]; else S.vanity[slot] = val; save(); render(); openVanityMenu(slot); };
+    const row = (icon, name, sub, val, locked, colour) => {
+      const on = val === cur || (val == null && cur == null);
+      const li = document.createElement("li"); li.className = "ch" + (locked ? " locked" : " done") + (on ? " equipped" : "");
+      li.appendChild(icon);
+      const mid = document.createElement("div"); mid.style.minWidth = "0";
+      const nm = document.createElement("div"); nm.className = "ch-name"; nm.textContent = name;
+      const s2 = document.createElement("div"); s2.className = "ch-goal"; s2.textContent = sub; if (colour) s2.style.color = colour;
+      mid.append(nm, s2);
+      const b = document.createElement("button"); b.className = "btn" + (on ? " gold" : " ghost");
+      b.textContent = locked ? "Locked" : on ? "Showing" : "Show"; b.disabled = locked || on;
+      b.onclick = () => pick(val);
+      li.append(mid, b); list.appendChild(li);
+    };
+    row(Object.assign(document.createElement("div"), { className: "gear-icon empty" }), "My gear", "Show whatever is equipped", null, false);
+    row(Object.assign(document.createElement("div"), { className: "gear-icon empty" }), "Hidden", "Show nothing in this slot", -1, false);
+    RARITIES.forEach((R, r) => {
+      const own = seen.includes(r);
+      row(gearIcon(slot, own ? r : null), own ? GEAR_NAMES[slot][r] : "???", own ? R.name + " look" : "Find a " + R.name.toLowerCase() + " " + info.name.toLowerCase() + " to unlock", r, !own, own ? R.colour : null);
     });
     w.appendChild(list);
   });
@@ -634,7 +705,7 @@ function swatches(container, options, current, onPick, labels) {
 }
 function renderAppearance() {
   const lk = normLook(S.look);
-  drawSprite($("#lookPreview"), null, { ...equipIds(), ...lk });
+  drawSprite($("#lookPreview"), null, { ...lookIds(), ...lk });
   segment($("#lookSeg"), { m: { label: "Male" }, f: { label: "Female" } }, lk.body, (k) => setLook({ body: k }));
   const st = $("#hairStyles"); st.innerHTML = "";
   Object.entries(HAIRSTYLES).forEach(([k, h]) => {
@@ -671,8 +742,8 @@ function render() {
     const li = document.createElement("li");
     li.innerHTML = '<span class="rarity-tag"></span><span></span><span class="muted num"></span>';
     li.children[0].textContent = R.name; li.children[0].style.background = R.colour;
-    li.children[1].textContent = "Sword +" + SLOT_STATS.hand.vals[i] + " · Helmet +" + SLOT_STATS.head.vals[i] + " HP";
-    li.children[2].textContent = i ? Math.pow(3, i) + " commons" : "from chests";
+    li.children[1].textContent = R.drop + "% of chests";
+    li.children[2].textContent = "Sells for " + R.sell;
     rl.appendChild(li);
   });
   renderStreak();

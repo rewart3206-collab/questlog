@@ -388,6 +388,7 @@ body.in-dungeon{overflow:hidden}
 .rarity-tag.small{font-size:11px;padding:0 7px;margin:2px 0}
 .gear-btns{display:flex;flex-direction:column;gap:6px}
 .gear-btns .btn{padding:6px 10px 2px;font-size:14px}
+.btn.sell{background:linear-gradient(#ffe27a,#e0a520);color:#3a1a00;border-color:#5a2a00;text-shadow:none}
 .btn.merge{background:linear-gradient(#c79bff,#8a4fd6);border-color:#3a1f5e;text-shadow:0 2px 0 #3a1f5e,2px 0 0 #3a1f5e,-2px 0 0 #3a1f5e,0 -2px 0 #3a1f5e}
 .merge-dot{position:absolute;top:4px;right:4px;background:#8a4fd6;color:#fff;font-size:10px;font-weight:800;border-radius:999px;padding:0 6px;border:2px solid var(--deep)}
 .slot-btn{position:relative}
@@ -596,8 +597,13 @@ input::placeholder{color:#7f8ccc}
     </div>
     <div class="win">
       <h2>Gear</h2>
-      <p class="note" style="margin-top:10px">Tap a slot to see your items, equip them and merge them. Gear makes you stronger in the dungeon. Get more from chests in the Shop.</p>
+      <p class="note" style="margin-top:10px">Tap a slot to equip or sell your items. Gear makes you stronger in the dungeon. Get more from chests in the Shop.</p>
       <div class="styles slots" id="gearSlots" style="margin-top:12px"></div>
+    </div>
+    <div class="win">
+      <h2>Vanity</h2>
+      <p class="note" style="margin-top:10px">Choose the look shown on your hero for each slot. It shows over your gear but doesn't change your stats. Every design you've found is unlocked here.</p>
+      <div class="styles slots" id="vanitySlots" style="margin-top:12px"></div>
     </div>
     <div class="win">
       <h2>Spells</h2>
@@ -673,7 +679,7 @@ input::placeholder{color:#7f8ccc}
 <rect x="50" y="36" width="20" height="24" rx="4" fill="#ffcf4a" stroke="#1c1430" stroke-width="3"/><circle cx="60" cy="46" r="3.4" fill="#1c1430"/><path d="M60 48 L60 54" stroke="#1c1430" stroke-width="2.6" stroke-linecap="round"/></svg></div>
         <div class="chest-info">
           <h3 class="chest-name">Wooden Chest</h3>
-          <p class="note">One random piece of common gear. Could be any helmet, shirt, pants, cape, sword or shield.</p>
+          <p class="note">One random piece of gear: a helmet, armour, pants, cape, sword or shield. Usually common, with a small chance of legendary.</p>
           <button class="btn gold" id="buyChest"><span class="coin-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#ffcf4a" stroke="#1c1430" stroke-width="2"/><circle cx="12" cy="12" r="6.5" fill="none" stroke="#d99a1a" stroke-width="2"/><path d="M10.5 9.5 L13.5 9.5 L13.5 14.5" stroke="#d99a1a" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span>100</button>
         </div>
       </div>
@@ -685,8 +691,8 @@ input::placeholder{color:#7f8ccc}
       <button class="btn big" id="openChest" style="width:100%;margin-top:12px">Open a chest</button>
     </div>
     <div class="win">
-      <h2>Merging</h2>
-      <p class="note" style="margin-top:10px">Merge 3 items from the same slot and rarity to upgrade the one you choose. Find Merge in Hero, then Gear.</p>
+      <h2>Rarities</h2>
+      <p class="note" style="margin-top:10px">Sell gear you don't need in Hero, then Gear. Merge 3 legendaries from the same slot to make a Legendary +1, then keep going for +2, +3 and up.</p>
       <ul class="rarity-list" id="rarityList"></ul>
     </div>
   </section>
