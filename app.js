@@ -1015,6 +1015,14 @@ function render() {
   $("#openChest").disabled = S.chests < 1;
   $("#openChest").textContent = S.chests ? "Open a chest" : "No chests to open";
   $("#shopDot").hidden = S.chests < 1;
+  // short status lines under the main menu buttons
+  { const doneN = S.quests.filter((q) => (S.days[today()] || {})[q.id]).length;
+    $("#questsSub").textContent = doneN + " / " + S.quests.length + " done today";
+    $("#heroSub").textContent = "Gear, spells, looks";
+    $("#dungeonSub").textContent = canPrestige() ? "Prestige ready!" : TK_UNLIMITED ? "Unlimited tickets" : ticketsLeft() + " tickets";
+    $("#shopSub").textContent = S.chests ? S.chests + (S.chests === 1 ? " chest to open" : " chests to open") : "Chests";
+    $("#guildSub").textContent = "Friends and chat";
+    $("#logSub").textContent = "Your history"; }
   const rl = $("#rarityList"); rl.innerHTML = "";
   RARITIES.forEach((R, i) => {
     const li = document.createElement("li");
@@ -1055,7 +1063,7 @@ function render() {
     ql.appendChild(li);
   });
   const n = S.quests.filter((q) => done[q.id]).length;
-  $("#clearmsg").textContent = S.clears[today()] ? "★ Full clear today" : S.quests.length ? n + " of " + S.quests.length + " done · clear all for a skill point" : "";
+  $("#clearmsg").textContent = S.clears[today()] ? "★ Full clear today" : S.quests.length ? n + " of " + S.quests.length + " done · clear all for +" + CLEAR_XP + " bonus XP" : "";
   const extras = S.quests.filter((q) => !q.core).length;
   const addBtn = $("#addq");
   addBtn.hidden = extras >= MAX_EXTRA_QUESTS;
@@ -1223,14 +1231,27 @@ $("#chatForm").addEventListener("submit", async (e) => {
 });
 
 /* ================= navigation ================= */
+// The main menu shows the hero with a button for each screen; each screen has a Back button.
 const TABS = ["quests", "hero", "dungeon", "shop", "guild", "log"];
-function showTab(t) {
-  document.querySelectorAll(".nav button").forEach((x) => x.setAttribute("aria-current", String(x.dataset.tab === t)));
+const TAB_TITLES = { quests: "Quests", hero: "Hero", dungeon: "Dungeon", shop: "Shop", guild: "Guild", log: "Log" };
+let curTab = null;
+function showTab(t, fromHistory) {
+  if (!TABS.includes(t)) t = null;
+  curTab = t;
+  $("#home").hidden = !!t;
+  $("#screenHead").hidden = !t;
+  if (t) $("#screenTitle").textContent = TAB_TITLES[t];
   TABS.forEach((p) => ($("#p-" + p).hidden = p !== t));
-  history.replaceState(null, "", "#" + t); window.scrollTo(0, 0);
+  if (!fromHistory) {
+    if (t) history.pushState({ tab: t }, "", "#" + t);
+    else history.replaceState(null, "", location.pathname + location.search);
+  }
+  window.scrollTo(0, 0);
   if (t === "guild") { const box = $("#chatlog"); box.scrollTop = box.scrollHeight; updateUnread(); }
 }
-document.querySelectorAll(".nav button").forEach((b) => (b.onclick = () => showTab(b.dataset.tab)));
+document.querySelectorAll(".menu-btn").forEach((b) => (b.onclick = () => showTab(b.dataset.tab)));
+$("#backBtn").onclick = () => { if (history.state && history.state.tab) history.back(); else showTab(null); };
+window.addEventListener("popstate", () => showTab(location.hash.slice(1), true));
 $("#addq").onclick = () => questForm(null);
 $("#buyChest").onclick = () => buyChest();
 $("#prestigeBtn").onclick = () => openPrestige();
@@ -1431,7 +1452,7 @@ function enterGame() {
   render();
   if (!entered) {
     entered = true;
-    const h = location.hash.slice(1); if (TABS.includes(h)) showTab(h);
+    const h = location.hash.slice(1); showTab(TABS.includes(h) ? h : null, true);
   }
 }
 

@@ -599,6 +599,28 @@ input::placeholder{color:#7f8ccc}
 @keyframes flashA{0%{opacity:0}15%{opacity:.7}100%{opacity:0}}
 .dpop.frost{color:#9fdcff}.dpop.ward{color:#e2c8ff;text-shadow:0 0 8px #b46cff,var(--stroke)}
 .dward{flex:none;font-size:11px;font-weight:800;color:#fff;background:#8a3fd6;border:2px solid #3a1f5e;border-radius:999px;padding:0 7px}
+
+/* main menu */
+body{padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))}
+.home{display:flex;flex-direction:column;gap:14px}
+.home .stage{height:min(50vh,420px);min-height:300px}
+.home .stage .sun{top:70px;width:170px;height:170px}
+.home .sprite{width:150px;height:290px;bottom:34px}
+.menu{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.menu-btn{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;padding:12px 6px 10px;border-radius:16px;min-width:0;
+  background:linear-gradient(var(--card),var(--card2));border:3px solid var(--gold);box-shadow:0 0 0 3px var(--deep),0 5px 0 3px var(--deep);color:#fff}
+.menu-btn:active{transform:translateY(3px);box-shadow:0 0 0 3px var(--deep),0 2px 0 3px var(--deep)}
+.menu-ic{width:46px;height:46px;display:grid;place-items:center;border-radius:12px;background:var(--deep)}
+.menu-ic svg{width:34px;height:34px}
+.menu-btn b{font-family:var(--display);font-weight:400;font-size:18px;letter-spacing:.04em;text-shadow:var(--stroke);margin-top:2px}
+.menu-btn small{font-size:11px;font-weight:800;color:var(--muted);text-align:center;line-height:1.2;min-height:1.2em}
+.menu-btn .dot{position:absolute;top:8px;right:10px;width:14px;height:14px;background:var(--red);border:2px solid var(--deep);border-radius:50%}
+.menu-btn .dot.gold-dot{background:var(--gold)}
+.screen-head{position:sticky;top:0;z-index:15;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;
+  margin:calc(-10px - env(safe-area-inset-top,0px)) -14px 0;padding:calc(10px + env(safe-area-inset-top,0px)) 14px 10px;background:linear-gradient(var(--deep) 75%,transparent)}
+.screen-head::after{content:"";width:70px}
+.screen-title{text-align:center;font-size:26px;color:var(--gold);text-shadow:var(--stroke)}
+.iconbtn.back{font-size:15px}
 </style>
 </head>
 <body>
@@ -630,6 +652,7 @@ input::placeholder{color:#7f8ccc}
 
 <!-- GAME -->
 <div id="screen-game" class="wrap" hidden>
+  <div id="home" class="home">
   <div class="topbar">
     <div class="pill streak-badge" id="streakBadge" role="img" aria-label="0-day streak"><span class="ic" id="flame"></span><b class="num" id="streakNum">0</b><small>streak</small></div>
     <div class="pill"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#ffcf4a" stroke="#1c1430" stroke-width="2"/><circle cx="12" cy="12" r="6.5" fill="none" stroke="#d99a1a" stroke-width="2"/><path d="M10.5 9.5 L13.5 9.5 L13.5 14.5" stroke="#d99a1a" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><b class="num" id="goldTop">0</b><small>gold</small></div>
@@ -645,8 +668,21 @@ input::placeholder{color:#7f8ccc}
     <div id="sprite" class="sprite"></div>
     <div class="xpwrap"><div class="bar" role="progressbar" aria-label="Experience" id="xpbar"><i style="width:0"></i><span class="bar-text num" id="xptext">0 / 100 XP</span></div></div>
   </section>
+    <div class="menu" role="navigation" aria-label="Main menu">
+      <button class="menu-btn" data-tab="quests" type="button"><span class="menu-ic"><svg viewBox="0 0 28 28" aria-hidden="true"><rect x="5" y="4" width="18" height="20" rx="3" fill="#ffe9b3" stroke="#1c1430" stroke-width="2.4"/><path d="M9 10h10M9 14h10M9 18h6" stroke="#b58a4a" stroke-width="2.2" stroke-linecap="round"/></svg></span><b>Quests</b><small id="questsSub"></small></button>
+      <button class="menu-btn" data-tab="hero" type="button"><span class="menu-ic"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M5 17a9 9 0 0 1 18 0v5H17v-6h-6v6H5z" fill="#c9d3e6" stroke="#1c1430" stroke-width="2.4" stroke-linejoin="round"/><path d="M14 8c-1-4 4-6 4-2" fill="#e0314b" stroke="#1c1430" stroke-width="2"/></svg></span><b>Hero</b><small id="heroSub"></small><span class="dot gold-dot" id="heroDot" hidden></span></button>
+      <button class="menu-btn" data-tab="dungeon" type="button"><span class="menu-ic"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M4 25 L4 11 Q4 3 14 3 Q24 3 24 11 L24 25 Z" fill="#8d8f9e" stroke="#1c1430" stroke-width="2.4" stroke-linejoin="round"/><path d="M8 25 L8 13 Q8 7 14 7 Q20 7 20 13 L20 25 Z" fill="#2a1f4a" stroke="#1c1430" stroke-width="2"/><path d="M11 25 L11 14 M14 25 L14 12 M17 25 L17 14" stroke="#c07a3a" stroke-width="1.8"/><circle cx="14" cy="5" r="1.6" fill="#ffcf4a"/></svg></span><b>Dungeon</b><small id="dungeonSub"></small></button>
+      <button class="menu-btn" data-tab="shop" type="button"><span class="menu-ic"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M4 13a10 6 0 0 1 20 0v10H4z" fill="#c07a3a" stroke="#1c1430" stroke-width="2.4" stroke-linejoin="round"/><path d="M4 13h20" stroke="#1c1430" stroke-width="2.4"/><rect x="12" y="11" width="4" height="6" rx="1" fill="#ffd23f" stroke="#1c1430" stroke-width="2"/></svg></span><b>Shop</b><small id="shopSub"></small><span class="dot" id="shopDot" hidden></span></button>
+      <button class="menu-btn" data-tab="guild" type="button"><span class="menu-ic"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M7 3v22" stroke="#1c1430" stroke-width="2.4" stroke-linecap="round"/><path d="M8 4h14l-3 5 3 5H8z" fill="#5aa8ff" stroke="#1c1430" stroke-width="2.4" stroke-linejoin="round"/></svg></span><b>Guild</b><small id="guildSub"></small><span class="dot" id="guildDot" hidden aria-label="New messages"></span></button>
+      <button class="menu-btn" data-tab="log" type="button"><span class="menu-ic"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M5 5h8a2 2 0 0 1 2 2v17a3 3 0 0 0-3-3H5zM23 5h-8a2 2 0 0 0-2 2v17a3 3 0 0 1 3-3h7z" fill="#a86bff" stroke="#1c1430" stroke-width="2.2" stroke-linejoin="round"/></svg></span><b>Log</b><small id="logSub"></small></button>
+    </div>
+  </div>
+  <div class="screen-head" id="screenHead" hidden>
+    <button class="iconbtn back" id="backBtn" type="button" aria-label="Back to the main menu">‹ Back</button>
+    <h1 class="screen-title" id="screenTitle"></h1>
+  </div>
 
-  <section class="panel" id="p-quests">
+  <section class="panel" id="p-quests" hidden>
     <div class="win">
       <div class="spread"><h2>Daily quests</h2><span class="date" id="today"></span></div>
       <ul class="qlist" id="qlist"></ul>
@@ -814,14 +850,6 @@ input::placeholder{color:#7f8ccc}
     </div>
   </section>
 
-  <nav class="nav" aria-label="Menu"><div class="nav-in">
-    <button data-tab="quests" aria-current="true"><svg viewBox="0 0 28 28" aria-hidden="true"><rect x="5" y="4" width="18" height="20" rx="3" fill="#ffe9b3" stroke="#1c1430" stroke-width="2.4"/><path d="M9 10h10M9 14h10M9 18h6" stroke="#b58a4a" stroke-width="2.2" stroke-linecap="round"/></svg>Quests</button>
-    <button data-tab="hero"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M5 17a9 9 0 0 1 18 0v5H17v-6h-6v6H5z" fill="#c9d3e6" stroke="#1c1430" stroke-width="2.4" stroke-linejoin="round"/><path d="M14 8c-1-4 4-6 4-2" fill="#e0314b" stroke="#1c1430" stroke-width="2"/></svg>Hero<span class="dot gold-dot" id="heroDot" hidden aria-label="Skill points to spend"></span></button>
-    <button data-tab="dungeon"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M4 25 L4 11 Q4 3 14 3 Q24 3 24 11 L24 25 Z" fill="#8d8f9e" stroke="#1c1430" stroke-width="2.4" stroke-linejoin="round"/><path d="M8 25 L8 13 Q8 7 14 7 Q20 7 20 13 L20 25 Z" fill="#2a1f4a" stroke="#1c1430" stroke-width="2"/><path d="M11 25 L11 14 M14 25 L14 12 M17 25 L17 14" stroke="#c07a3a" stroke-width="1.8"/><circle cx="14" cy="5" r="1.6" fill="#ffcf4a"/></svg>Dungeon</button>
-    <button data-tab="shop"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M4 13a10 6 0 0 1 20 0v10H4z" fill="#c07a3a" stroke="#1c1430" stroke-width="2.4" stroke-linejoin="round"/><path d="M4 13h20" stroke="#1c1430" stroke-width="2.4"/><rect x="12" y="11" width="4" height="6" rx="1" fill="#ffd23f" stroke="#1c1430" stroke-width="2"/></svg>Shop<span class="dot gold-dot" id="shopDot" hidden aria-label="Chests to open"></span></button>
-    <button data-tab="guild"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M7 3v22" stroke="#1c1430" stroke-width="2.4" stroke-linecap="round"/><path d="M8 4h14l-3 5 3 5H8z" fill="#5aa8ff" stroke="#1c1430" stroke-width="2.4" stroke-linejoin="round"/></svg>Guild<span class="dot" id="guildDot" hidden aria-label="New messages"></span></button>
-    <button data-tab="log"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M5 5h8a2 2 0 0 1 2 2v17a3 3 0 0 0-3-3H5zM23 5h-8a2 2 0 0 0-2 2v17a3 3 0 0 1 3-3h7z" fill="#a86bff" stroke="#1c1430" stroke-width="2.2" stroke-linejoin="round"/></svg>Log</button>
-  </div></nav>
 </div>
 
 <div class="dungeon" id="dungeon" hidden role="dialog" aria-label="Dungeon battle"></div>
