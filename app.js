@@ -1,13 +1,13 @@
 import { firebaseConfig } from "./firebase-config.js";
-import { heroSVG, itemSVG, flameSVG, OUTFITS } from "./art.js";
-import { setupDungeon } from "./dungeon.js";
+import { heroSVG, itemSVG, flameSVG } from "./art.js";
+import { setupDungeon, SPELLS } from "./dungeon.js";
 const SDK = "https://www.gstatic.com/firebasejs/10.12.2/";
 
 /* ================= game data ================= */
 const STATS = {
-  STR: { name: "Strength", hint: "Physical power" },
-  INT: { name: "Intelligence", hint: "Knowledge and focus" },
-  HLT: { name: "Health", hint: "Stamina and resilience" },
+  STR: { name: "Strength", hint: "Attack damage in the dungeon" },
+  INT: { name: "Intelligence", hint: "Spell power in the dungeon" },
+  HLT: { name: "Health", hint: "Max HP in the dungeon" },
 };
 const QUEST_XP = 20;        // every quest is worth the same
 const MAX_EXTRA_QUESTS = 2; // on top of the 3 core quests
@@ -23,14 +23,14 @@ const TITLES = [
   { lv: 8, t: "Keeper of Routines" }, { lv: 12, t: "Archmage of Mornings" }, { lv: 20, t: "Legend of the Daily Grind" },
 ];
 const STREAK_TITLES = [{ d: 7, t: "Week Warden" }, { d: 30, t: "Moon Marathoner" }];
-// Gear by slot. Shirts recolour the outfit's tabard and scarf; pants recolour the legs.
+// Gear by slot. Armour is drawn over the T-shirt; pants recolour the trousers.
 const GEAR = [
   { id: "helm", slot: "head", name: "Knight Helm", desc: "Steel visor for the hardest quests." },
   { id: "hat", slot: "head", name: "Wizard Hat", desc: "Pointy. Increases perceived wisdom." },
   { id: "crown", slot: "head", name: "Golden Crown", desc: "Ruler of your own routine." },
-  { id: "dye_shadow", slot: "shirt", name: "Shadow Tunic", desc: "Midnight black, for quiet heroes.", color: "#363552" },
-  { id: "dye_gold", slot: "shirt", name: "Sunlit Tunic", desc: "Warm gold that catches the light.", color: "#d4a017" },
-  { id: "shirt_forest", slot: "shirt", name: "Forest Tunic", desc: "Deep green, for heroes who finish what they start.", color: "#2f8f5a" },
+  { id: "armour_leather", slot: "shirt", name: "Leather Vest", desc: "Light, quiet and better than nothing." },
+  { id: "armour_chain", slot: "shirt", name: "Chainmail", desc: "Rings of steel under a red tabard." },
+  { id: "armour_plate", slot: "shirt", name: "Steel Plate", desc: "Heavy, shiny and very hard to hit through." },
   { id: "pants_shadow", slot: "pants", name: "Shadow Trousers", desc: "Dark and quiet, worn by new adventurers.", color: "#23233a" },
   { id: "pants_royal", slot: "pants", name: "Royal Leggings", desc: "Regal blue for a rising star.", color: "#3a46b8" },
   { id: "pants_ember", slot: "pants", name: "Ember Breeches", desc: "Glowing red, like a week-long streak.", color: "#9a2d1c" },
@@ -45,7 +45,7 @@ const GEAR = [
   { id: "shield_royal", slot: "off", name: "Royal Aegis", desc: "Carried by those with perfect weeks." },
 ];
 const GEAR_SLOTS = [
-  { slot: "head", name: "Helmet" }, { slot: "shirt", name: "Shirt" }, { slot: "pants", name: "Pants" },
+  { slot: "head", name: "Helmet" }, { slot: "shirt", name: "Armour" }, { slot: "pants", name: "Pants" },
   { slot: "back", name: "Cape" }, { slot: "hand", name: "Sword" }, { slot: "off", name: "Shield" },
 ];
 // Gear comes from chests as common items. Merging 3 items of the same slot and rarity turns the one
@@ -55,15 +55,15 @@ const RARITIES = [
   { name: "Epic", colour: "#b46cff" }, { name: "Legendary", colour: "#ffb020" },
 ];
 const SLOT_STATS = {
-  hand: { key: "dmg", label: "Sword and Twin Strike damage", vals: [1, 2, 3, 5, 7] },
+  hand: { key: "dmg", label: "Attack damage", vals: [1, 2, 3, 5, 7] },
   off: { key: "block", label: "Shield block", vals: [1, 2, 3, 4, 6] },
   head: { key: "hp", label: "Max HP", vals: [3, 6, 9, 13, 18] },
-  shirt: { key: "hp", label: "Max HP", vals: [3, 6, 9, 13, 18] },
-  pants: { key: "heal", label: "Potion healing", vals: [1, 2, 4, 6, 8] },
-  back: { key: "fire", label: "Fireball damage", vals: [2, 4, 6, 9, 12] },
+  shirt: { key: "def", label: "Defence", vals: [1, 2, 3, 4, 6] },
+  pants: { key: "hp", label: "Max HP", vals: [2, 4, 6, 9, 12] },
+  back: { key: "crit", label: "Crit chance", vals: [5, 8, 12, 16, 22], pct: true },
 };
 const CHEST_PRICE = 100;
-const statText = (slot, r) => "+" + SLOT_STATS[slot].vals[r] + " " + SLOT_STATS[slot].label;
+const statText = (slot, r) => "+" + SLOT_STATS[slot].vals[r] + (SLOT_STATS[slot].pct ? "% " : " ") + SLOT_STATS[slot].label;
 const SLOTS = ["head", "shirt", "pants", "back", "hand", "off"];
 
 const dkey = (d) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
@@ -81,7 +81,7 @@ function freshState(name) {
       { id: uid(), name: "Weekend lie-in", every: 15, base: 0 },
       { id: uid(), name: "Takeaway night", every: 30, base: 0 },
     ],
-    inv: [], gold: 0, chests: 0, equip: {}, title: "Novice", days: {}, clears: {}, clearXp: {}, log: [],
+    inv: [], gold: 0, chests: 0, spells: ["fireball"], spell: "fireball", equip: {}, title: "Novice", days: {}, clears: {}, clearXp: {}, log: [],
   };
 }
 
@@ -112,6 +112,11 @@ function migrate(st) {
     st.equip = eq; st.gold = st.gold || 0; st.chests = st.chests || 0;
     delete st.unlocked; delete st.owned;
   }
+  // Armour v3: tunics become armour, spells are owned and equipped, old dice runs are refunded.
+  (st.inv || []).forEach((it) => { if (ARMOUR_RENAME[it.id]) it.id = ARMOUR_RENAME[it.id]; });
+  if (!st.spells) { st.spells = ["fireball"]; st.spell = "fireball"; }
+  if (st.run && st.run.dice) { delete st.run; if (st.dungeon && st.dungeon.spent) st.dungeon.spent--; }
+  if (st.look) delete st.look.outfit;
   // Core quests always use the standard wording, even if renamed in an earlier version.
   st.quests.filter((q) => q.core).forEach((q, i) => { if (CORE_QUESTS[i]) Object.assign(q, CORE_QUESTS[i]); });
   const total = Object.values(st.days || {}).reduce((n, d) => n + Object.keys(d).length, 0);
@@ -133,7 +138,7 @@ const HAIRSTYLES = {
 };
 const HAIR_COLOURS = { brown: "#5a3a22", black: "#1f1a24", blonde: "#e0b84c", ginger: "#c2582a", silver: "#c9ccd6", pink: "#e27fb5", blue: "#4c78d6" };
 const SKIN_TONES = { s1: "#f6d7b8", s2: "#f1c9a0", s3: "#d9a77c", s4: "#b07a50", s5: "#7d5235", s6: "#5a3824" };
-const DEFAULT_LOOK = { body: "m", hair: "short", hc: "brown", skin: "s2", outfit: "knight" };
+const DEFAULT_LOOK = { body: "m", hair: "short", hc: "brown", skin: "s2" };
 // Works with old saves/profiles that only stored "m"/"f".
 function normLook(l) {
   if (l && typeof l === "object") {
@@ -142,20 +147,21 @@ function normLook(l) {
       hair: HAIRSTYLES[l.hair] ? l.hair : "short",
       hc: HAIR_COLOURS[l.hc] ? l.hc : "brown",
       skin: SKIN_TONES[l.skin] ? l.skin : "s2",
-      outfit: OUTFITS[l.outfit] ? l.outfit : "knight",
     };
   }
   return l === "f" ? { ...DEFAULT_LOOK, body: "f", hair: "long" } : { ...DEFAULT_LOOK };
 }
+// The coloured tunics of earlier versions became armour pieces of the same rarity.
+const ARMOUR_RENAME = { dye_shadow: "armour_leather", shirt_forest: "armour_chain", dye_gold: "armour_plate" };
 // Turn saved gear + look into what the art needs, then draw the hero into an element.
 function heroParts(equip) {
   equip = equip || {};
-  const look = normLook(equip.body ? { body: equip.body, hair: equip.hair, hc: equip.hc, skin: equip.skin, outfit: equip.outfit } : equip.look);
-  const shirt = GEAR.find((g) => g.id === (equip.shirt || equip.dye));
+  const look = normLook(equip.body ? { body: equip.body, hair: equip.hair, hc: equip.hc, skin: equip.skin } : equip.look);
+  const armour = ARMOUR_RENAME[equip.shirt] || equip.shirt;
   const pants = GEAR.find((g) => g.id === equip.pants);
   return {
-    body: look.body, hair: look.hair, hairColor: HAIR_COLOURS[look.hc], skin: SKIN_TONES[look.skin], outfit: look.outfit,
-    tunic: shirt ? shirt.color : OUTFITS[look.outfit].colour, pants: pants ? pants.color : null, head: equip.head, back: equip.back, hand: equip.hand, off: equip.off,
+    body: look.body, hair: look.hair, hairColor: HAIR_COLOURS[look.hc], skin: SKIN_TONES[look.skin],
+    armour, pantsColor: pants ? pants.color : null, head: equip.head, back: equip.back, hand: equip.hand, off: equip.off,
   };
 }
 function drawSprite(el, cls, equip, opts) { el.innerHTML = heroSVG(heroParts(equip), opts || {}); }
@@ -165,7 +171,7 @@ function gearIcon(g, r) {
   d.innerHTML = itemSVG(g.id, g.color);
   return d;
 }
-const invItem = (u) => S.inv.find((x) => x.u === u);
+const invItem = (u) => (u == null ? null : S.inv.find((x) => x.u === u));
 // slot -> gear template id of what's worn (what the art and the guild need)
 function equipIds() {
   const out = {};
@@ -174,7 +180,7 @@ function equipIds() {
 }
 // combined dungeon bonuses from everything worn
 function gearBonus() {
-  const b = { dmg: 0, block: 0, hp: 0, heal: 0, fire: 0 };
+  const b = { dmg: 0, block: 0, hp: 0, def: 0, crit: 0 };
   SLOTS.forEach((slot) => { const it = invItem(S.equip[slot]); if (it) b[SLOT_STATS[slot].key] += SLOT_STATS[slot].vals[it.r]; });
   return b;
 }
@@ -338,12 +344,47 @@ function buyChest() {
 }
 function openChest(bought) {
   if (!bought) { if (S.chests < 1) return; S.chests--; }
+  // 1 in 8 chests holds a spell you don't have yet, while there are any left to find
+  const missing = Object.keys(SPELLS).filter((k) => !S.spells.includes(k));
+  if (missing.length && Math.random() < 0.125) {
+    const k = missing[Math.floor(Math.random() * missing.length)];
+    S.spells.push(k); logEvent("Opened a chest: learned " + SPELLS[k].name);
+    save(); render(); revealSpell(k); return;
+  }
   const g = GEAR[Math.floor(Math.random() * GEAR.length)];
   const item = { u: uid(), id: g.id, r: 0 };
   S.inv.push(item);
   logEvent("Opened a chest: " + g.name);
   save(); render();
   revealItem("CHEST OPENED", g, item, true);
+}
+function revealSpell(k) {
+  const sp = SPELLS[k];
+  queueModal((w, done) => {
+    w.innerHTML = '<div class="title-tag">NEW SPELL</div><div class="chest-reveal"><div class="chest-burst" style="background:radial-gradient(circle,#b46cffaa 0,transparent 65%)"></div><div class="gear-icon unlock-icon"></div></div><h1></h1><p class="muted" style="margin:0"></p><div class="actions" style="justify-content:center"><button class="btn gold">Equip</button><button class="btn ghost">Keep</button></div>';
+    w.querySelector(".gear-icon").innerHTML = sp.icon;
+    w.querySelector("h1").textContent = sp.name;
+    w.querySelector("p").textContent = sp.desc;
+    const [eq, keep] = w.querySelectorAll("button");
+    eq.onclick = () => { S.spell = k; save(); render(); done(); };
+    keep.onclick = done;
+  });
+}
+function renderSpells() {
+  const box = $("#spellList"); box.innerHTML = "";
+  Object.entries(SPELLS).forEach(([k, sp]) => {
+    const own = S.spells.includes(k), eq = S.spell === k;
+    const li = document.createElement("li"); li.className = "ch" + (own ? " done" : " locked") + (eq ? " equipped" : "");
+    const ic = document.createElement("div"); ic.className = "gear-icon"; ic.innerHTML = sp.icon; li.appendChild(ic);
+    const mid = document.createElement("div"); mid.style.minWidth = "0";
+    const nm = document.createElement("div"); nm.className = "ch-name"; nm.textContent = own ? sp.name : "???";
+    const sub = document.createElement("div"); sub.className = "ch-goal"; sub.textContent = own ? sp.desc : "Find it in a chest.";
+    mid.append(nm, sub);
+    const b = document.createElement("button"); b.className = "btn" + (eq ? " gold" : " ghost");
+    b.textContent = !own ? "Locked" : eq ? "Equipped" : "Equip"; b.disabled = !own || eq;
+    b.onclick = () => { S.spell = k; save(); render(); };
+    li.append(mid, b); box.appendChild(li);
+  });
 }
 function revealItem(tagText, g, item, offerEquip) {
   queueModal((w, done) => {
@@ -571,13 +612,6 @@ function renderAppearance() {
   const lk = normLook(S.look);
   drawSprite($("#lookPreview"), null, { ...equipIds(), ...lk });
   segment($("#lookSeg"), { m: { label: "Male" }, f: { label: "Female" } }, lk.body, (k) => setLook({ body: k }));
-  const os = $("#outfits"); os.innerHTML = "";
-  Object.entries(OUTFITS).forEach(([k, o]) => {
-    const b = document.createElement("button"); b.type = "button"; b.className = "style-btn outfit-btn"; b.setAttribute("aria-pressed", String(k === lk.outfit));
-    const c = document.createElement("div"); c.className = "outfit-fig"; drawSprite(c, null, { ...equipIds(), ...lk, outfit: k });
-    const t = document.createElement("span"); t.textContent = o.name;
-    b.append(c, t); b.onclick = () => setLook({ outfit: k }); os.appendChild(b);
-  });
   const st = $("#hairStyles"); st.innerHTML = "";
   Object.entries(HAIRSTYLES).forEach(([k, h]) => {
     const b = document.createElement("button"); b.type = "button"; b.className = "style-btn"; b.setAttribute("aria-pressed", String(k === lk.hair));
@@ -679,6 +713,7 @@ function render() {
   if (document.activeElement !== $("#nameIn")) $("#nameIn").value = S.name;
   renderAppearance();
   renderGearSlots();
+  renderSpells();
   const uname = usernameOf(me);
   $("#acct").textContent = me ? "Signed in as " + (uname || me.email || me.displayName || "Google user") + ". Your progress syncs to every device you sign in on." : "";
   $("#linkForm").hidden = !me || !!uname;
