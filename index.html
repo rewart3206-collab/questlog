@@ -366,7 +366,10 @@ input::placeholder{color:#7f8ccc}
 .tagline{color:var(--muted);max-width:30ch;margin:0}
 .blink{animation:blink 1.2s ease-in-out infinite;font-family:var(--display);letter-spacing:.06em;color:#fff;font-size:15px}
 @keyframes blink{50%{opacity:.25}}
-.err{color:#ffb4b4;font-size:14px;max-width:36ch;font-weight:700}
+.err{color:#ffb4b4;font-size:14px;max-width:36ch;font-weight:700;margin:0}
+.auth{width:min(100%,340px);display:flex;flex-direction:column;gap:10px;text-align:left}
+.auth .btn{width:100%}
+.linkbtn{background:none;border:0;color:var(--muted);font-size:13px;font-weight:700;text-decoration:underline;padding:6px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -382,9 +385,20 @@ input::placeholder{color:#7f8ccc}
   </div>
   <h1 class="logo">QUESTLOG</h1>
   <p class="tagline">Your daily habits are quests. Complete them, level up, and race your friends.</p>
-  <button class="btn gold big" id="signin" disabled>Sign in with Google</button>
+  <form class="win auth" id="authForm" autocomplete="on">
+    <div class="seg two" id="authTabs" role="group" aria-label="Sign in or create an account">
+      <button type="button" data-mode="signin" aria-pressed="true">Sign in</button>
+      <button type="button" data-mode="create" aria-pressed="false">Create account</button>
+    </div>
+    <label for="authUser">Username<input id="authUser" name="username" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="20" required></label>
+    <label for="authPass">Password<input id="authPass" name="password" type="password" autocomplete="current-password" minlength="6" required></label>
+    <label for="authPass2" id="authPass2Row" hidden>Password again<input id="authPass2" type="password" autocomplete="new-password" minlength="6"></label>
+    <p class="note" id="authHint" hidden>Letters, numbers and underscores only. Write your password down: there's no way to reset it.</p>
+    <button class="btn gold big" id="authSubmit" type="submit" disabled>Sign in</button>
+    <p class="err" id="titleErr" hidden></p>
+  </form>
   <p class="blink" id="titleStatus">LOADING…</p>
-  <p class="err" id="titleErr" hidden></p>
+  <button class="linkbtn" id="googleSignin" type="button">Signed in with Google before? Use Google</button>
 </main>
 
 <!-- GAME -->
@@ -455,6 +469,14 @@ input::placeholder{color:#7f8ccc}
     <div class="win stack" style="gap:10px">
       <h2>Account</h2>
       <p class="note" id="acct"></p>
+      <form class="stack" id="linkForm" style="gap:8px" hidden autocomplete="on">
+        <p class="note">Set a username and password for this account. Your progress stays, and you can sign in with them from now on.</p>
+        <label for="linkUser">Username<input id="linkUser" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="20"></label>
+        <label for="linkPass">Password<input id="linkPass" type="password" autocomplete="new-password" minlength="6"></label>
+        <p class="note">Write your password down: there's no way to reset it.</p>
+        <button class="btn gold" type="submit">Set username</button>
+        <p class="err" id="linkNote" hidden></p>
+      </form>
       <div class="actions">
         <button class="btn" id="installBtn" hidden>Install app</button>
         <button class="btn ghost" id="signout">Sign out</button>

@@ -679,7 +679,9 @@ function render() {
   if (document.activeElement !== $("#nameIn")) $("#nameIn").value = S.name;
   renderAppearance();
   renderGearSlots();
-  $("#acct").textContent = me ? "Signed in as " + (me.email || me.displayName || "Google user") + ". Your progress syncs to every device you sign in on." : "";
+  const uname = usernameOf(me);
+  $("#acct").textContent = me ? "Signed in as " + (uname || me.email || me.displayName || "Google user") + ". Your progress syncs to every device you sign in on." : "";
+  $("#linkForm").hidden = !me || !!uname;
 
 
 
@@ -851,7 +853,23 @@ if (isIOS && !isStandalone) $("#iosHint").hidden = false;
 
 /* ================= Firebase ================= */
 drawSprite($("#titleSprite"), null, { hand: "sword", off: "shield", back: "cape" });
-const titleStatus = $("#titleStatus"), titleErr = $("#titleErr"), signinBtn = $("#signin");
+const titleStatus = $("#titleStatus"), titleErr = $("#titleErr"), signinBtn = $("#authSubmit");
+// Usernames are stored as hidden emails so Firebase's email + password sign-in can be used.
+const USER_DOMAIN = "@questlog.player";
+const cleanUsername = (u) => u.trim().toLowerCase();
+const validUsername = (u) => /^[a-z0-9_]{3,20}$/.test(u);
+const usernameOf = (user) => user && user.email && user.email.endsWith(USER_DOMAIN) ? user.email.slice(0, -USER_DOMAIN.length) : null;
+let authMode = "signin";
+function setAuthMode(m) {
+  authMode = m;
+  document.querySelectorAll("#authTabs button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === m)));
+  $("#authPass2Row").hidden = m !== "create";
+  $("#authHint").hidden = m !== "create";
+  $("#authPass").autocomplete = m === "create" ? "new-password" : "current-password";
+  signinBtn.textContent = m === "create" ? "Create account" : "Sign in";
+  titleErr.hidden = true;
+}
+document.querySelectorAll("#authTabs button").forEach((b) => (b.onclick = () => setAuthMode(b.dataset.mode)));
 function showError(msg) { titleErr.textContent = msg; titleErr.hidden = false; }
 
 if (!firebaseConfig.apiKey || firebaseConfig.apiKey.startsWith("PASTE")) {
@@ -868,7 +886,8 @@ if (!firebaseConfig.apiKey || firebaseConfig.apiKey.startsWith("PASTE")) {
 async function startFirebase() {
   const [
     { initializeApp },
-    { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut },
+    { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut,
+      signInWithEmailAndPassword, createUserWithEmailAndPassword, EmailAuthProvider, linkWithCredential },
     { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, setDoc, addDoc, deleteDoc, onSnapshot, collection, query, orderBy, limit, serverTimestamp },
   ] = await Promise.all([import(SDK + "firebase-app.js"), import(SDK + "firebase-auth.js"), import(SDK + "firebase-firestore.js")]);
   fb = { setDoc, addDoc, deleteDoc, doc, serverTimestamp };
@@ -883,7 +902,24 @@ async function startFirebase() {
 
   getRedirectResult(auth).catch((e) => showError(friendlyAuthError(e)));
 
-  signinBtn.onclick = async () => {
+  $("#authForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    titleErr.hidden = true;
+    const name = cleanUsername($("#authUser").value), pw = $("#authPass").value;
+    if (!validUsername(name)) { showError("Usernames are 3 to 20 letters, numbers or underscores, with no spaces."); return; }
+    if (pw.length < 6) { showError("Passwords need at least 6 characters."); return; }
+    if (authMode === "create" && pw !== $("#authPass2").value) { showError("The two passwords don't match."); return; }
+    signinBtn.disabled = true;
+    try {
+      if (authMode === "create") { pendingName = $("#authUser").value.trim(); await createUserWithEmailAndPassword(auth, name + USER_DOMAIN, pw); }
+      else await signInWithEmailAndPassword(auth, name + USER_DOMAIN, pw);
+    } catch (err) {
+      signinBtn.disabled = false;
+      showError(friendlyAuthError(err));
+    }
+  });
+  // Older accounts made with Google can still sign in, then add a username in Hero → Account.
+  $("#googleSignin").onclick = async () => {
     titleErr.hidden = true;
     // Pop-up first everywhere (most reliable on GitHub Pages, including the iPhone home-screen app);
     // fall back to a full-page redirect only if the pop-up can't open.
@@ -898,6 +934,19 @@ async function startFirebase() {
     }
   };
   $("#signout").onclick = async () => { await pushToCloud(); await signOut(auth); };
+  $("#linkForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const note = $("#linkNote"), name = cleanUsername($("#linkUser").value), pw = $("#linkPass").value;
+    const say = (t) => { note.textContent = t; note.hidden = false; };
+    if (!validUsername(name)) { say("Usernames are 3 to 20 letters, numbers or underscores, with no spaces."); return; }
+    if (pw.length < 6) { say("Passwords need at least 6 characters."); return; }
+    try {
+      await linkWithCredential(auth.currentUser, EmailAuthProvider.credential(name + USER_DOMAIN, pw));
+      await auth.currentUser.reload(); me = auth.currentUser;
+      toast("Username set. Sign in with " + name + " from now on");
+      render();
+    } catch (err) { say(friendlyAuthError(err)); }
+  });
 
   onAuthStateChanged(auth, (user) => {
     unsubs.forEach((u) => u()); unsubs = [];
@@ -927,7 +976,7 @@ async function startFirebase() {
           pushToCloud();
         }
       } else if (!snap.metadata.fromCache) {
-        if (!S) S = freshState((user.displayName || "").split(" ")[0] || "Adventurer");
+        if (!S) S = freshState(pendingName || usernameOf(user) || (user.displayName || "").split(" ")[0] || "Adventurer");
         enterGame(); save();
       }
     }, (e) => { console.error(e); showError("Couldn't load your save: " + (e.code || e.message)); }));
@@ -962,11 +1011,21 @@ function enterGame() {
   }
 }
 
+let pendingName = "";
 function friendlyAuthError(e) {
   const map = {
+    "auth/email-already-in-use": "That username is taken. Try another one.",
+    "auth/invalid-credential": "Wrong username or password.",
+    "auth/wrong-password": "Wrong username or password.",
+    "auth/user-not-found": "Wrong username or password.",
+    "auth/invalid-email": "Usernames are 3 to 20 letters, numbers or underscores, with no spaces.",
+    "auth/weak-password": "Passwords need at least 6 characters.",
+    "auth/too-many-requests": "Too many tries. Wait a minute and try again.",
+    "auth/credential-already-in-use": "That username is taken. Try another one.",
+    "auth/provider-already-linked": "This account already has a username.",
     "auth/unauthorized-domain": "This web address isn't allowed to sign in yet. Add it under Firebase → Authentication → Settings → Authorized domains.",
     "auth/network-request-failed": "No connection. Check your internet and try again.",
-    "auth/operation-not-allowed": "Google sign-in is switched off. Enable it under Firebase → Authentication → Sign-in method.",
+    "auth/operation-not-allowed": "Username sign-in isn't switched on yet. Turn on Email/Password under Firebase → Authentication → Sign-in method.",
   };
   return map[e.code] || "Sign-in failed (" + (e.code || e.message) + ").";
 }
