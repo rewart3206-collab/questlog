@@ -1,5 +1,6 @@
 import { firebaseConfig } from "./firebase-config.js";
 import { heroSVG, itemSVG, flameSVG, OUTFITS } from "./art.js";
+import { setupDungeon } from "./dungeon.js";
 const SDK = "https://www.gstatic.com/firebasejs/10.12.2/";
 
 /* ================= game data ================= */
@@ -368,6 +369,27 @@ function floatText(ev, txt) {
   f.style.left = r.left + "px"; f.style.top = r.top - 6 + "px";
   document.body.appendChild(f); setTimeout(() => f.remove(), 1000);
 }
+/* ================= dungeon ================= */
+// One ticket per completed quest, up to 3 a day. Tickets bank up; each dungeon run spends one.
+const ticketsOn = (k) => Math.min(3, Object.keys(S.days[k] || {}).length);
+const ticketsEarned = () => Object.keys(S.days).reduce((n, k) => n + ticketsOn(k), 0);
+const ticketsLeft = () => Math.max(0, ticketsEarned() - ((S.dungeon && S.dungeon.spent) || 0));
+function addXp(n, reason) {
+  const before = levelInfo(S.xp).level;
+  S.xp += n; logEvent(reason + " (+" + n + " XP)");
+  const after = levelInfo(S.xp).level;
+  if (after > before) logEvent("Reached level " + after);
+  const fresh = checkUnlocks();
+  render();
+  if (after > before) levelUp(after);
+  fresh.forEach(showUnlock);
+}
+const dungeon = setupDungeon({
+  getS: () => S, save: () => save(), render: () => render(), toast: (m) => toast(m), logEvent: (t) => logEvent(t),
+  addXp, dayStreak: () => dayStreak(), tickets: ticketsLeft, ticketsToday: () => ticketsOn(today()),
+  drawHero: (el) => drawSprite(el, null, heroLook()),
+});
+
 /* ================= gear menus ================= */
 const challengeFor = (g) => CHALLENGES.find((ch) => ch.gear === g.id);
 function renderGearSlots() {
@@ -522,6 +544,9 @@ function render() {
   $("#xptext").textContent = L.into + " / " + L.need + " XP to LV " + (L.level + 1);
   const tq = totalQuests(); $("#qtotal").textContent = tq;
   renderStreak();
+  $("#tkTop").textContent = ticketsLeft();
+  dungeon.renderTab();
+  dungeon.resume();
   drawSprite($("#sprite"), null, heroLook());
 
   // quests
@@ -735,7 +760,7 @@ $("#chatForm").addEventListener("submit", async (e) => {
 });
 
 /* ================= navigation ================= */
-const TABS = ["quests", "hero", "rewards", "guild", "log"];
+const TABS = ["quests", "hero", "dungeon", "rewards", "guild", "log"];
 function showTab(t) {
   document.querySelectorAll(".nav button").forEach((x) => x.setAttribute("aria-current", String(x.dataset.tab === t)));
   TABS.forEach((p) => ($("#p-" + p).hidden = p !== t));
