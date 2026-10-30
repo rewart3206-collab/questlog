@@ -919,7 +919,8 @@ async function startFirebase() {
     }
   });
   // Older accounts made with Google can still sign in, then add a username in Hero → Account.
-  $("#googleSignin").onclick = async () => {
+  const gBtn = $("#googleSignin");
+  if (gBtn) gBtn.onclick = async () => {
     titleErr.hidden = true;
     // Pop-up first everywhere (most reliable on GitHub Pages, including the iPhone home-screen app);
     // fall back to a full-page redirect only if the pop-up can't open.
