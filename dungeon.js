@@ -29,7 +29,7 @@ export const SPELLS = {
   fireball: { name: "Fireball", charge: 3, icon: FIRE_ICON, desc: "Charges in 3 attacks. A blast of fire that ignores armour and can crit." },
   // research: what it takes to learn the spell in the Hero tab's Research section
   heal: { name: "Healing Light", charge: 3, icon: HEAL_ICON, desc: "Charges in 3 attacks. Heals you, more as you level up.", research: { lv: 2, gold: 200, hours: 1 } },
-  poison: { name: "Poison Cloud", charge: 2, icon: POISON_ICON, desc: "Charges in 2 attacks. Poisons the monster, hurting it every turn.", research: { lv: 3, gold: 300, hours: 2 } },
+  poison: { name: "Poison Cloud", charge: 2, icon: POISON_ICON, desc: "Charges in 2 attacks. Poisons the monster, hurting it every turn." },
   frost: { name: "Frost Bolt", charge: 2, icon: FROST_ICON, desc: "Charges in 2 attacks. A light hit that freezes the monster, knocking its special attack back two turns.", research: { lv: 6, gold: 600, hours: 3 } },
   ward: { name: "Arcane Ward", charge: 3, icon: WARD_ICON, desc: "Charges in 3 attacks. A barrier that completely absorbs the next hit, even a special.", research: { lv: 8, gold: 900, hours: 4 } },
   lightning: { name: "Chain Lightning", charge: 4, icon: BOLT_ICON, desc: "Charges in 4 attacks. A huge strike that can't be dodged, ignores armour and can crit.", research: { lv: 10, gold: 1200, hours: 6 } },

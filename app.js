@@ -104,7 +104,7 @@ function freshState(name) {
       { id: uid(), name: "Weekend lie-in", every: 15, base: 0 },
       { id: uid(), name: "Takeaway night", every: 30, base: 0 },
     ],
-    tk: { n: TK_MAX, at: Date.now() }, inv: [], gold: 0, chests: 0, spells: ["fireball"], spell: "fireball", equip: {}, title: "Novice", days: {}, clears: {}, clearXp: {}, log: [],
+    tk: { n: TK_MAX, at: Date.now() }, inv: [], gold: 0, chests: 0, spells: ["fireball", "poison"], spell: "fireball", equip: {}, title: "Novice", days: {}, clears: {}, clearXp: {}, log: [],
   };
 }
 
@@ -151,6 +151,9 @@ function migrate(st) {
     st.charms = CHARM_OF.filter((k, i) => (cb[["cave", "crypt", "forge", "keep", "citadel"][i]] || 0) > 0 || (i === 0 && !d.clearsBy && d.clears > 0));
   }
   if (!st.spells) { st.spells = ["fireball"]; st.spell = "fireball"; }
+  // Starter spells: everyone has Fireball and Poison Cloud from day one.
+  if (!st.spells.includes("poison")) st.spells.push("poison");
+  if (st.research && st.research.key === "poison") { if (!GOLD_UNLIMITED) st.gold = (st.gold || 0) + 300; st.research = null; }
   if (st.run && st.run.dice) { delete st.run; if (st.dungeon && st.dungeon.spent) st.dungeon.spent--; }
   if (st.look) delete st.look.outfit;
   // Tickets v2: a timer instead of quests. Everyone starts with a full stack.
@@ -304,8 +307,8 @@ function openPrestige() {
     p.innerHTML = '<p class="note" style="margin:0"></p><ul class="prest-list"></ul><p class="note" style="margin:0"></p>';
     p.children[0].textContent = "Start your adventure again and unlock the " + next.name + ", a harder dungeon than any before it.";
     const ul = p.children[1];
-    [["Resets", "your gear from chests, gold, chests, tickets, XP level and dungeon progress. Dungeons lock again until you clear them in order."],
-     ["Keeps", "your charms, relics, spells, vanity looks, quests and streaks."],
+    [["Resets", "your gear from chests, gold, chests, tickets and dungeon progress. Dungeons lock again until you clear them in order."],
+     ["Keeps", "your level, spells, charms, relics, vanity looks, quests and streaks."],
      ["Unlocks", next.name + ". Its first clear gives the " + rewardFor(5 + P).name + "."]].forEach(([k, v]) => {
       const li = document.createElement("li"); const b = document.createElement("b"); b.textContent = k + " "; li.append(b, v); ul.appendChild(li);
     });
@@ -324,8 +327,6 @@ function doPrestige() {
   S.equip = keep;
   S.gold = 0; S.chests = 0;
   S.tk = { n: TK_MAX, at: Date.now() };
-  S.xp = 0;
-  if (!unlockedTitles().includes(S.title)) S.title = "Novice";
   S.dungeon = S.dungeon || {};
   S.dungeon.clearsBy = {}; S.dungeon.bestBy = {}; S.dungeon.best = 0;
   S.run = null;
