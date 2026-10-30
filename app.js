@@ -311,8 +311,9 @@ function openPrestige() {
     p.innerHTML = '<p class="note" style="margin:0"></p><ul class="prest-list"></ul><p class="note" style="margin:0"></p>';
     p.children[0].textContent = "Start your adventure again and unlock the " + next.name + ", a harder dungeon than any before it.";
     const ul = p.children[1];
-    [["Resets", "your gear from chests, gold, chests, tickets and dungeon progress. Dungeons lock again until you clear them in order."],
-     ["Keeps", "your level, spells, charms, relics, vanity looks, quests and streaks."],
+    [["Resets", "your gear from chests, gold, chests, tickets, spells and dungeon progress. Dungeons lock again until you clear them in order."],
+     ["Fighting level", "you keep level " + levelInfo(S.xp).level + ", but you'll fight as level " + Math.min(levelInfo(S.xp).level, fightLevelAfter(P + 1)) + " in the dungeon. Every level you gain after that still counts."],
+     ["Keeps", "your level, charms, relics, vanity looks, quests and streaks."],
      ["Unlocks", next.name + ". Its first clear gives the " + rewardFor(5 + P).name + "."]].forEach(([k, v]) => {
       const li = document.createElement("li"); const b = document.createElement("b"); b.textContent = k + " "; li.append(b, v); ul.appendChild(li);
     });
@@ -322,9 +323,19 @@ function openPrestige() {
     go.style.width = "100%"; go.style.marginTop = "12px"; w.appendChild(go);
   });
 }
+// Fighting level: after a prestige you keep your real level, but you fight as a lower level so the
+// dungeons have to be earned again. Tuned with a simulation for day-one gear (mostly commons):
+// ★1 fights as level 6 (Slime Cave easy, Bone Crypt a struggle), ★2 as 12 (Imp Hollow a struggle),
+// ★3 as 22 (Golem Forge), ★4 as 30 (Dragon Peak), ★5 as 38 (Slime Cave II), then +5 per prestige.
+// The gap is fixed at prestige time, so every level you gain afterwards still counts.
+const fightLevelAfter = (P) => P <= 0 ? Infinity : P <= 5 ? [0, 6, 12, 22, 30, 38][P] : 38 + 5 * (P - 5);
+const fightLevel = () => Math.max(1, levelInfo(S.xp).level - (S.levelDebt || 0));
 function doPrestige() {
   if (!canPrestige()) return;
   S.prestige = (S.prestige || 0) + 1;
+  S.levelDebt = Math.max(0, levelInfo(S.xp).level - fightLevelAfter(S.prestige));
+  // spells start over too: back to the two starter spells
+  S.spells = ["fireball", "poison"]; S.spell = "fireball"; S.frags = {}; S.spellChests = 0;
   S.inv = [];
   const keep = {};
   Object.entries(S.equip || {}).forEach(([slot, v]) => { if (slot === "charm" || String(v).startsWith("r-")) keep[slot] = v; });
@@ -661,7 +672,7 @@ function addXp(n, reason) {
 const dungeon = setupDungeon({
   getS: () => S, save: () => save(), render: () => render(), toast: (m) => toast(m), logEvent: (t) => logEvent(t),
   addXp, dayStreak: () => dayStreak(), tickets: ticketsLeft, spendTicket, nextTicketIn, ticketMax: TK_MAX, unlimited: TK_UNLIMITED,
-  gearBonus: (fam) => gearBonus(fam || null), wearsRelic: () => SLOTS.some((s) => { const it = invItem(S.equip[s]); return it && it.relic; }), level: () => levelInfo(S.xp).level,
+  gearBonus: (fam) => gearBonus(fam || null), wearsRelic: () => SLOTS.some((s) => { const it = invItem(S.equip[s]); return it && it.relic; }), level: () => fightLevel(),
   addGold: (n) => { S.gold = (S.gold || 0) + n; },
   addChest: () => { S.spellChests = (S.spellChests || 0) + 1; },
   earnReward: (n) => earnReward(n), hasReward: (n) => hasReward(n),
@@ -1055,11 +1066,13 @@ function render() {
   addBtn.textContent = "+ Add your own quest (" + extras + "/" + MAX_EXTRA_QUESTS + ")";
 
   // what your level gives you in the dungeon
-  const LS = levelStats(L.level);
+  const FL = fightLevel(), LS = levelStats(FL);
   $("#heroDot").hidden = true;
-  $("#lvlStatsLv").textContent = "LV " + L.level;
+  $("#lvlStatsLv").textContent = FL < L.level ? "Fights as LV " + FL : "LV " + L.level;
+  $("#fightNote").hidden = FL >= L.level;
+  $("#fightNote").textContent = "Prestige ★" + (S.prestige || 0) + ": you're level " + L.level + " but fight as level " + FL + ". Every level you gain still makes you stronger.";
   $("#lvlStats").innerHTML = "";
-  [["Max HP", LS.hp, LEVEL_GAIN.hp], ["Attack", LS.atk, LEVEL_GAIN.atk], ["Spell power", L.level - 1, 1]].forEach(([n, v, g]) => {
+  [["Max HP", LS.hp, LEVEL_GAIN.hp], ["Attack", LS.atk, LEVEL_GAIN.atk], ["Spell power", FL - 1, 1]].forEach(([n, v, g]) => {
     const el = document.createElement("div"); el.innerHTML = '<b class="num"></b><span></span><small class="num"></small>';
     el.children[0].textContent = n === "Spell power" ? "+" + v : v; el.children[1].textContent = n; el.children[2].textContent = "+" + g + " next level";
     $("#lvlStats").appendChild(el);

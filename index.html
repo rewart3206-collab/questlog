@@ -630,6 +630,7 @@ body{padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))}
 .ch.frag-row .gear-icon svg{filter:grayscale(.85) brightness(.75)}
 .ch.frag-row .ch-name{color:#fff}
 .btn.spellchest{background:linear-gradient(#d39bff,#8a3fd6);border-color:#3a1f5e;color:#fff;text-shadow:0 2px 0 #3a1f5e,2px 0 0 #3a1f5e,-2px 0 0 #3a1f5e,0 -2px 0 #3a1f5e}
+.fight-note{margin:10px 0 0;padding:8px 10px;border-radius:10px;background:#ff9a5a22;border:2px solid #ff9a5a;color:#fff;font-weight:700}
 </style>
 </head>
 <body>
@@ -706,6 +707,7 @@ body{padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))}
     <div class="win">
       <div class="spread"><h2>Level</h2><span class="sp num" id="lvlStatsLv">LV 1</span></div>
       <div class="dstats" id="lvlStats"></div>
+      <p class="note fight-note" id="fightNote" hidden></p>
       <p class="note" style="margin-top:10px">Every level makes your hero stronger in the dungeon. Earn XP by completing your daily quests, with a bonus for clearing them all. Gear alone won't get you through the harder dungeons.</p>
     </div>
     <div class="win">
