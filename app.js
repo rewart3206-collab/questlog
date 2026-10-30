@@ -71,6 +71,8 @@ const uid = () => Math.random().toString(36).slice(2, 9);
 const TK_MAX = 6, TK_EVERY = 4 * 60 * 60 * 1000;
 // While testing: unlimited dungeon runs. Set to false to bring back the 4-hour ticket timer.
 const TK_UNLIMITED = true;
+// While testing: unlimited gold, so chests are free. Set to false to go back to spending real gold.
+const GOLD_UNLIMITED = true;
 function freshState(name) {
   return {
     v: 1, at: Date.now(), name: name || "Adventurer", xp: 0,
@@ -347,6 +349,7 @@ function levelUp(L) {
 }
 // Chests: buy with gold or earn by clearing a dungeon; each gives one random common item.
 function buyChest() {
+  if (GOLD_UNLIMITED) { logEvent("Opened a chest (free while testing)"); openChest(true); return; }
   if (S.gold < CHEST_PRICE) { toast("You need " + (CHEST_PRICE - S.gold) + " more gold. Earn gold in the dungeon"); return; }
   S.gold -= CHEST_PRICE; logEvent("Bought a chest (-" + CHEST_PRICE + " gold)"); openChest(true);
 }
@@ -655,10 +658,10 @@ function render() {
   $("#xpbar i").style.width = (L.into / L.need) * 100 + "%";
   $("#xpbar").setAttribute("aria-valuenow", L.into); $("#xpbar").setAttribute("aria-valuemax", L.need);
   $("#xptext").textContent = L.into + " / " + L.need + " XP to LV " + (L.level + 1);
-  $("#goldTop").textContent = S.gold;
+  $("#goldTop").textContent = GOLD_UNLIMITED ? "∞" : S.gold;
   // shop
-  $("#shopGold").textContent = S.gold;
-  $("#buyChest").classList.toggle("short", S.gold < CHEST_PRICE);
+  $("#shopGold").textContent = GOLD_UNLIMITED ? "∞" : S.gold;
+  $("#buyChest").classList.toggle("short", !GOLD_UNLIMITED && S.gold < CHEST_PRICE);
   $("#chestCount").textContent = S.chests + (S.chests === 1 ? " chest" : " chests");
   $("#openChest").disabled = S.chests < 1;
   $("#openChest").textContent = S.chests ? "Open a chest" : "No chests to open";
