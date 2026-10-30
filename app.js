@@ -1,6 +1,6 @@
 import { firebaseConfig } from "./firebase-config.js";
 import { heroSVG, heroBackSVG, itemSVG, flameSVG } from "./art.js";
-import { setupDungeon, SPELLS, CHARMS, CHARM_OF } from "./dungeon.js";
+import { setupDungeon, SPELLS, CHARMS, CHARM_OF, ALL_DUNGEONS, MAX_LEVEL, rewardFor, RELIC_ORDER, RELIC_NOUN, RELIC_BONUS, FAMILY_NAMES } from "./dungeon.js";
 const SDK = "https://www.gstatic.com/firebasejs/10.12.2/";
 
 /* ================= game data ================= */
@@ -65,8 +65,12 @@ const SLOT_STATS = {
 const CHEST_PRICE = 100;
 const statVal = (slot, r, p) => SLOT_STATS[slot].vals[r] + (r === LEG ? (p || 0) * SLOT_STATS[slot].plus : 0);
 const statText = (slot, r, p) => "+" + statVal(slot, r, p) + (SLOT_STATS[slot].pct ? "% " : " ") + SLOT_STATS[slot].label;
-const itemName = (it) => GEAR_NAMES[it.slot][it.r] + (it.p ? " +" + it.p : "");
-const rarityName = (it) => RARITIES[it.r].name + (it.p ? " +" + it.p : "");
+const relicName = (slot, fam) => CHARMS[fam].name.split(" ")[0] + " " + RELIC_NOUN[slot];
+const RELIC_COLOUR = "#ff7a3a";
+const itemName = (it) => it.relic ? relicName(it.slot, it.relic) : GEAR_NAMES[it.slot][it.r] + (it.p ? " +" + it.p : "");
+const rarityName = (it) => it.relic ? "Relic" : RARITIES[it.r].name + (it.p ? " +" + it.p : "");
+const rarityColour = (it) => it.relic ? RELIC_COLOUR : RARITIES[it.r].colour;
+const relicText = (it) => it.relic ? RELIC_BONUS[it.slot] + " against " + FAMILY_NAMES[it.relic] : "";
 const sellPrice = (it) => RARITIES[it.r].sell * (it.r === LEG ? 1 + 2 * (it.p || 0) : 1);
 const SLOTS = ["head", "shirt", "pants", "back", "hand", "off"];
 
@@ -207,7 +211,22 @@ function testItems(slot) {
   return out;
 }
 const testItem = (u) => { const m = /^t-(head|shirt|pants|back|hand|off)/.exec(u || ""); return m ? testItems(m[1]).find((x) => x.u === u) || null : null; };
-const invItem = (u) => (u == null ? null : String(u).startsWith("t-") ? testItem(u) : S.inv.find((x) => x.u === u));
+// Relics: gear from the prestige dungeons. Kept forever (never in the inventory, so prestige can't
+// remove them). Each is a Legendary +(level-1) item with a bonus against its own kind of monster.
+const relicLevel = (slot) => RELIC_ORDER.indexOf(slot) + 2;
+const hasRelic = (slot, fam) => GEAR_TEST || (S.relics || []).includes(slot + ":" + fam);
+function relicItems(slot) {
+  if (!RELIC_ORDER.includes(slot)) return [];
+  return CHARM_OF.filter((fam) => hasRelic(slot, fam)).map((fam) => ({ u: "r-" + slot + "-" + fam, slot, r: LEG, p: relicLevel(slot) - 1, relic: fam }));
+}
+const relicItem = (u) => { const m = /^r-(head|shirt|pants|back|hand|off)-(\w+)$/.exec(u || ""); return m ? relicItems(m[1]).find((x) => x.u === u) || null : null; };
+const invItem = (u) => (u == null ? null : String(u).startsWith("t-") ? testItem(u) : String(u).startsWith("r-") ? relicItem(u) : S.inv.find((x) => x.u === u));
+// worn relics as { family: { slot: true } } for the dungeon
+function relicBonus() {
+  const out = {};
+  SLOTS.forEach((slot) => { const it = invItem(S.equip[slot]); if (it && it.relic) (out[it.relic] = out[it.relic] || {})[slot] = true; });
+  return out;
+}
 // slot -> design id that shows on the hero: a vanity look if one is chosen, otherwise the worn item
 function lookIds() {
   const out = {}, v = S.vanity || {};
@@ -239,6 +258,72 @@ function gearBonus() {
 // Charms: one per dungeon, earned on its first clear. S.charms lists the ones you have.
 const hasCharm = (k) => GEAR_TEST || (S.charms || []).includes(k);
 const equippedCharm = () => { const k = S.equip && S.equip.charm; return k && CHARMS[k] && hasCharm(k) ? k : null; };
+function earnReward(n) {
+  const rw = rewardFor(n);
+  if (rw.type === "charm") return earnCharm(rw.key);
+  const id = rw.slot + ":" + rw.fam;
+  if ((S.relics || []).includes(id)) return;
+  (S.relics = S.relics || []).push(id);
+  logEvent("Earned the " + rw.name);
+  save();
+  const it = relicItems(rw.slot).find((x) => x.relic === rw.fam) || { u: "r-" + rw.slot + "-" + rw.fam, slot: rw.slot, r: LEG, p: rw.level - 1, relic: rw.fam };
+  revealItem("NEW RELIC", it, true);
+}
+function hasReward(n) {
+  const rw = rewardFor(n);
+  return rw.type === "charm" ? hasCharm(rw.key) : hasRelic(rw.slot, rw.fam);
+}
+// Prestige: after clearing the newest dungeon, start over with a harder dungeon added to the list.
+const MAX_PRESTIGE = 5 * MAX_LEVEL - 5;
+const dungeonCount = () => Math.min(5 * MAX_LEVEL, 5 + (S.prestige || 0));
+function canPrestige() {
+  const P = S.prestige || 0; if (P >= MAX_PRESTIGE) return false;
+  const newest = ALL_DUNGEONS[4 + P], cb = (S.dungeon && S.dungeon.clearsBy) || {};
+  return (cb[newest.id] || 0) > 0;
+}
+function openPrestige() {
+  if (!canPrestige()) return;
+  const P = S.prestige || 0, next = ALL_DUNGEONS[5 + P];
+  openSheet((w, close) => {
+    sheetHead(w, "Prestige " + (P + 1), close);
+    const p = document.createElement("div"); p.className = "stack"; p.style.marginTop = "10px";
+    p.innerHTML = '<p class="note" style="margin:0"></p><ul class="prest-list"></ul><p class="note" style="margin:0"></p>';
+    p.children[0].textContent = "Start your adventure again and unlock the " + next.name + ", a harder dungeon than any before it.";
+    const ul = p.children[1];
+    [["Resets", "your gear from chests, gold, chests, tickets, XP level and dungeon progress. Dungeons lock again until you clear them in order."],
+     ["Keeps", "your charms, relics, spells, Intelligence, vanity looks, quests and streaks."],
+     ["Unlocks", next.name + ". Its first clear gives the " + rewardFor(5 + P).name + "."]].forEach(([k, v]) => {
+      const li = document.createElement("li"); const b = document.createElement("b"); b.textContent = k + " "; li.append(b, v); ul.appendChild(li);
+    });
+    p.children[2].textContent = "Your prestige shows next to your level, and the guild ranks prestige first.";
+    w.appendChild(p);
+    const go = armedButton("Prestige now", "gold big", () => { close(); doPrestige(); });
+    go.style.width = "100%"; go.style.marginTop = "12px"; w.appendChild(go);
+  });
+}
+function doPrestige() {
+  if (!canPrestige()) return;
+  S.prestige = (S.prestige || 0) + 1;
+  S.inv = [];
+  const keep = {};
+  Object.entries(S.equip || {}).forEach(([slot, v]) => { if (slot === "charm" || String(v).startsWith("r-")) keep[slot] = v; });
+  S.equip = keep;
+  S.gold = 0; S.chests = 0;
+  S.tk = { n: TK_MAX, at: Date.now() };
+  S.xp = 0;
+  if (!unlockedTitles().includes(S.title)) S.title = "Novice";
+  S.dungeon = S.dungeon || {};
+  S.dungeon.clearsBy = {}; S.dungeon.bestBy = {}; S.dungeon.best = 0;
+  S.run = null;
+  logEvent("Prestige " + S.prestige + "! The " + ALL_DUNGEONS[4 + S.prestige].name + " has opened");
+  save(); render();
+  queueModal((w, done) => {
+    w.innerHTML = '<div class="title-tag">PRESTIGE</div><h1></h1><p class="muted" style="margin:0"></p><button class="btn gold">Onward</button>';
+    w.querySelector("h1").textContent = "Prestige " + S.prestige;
+    w.querySelector("p").textContent = "A fresh start, and the " + ALL_DUNGEONS[4 + S.prestige].name + " awaits once you fight your way back.";
+    w.querySelector("button").onclick = done;
+  });
+}
 function earnCharm(k) {
   if (!CHARMS[k] || (S.charms || []).includes(k)) return;
   (S.charms = S.charms || []).push(k);
@@ -339,12 +424,13 @@ function save() {
 async function pushToCloud() {
   if (!userRef || !fb) return;
   const L = levelInfo(S.xp);
-  const equip = lookIds(); const lk = normLook(S.look); Object.assign(equip, lk); equip.look = lk.body;
+  const equip = lookIds(); const lk = normLook(S.look); Object.assign(equip, lk); equip.look = lk.body; equip.prest = S.prestige || 0;
   try {
     await Promise.all([
       fb.setDoc(userRef, { save: JSON.stringify(S), at: S.at }),
       fb.setDoc(profileRef, {
         name: S.name.slice(0, 24), xp: S.xp, level: L.level, title: S.title,
+        // prestige rides along in the equip map so the existing Firestore rules accept it
         streak: dayStreak(), equip, updatedAt: fb.serverTimestamp(),
       }),
     ]);
@@ -472,15 +558,15 @@ function revealItem(tagText, item, offerEquip) {
     w.querySelector(".reveal-slot").replaceWith(icon);
     w.querySelector(".chest-burst").style.background = "radial-gradient(circle," + R.colour + "aa 0,transparent 65%)";
     w.querySelector("h1").textContent = itemName(item);
-    const tag = w.querySelector(".rarity-tag"); tag.textContent = rarityName(item); tag.style.background = R.colour;
-    w.querySelector("p").textContent = statText(item.slot, item.r, item.p);
+    const tag = w.querySelector(".rarity-tag"); tag.textContent = rarityName(item); tag.style.background = rarityColour(item);
+    w.querySelector("p").textContent = statText(item.slot, item.r, item.p) + (item.relic ? ". " + relicText(item) : "");
     const a = w.querySelector(".actions");
     if (offerEquip && S.equip[item.slot] !== item.u) {
       const eq = document.createElement("button"); eq.className = "btn gold"; eq.textContent = "Equip";
       eq.onclick = () => { S.equip[item.slot] = item.u; save(); render(); done(); };
       a.appendChild(eq);
     }
-    if (offerEquip) {
+    if (offerEquip && !item.relic) {
       const s = armedButton("Sell " + sellPrice(item), "sell", () => { sellItem(item); done(); });
       s.setAttribute("aria-label", "Sell " + rarityName(item) + " " + itemName(item) + " for " + sellPrice(item) + " gold");
       a.appendChild(s);
@@ -557,7 +643,8 @@ const dungeon = setupDungeon({
   gearBonus: () => gearBonus(), level: () => levelInfo(S.xp).level,
   addGold: (n) => { S.gold = (S.gold || 0) + n; },
   addChest: () => { S.chests = (S.chests || 0) + 1; },
-  earnCharm: (k) => earnCharm(k), hasCharm: (k) => hasCharm(k),
+  earnReward: (n) => earnReward(n), hasReward: (n) => hasReward(n),
+  relicBonus: () => relicBonus(), dungeonCount: () => dungeonCount(),
   drawHero: (el, o) => { el.innerHTML = o && o.back ? heroBackSVG(heroParts(heroLook()), o) : heroSVG(heroParts(heroLook()), {}); },
 });
 
@@ -577,7 +664,7 @@ function renderGearSlots() {
     const worn = invItem(S.equip[slot]);
     const icon = worn ? gearIcon(slot, worn.r) : Object.assign(document.createElement("div"), { className: "gear-icon empty" });
     const canMerge = mine.some((x) => mergeFodder(x).length >= 2);
-    const b = slotButton(slot, name, icon, worn ? rarityName(worn) : mine.length + " owned", worn && RARITIES[worn.r].colour, () => openGearMenu(slot), canMerge && "Merge");
+    const b = slotButton(slot, name, icon, worn ? rarityName(worn) : mine.length + " owned", worn && rarityColour(worn), () => openGearMenu(slot), canMerge && "Merge");
     b.setAttribute("aria-label", name + ": " + (worn ? rarityName(worn) + " " + itemName(worn) : "nothing equipped") + ", " + mine.length + " owned");
     box.appendChild(b);
   });
@@ -622,6 +709,7 @@ function openGearMenu(slot) {
     w.appendChild(note);
     const list = document.createElement("ul"); list.className = "clist gear-menu";
     const mine = S.inv.filter((x) => x.slot === slot).sort((a, b) => b.r - a.r || (b.p || 0) - (a.p || 0)).concat(testItems(slot).reverse());
+    mine.unshift(...relicItems(slot));
     if (!mine.length) {
       const li = document.createElement("li"); li.className = "ch locked";
       li.appendChild(gearIcon(slot, null));
@@ -634,8 +722,8 @@ function openGearMenu(slot) {
       li.appendChild(gearIcon(slot, it.r));
       const mid = document.createElement("div"); mid.style.minWidth = "0";
       const nm = document.createElement("div"); nm.className = "ch-name"; nm.textContent = itemName(it);
-      const rt = document.createElement("span"); rt.className = "rarity-tag small"; rt.textContent = rarityName(it); rt.style.background = R.colour;
-      const sub = document.createElement("div"); sub.className = "ch-goal"; sub.textContent = statText(slot, it.r, it.p);
+      const rt = document.createElement("span"); rt.className = "rarity-tag small"; rt.textContent = rarityName(it); rt.style.background = rarityColour(it);
+      const sub = document.createElement("div"); sub.className = "ch-goal"; sub.textContent = statText(slot, it.r, it.p) + (it.relic ? ". " + relicText(it) : "");
       mid.append(nm, rt, sub);
       if (it.test) { const tt = document.createElement("span"); tt.className = "rarity-tag small test-tag"; tt.textContent = "Test"; rt.after(tt); }
       const btns = document.createElement("div"); btns.className = "gear-btns";
@@ -643,12 +731,12 @@ function openGearMenu(slot) {
       b.textContent = eq ? "Unequip" : "Equip"; b.setAttribute("aria-label", (eq ? "Unequip " : "Equip ") + rarityName(it) + " " + itemName(it));
       b.onclick = () => { toggleGear(it); openGearMenu(slot); };
       btns.appendChild(b);
-      if (!eq && !it.test) {
+      if (!eq && !it.test && !it.relic) {
         const s = armedButton("Sell " + sellPrice(it), "sell", () => { sellItem(it); openGearMenu(slot); });
         s.setAttribute("aria-label", "Sell " + rarityName(it) + " " + itemName(it) + " for " + sellPrice(it) + " gold");
         btns.appendChild(s);
       }
-      if (it.r === LEG && !it.test) {
+      if (it.r === LEG && !it.test && !it.relic) {
         const have = Math.min(3, 1 + mergeFodder(it).length);
         const m = document.createElement("button"); m.className = "btn merge";
         m.textContent = "Merge " + have + "/3";
@@ -864,6 +952,10 @@ function render() {
   const L = levelInfo(S.xp);
   const titles = unlockedTitles(); if (!titles.includes(S.title)) S.title = titles[titles.length - 1] || "Novice";
   $("#lvl").textContent = "LV " + L.level;
+  $("#prest").hidden = !S.prestige; $("#prest").textContent = "★ " + (S.prestige || 0);
+  $("#prest").setAttribute("aria-label", "Prestige " + (S.prestige || 0));
+  const pb = $("#prestigeBox"); pb.hidden = !canPrestige();
+  if (!pb.hidden) pb.querySelector("p").textContent = "You've conquered the " + ALL_DUNGEONS[4 + (S.prestige || 0)].name + ". Prestige to start again and unlock the " + ALL_DUNGEONS[5 + (S.prestige || 0)].name + ".";
   $("#htitle").textContent = S.title;
   $("#hname").textContent = S.name;
   $("#xpbar i").style.width = (L.into / L.need) * 100 + "%";
@@ -984,6 +1076,8 @@ function renderGuild(profiles) {
   if (!hadAvatars && chatMsgs.length) renderChat(chatMsgs);
   const gl = $("#glist"); gl.innerHTML = "";
   if (!profiles.length) { gl.innerHTML = '<li class="muted">No heroes yet. Copy the invite link and send it to your friends.</li>'; return; }
+  const prestOf = (p) => (p.equip && p.equip.prest) || 0;
+  profiles = profiles.slice().sort((a, b) => prestOf(b) - prestOf(a) || (b.xp || 0) - (a.xp || 0));
   profiles.forEach((p, i) => {
     const li = document.createElement("li"); li.className = "g" + (me && p.id === me.uid ? " me" : "");
     const rank = document.createElement("span"); rank.className = "rank"; rank.textContent = i + 1;
@@ -992,7 +1086,7 @@ function renderGuild(profiles) {
     const b = document.createElement("b"); b.textContent = (p.name || "Adventurer") + (me && p.id === me.uid ? " (you)" : "");
     const s = document.createElement("span"); s.textContent = p.title || "Novice";
     who.append(b, s);
-    const lv = document.createElement("div"); lv.className = "lv num"; lv.textContent = "LV " + (p.level || 1);
+    const lv = document.createElement("div"); lv.className = "lv num"; lv.textContent = (prestOf(p) ? "★" + prestOf(p) + " " : "") + "LV " + (p.level || 1);
     if (p.streak) { const sm = document.createElement("small"); sm.textContent = p.streak + "-day streak"; lv.appendChild(sm); }
     li.append(rank, c, who, lv); gl.appendChild(li);
   });
@@ -1094,6 +1188,7 @@ function showTab(t) {
 document.querySelectorAll(".nav button").forEach((b) => (b.onclick = () => showTab(b.dataset.tab)));
 $("#addq").onclick = () => questForm(null);
 $("#buyChest").onclick = () => buyChest();
+$("#prestigeBtn").onclick = () => openPrestige();
 $("#openChest").onclick = () => openChest(false);
 $("#nameIn").addEventListener("input", (e) => { S.name = e.target.value.trim() || "Adventurer"; $("#hname").textContent = S.name; save(); });
 let resetArmed = false;

@@ -33,26 +33,41 @@ const charmIcon = (col, emblem) => `<svg viewBox="0 0 40 44"><path d="M10 4 Q20 
   <circle cx="20" cy="27" r="13" ${st(col, 2.4)}/><circle cx="20" cy="27" r="9.5" fill="none" stroke="#fff" stroke-width="1.4" opacity=".45"/>${emblem}
   <rect x="17" y="11" width="6" height="5" rx="1.5" ${st("#f2b631", 1.8)}/></svg>`;
 export const CHARMS = {
-  slime: { name: "Slime Charm", from: 0, desc: "+20 max HP against slimes", icon: charmIcon("#5fd36a", `<path d="M20 19 Q27 27 26 31 A6 6 0 0 1 14 31 Q13 27 20 19 Z" ${st("#b5f5a0", 1.8)}/>`) },
-  bone: { name: "Bone Charm", from: 1, desc: "+3 defence against skeletons", icon: charmIcon("#d9d2bf", `<path d="M14 23 L26 31 M14 31 L26 23" stroke="${INK}" stroke-width="4" stroke-linecap="round"/><path d="M14 23 L26 31 M14 31 L26 23" stroke="#fff8e6" stroke-width="2" stroke-linecap="round"/>`) },
-  imp: { name: "Imp Charm", from: 2, desc: "+10% chance to dodge imps", icon: charmIcon("#8a4fd6", `<path d="M13 22 L16 30 L20 24 L24 30 L27 22" fill="none" stroke="#ffe14a" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="20" cy="33" r="2" fill="#ffe14a"/>`) },
-  golem: { name: "Golem Charm", from: 3, desc: "Your shield blocks 90% of a golem's hit instead of 75%", icon: charmIcon("#a3a6b5", `<rect x="14" y="21" width="12" height="12" rx="2" ${st("#7d8090", 1.8)}/><rect x="16.5" y="25" width="2.6" height="2" fill="#5ff0ff"/><rect x="21" y="25" width="2.6" height="2" fill="#5ff0ff"/>`) },
-  dragon: { name: "Dragon Charm", from: 4, desc: "Spells are 50% stronger against dragons", icon: charmIcon("#e2443f", `<path d="M20 18 C23 23 27 24 27 29 A7 7 0 0 1 13 29 C13 26 15 25 16 22 C18 25 19 24 20 18 Z" ${st("#ffcf4a", 1.8)}/>`) },
+  slime: { name: "Slime Charm", from: 0, desc: "Spells charge 1 attack faster against slimes", icon: charmIcon("#5fd36a", `<path d="M20 19 Q27 27 26 31 A6 6 0 0 1 14 31 Q13 27 20 19 Z" ${st("#b5f5a0", 1.8)}/>`) },
+  bone: { name: "Bone Charm", from: 1, desc: "Spells charge 1 attack faster against skeletons", icon: charmIcon("#d9d2bf", `<path d="M14 23 L26 31 M14 31 L26 23" stroke="${INK}" stroke-width="4" stroke-linecap="round"/><path d="M14 23 L26 31 M14 31 L26 23" stroke="#fff8e6" stroke-width="2" stroke-linecap="round"/>`) },
+  imp: { name: "Imp Charm", from: 2, desc: "Spells charge 1 attack faster against imps", icon: charmIcon("#8a4fd6", `<path d="M13 22 L16 30 L20 24 L24 30 L27 22" fill="none" stroke="#ffe14a" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/><circle cx="20" cy="33" r="2" fill="#ffe14a"/>`) },
+  golem: { name: "Golem Charm", from: 3, desc: "Spells charge 1 attack faster against golems", icon: charmIcon("#a3a6b5", `<rect x="14" y="21" width="12" height="12" rx="2" ${st("#7d8090", 1.8)}/><rect x="16.5" y="25" width="2.6" height="2" fill="#5ff0ff"/><rect x="21" y="25" width="2.6" height="2" fill="#5ff0ff"/>`) },
+  dragon: { name: "Dragon Charm", from: 4, desc: "Spells charge 1 attack faster against dragons", icon: charmIcon("#e2443f", `<path d="M20 18 C23 23 27 24 27 29 A7 7 0 0 1 13 29 C13 26 15 25 16 22 C18 25 19 24 20 18 Z" ${st("#ffcf4a", 1.8)}/>`) },
 };
 export const CHARM_OF = ["slime", "bone", "imp", "golem", "dragon"];
 // which charm works against which monster: a charm only helps against its own kind
 const FAMILY = { slime: "slime", king_slime: "slime", skeleton: "bone", skeleton_king: "bone", imp: "imp", imp_queen: "imp",
   golem: "golem", golem_titan: "golem", whelp: "dragon", dragon: "dragon" };
 const charmOn = (r) => !!(r && r.charm && r.enemy && FAMILY[r.enemy.key] === r.charm);
-// the hero's numbers for the current fight, with the charm counted only against its kind of monster
-function fightStats(r) {
+export const FAMILY_NAMES = { slime: "slimes", bone: "skeletons", imp: "imps", golem: "golems", dragon: "dragons" };
+// Relics: the prestige dungeons each give one piece of gear made from their monsters. Each one is a
+// Legendary +(level-1) item with a bonus against its own kind of monster.
+export const RELIC_ORDER = ["hand", "head", "shirt", "pants", "back", "off"];   // from dungeon level 2, 3 … 7
+export const RELIC_NOUN = { hand: "Sword", head: "Helm", shirt: "Armour", pants: "Greaves", back: "Cape", off: "Shield" };
+export const RELIC_BONUS = {
+  hand: "+50% attack damage", head: "+30% max HP", shirt: "Take 25% less damage", pants: "+10% dodge chance",
+  back: "+15% crit chance", off: "Your shield blocks 95%",
+};
+// the hero's numbers for the current fight: the charm and relics only count against their own kind
+function fightStats(r, sp) {
+  const fam = r && r.enemy ? FAMILY[r.enemy.key] : null, v = ((r && r.vs) || {})[fam] || {};
   const on = charmOn(r) ? r.charm : null;
   return {
-    def: (r.def || 0) + (on === "bone" ? 3 : 0),
-    dodge: (r.dodge || 0) + (on === "imp" ? 10 : 0),
-    shieldTake: on === "golem" ? 0.1 : 0.25,
-    spellMul: on === "dragon" ? 1.5 : 1,
-    on,
+    def: r.def || 0,
+    dodge: (r.dodge || 0) + (v.pants ? 10 : 0),
+    crit: (r.crit || 0) + (v.back ? 15 : 0),
+    dmgMul: v.hand ? 1.5 : 1,
+    taken: v.shirt ? 0.75 : 1,
+    hpBonus: v.head ? 0.3 : 0,
+    shieldTake: v.off ? 0.05 : 0.25,
+    spellMul: 1,
+    cost: sp ? Math.max(1, sp.charge - (on ? 1 : 0)) : 3,
+    on, relic: Object.keys(v).length > 0,
   };
 }
 const poisonStacks = (sp) => 5 + 2 * sp;
@@ -151,7 +166,22 @@ export const DUNGEONS = [
     { key: "whelp", name: "Frost Drake", fx: "hue-rotate(190deg)" }, { key: "whelp", name: "Shadow Drake", fx: "hue-rotate(250deg) brightness(.8)" },
     { key: "dragon", name: "Elder Dragon" }] },
 ];
-const BOSS_OF = (t) => DUNGEONS[t].floors[FLOORS - 1];
+// Prestige adds harder versions of each dungeon in order: Slime Cave II, Bone Crypt II … Dragon Peak VII.
+// n = index into ALL_DUNGEONS; level L = floor(n / 5) + 1; theme k = n % 5.
+const ROMAN = ["", " II", " III", " IV", " V", " VI", " VII"];
+export const MAX_LEVEL = 7;
+export const ALL_DUNGEONS = Array.from({ length: 5 * MAX_LEVEL }, (_, n) => {
+  const base = DUNGEONS[n % 5], L = Math.floor(n / 5) + 1;
+  return { ...base, id: L === 1 ? base.id : base.id + "-" + L, name: base.name + ROMAN[L - 1], L, k: n % 5 };
+});
+const BOSS_OF = (t) => ALL_DUNGEONS[t].floors[FLOORS - 1];
+// what clearing dungeon n for the first time gives: its charm at level 1, then a relic per level
+export function rewardFor(n) {
+  const L = Math.floor(n / 5) + 1, fam = CHARM_OF[n % 5];
+  if (L === 1) return { type: "charm", key: fam, name: CHARMS[fam].name };
+  const slot = RELIC_ORDER[L - 2];
+  return { type: "relic", slot, fam, level: L, name: CHARMS[fam].name.split(" ")[0] + " " + RELIC_NOUN[slot] };
+}
 // a monster's picture: its base art, a crown for bosses, recoloured for its variant
 const CROWN = `<path d="M-18 0 L-21 -17 L-9 -8 L0 -22 L9 -8 L21 -17 L18 0 Z" ${st("#f2bf2e", 2.6)}/><rect x="-19" y="-3" width="38" height="6" rx="2" ${st("#e0a520", 2.2)}/><circle cx="0" cy="-12" r="2.6" fill="#e8233f"/><circle cx="-10" cy="0" r="1.8" fill="#4fa8ff"/><circle cx="10" cy="0" r="1.8" fill="#5fd36a"/>`;
 // The colour filter goes on the body only, so a boss's crown stays gold: the crown is a second
@@ -169,15 +199,19 @@ const enemyName = (en) => en.name || ENEMIES[en.key].name;
 // Dungeon i opens once the one before it has been cleared (or if you've already played it).
 function isOpen(d, i) {
   if (i === 0) return true;
-  const prev = DUNGEONS[i - 1].id, cb = d.clearsBy || {};
-  return (cb[prev] || 0) > 0 || (i === 1 && !d.clearsBy && d.clears > 0) || ((d.bestBy || {})[DUNGEONS[i].id] || 0) > 0;
+  const prev = ALL_DUNGEONS[i - 1].id, cb = d.clearsBy || {};
+  return (cb[prev] || 0) > 0 || (i === 1 && !d.clearsBy && d.clears > 0) || ((d.bestBy || {})[ALL_DUNGEONS[i].id] || 0) > 0;
 }
 // Per-dungeon difficulty, tuned with a simulation: each dungeon is a fair fight with gear of its
 // rarity (common, uncommon, rare, epic, legendary) and very hard with gear one rarity lower.
-const TIER_HP = [1, 1.5, 2.25, 3, 5.2];       // monster HP multiplier
-const TIER_ATK = [0, 3, 6, 8, 16];            // added to monster attacks
-const armourOf = (t) => [3, 5, 8, 12, 17][t];
-const breathOf = (t) => [15, 24, 36, 46, 75][t];
+// Prestige dungeons keep climbing from Dragon Peak, with a jump at each new level, so Slime Cave II
+// is harder than Dragon Peak (it needs about Legendary +1 gear) and the relics you keep matter more
+// and more. Also tuned with the simulation.
+const lvJump = (t) => Math.floor(t / 5);
+const tierHp = (t) => t < 5 ? [1, 1.5, 2.25, 3, 5.2][t] : 5.2 * Math.pow(1.015, t - 4) * (1 + 0.32 * lvJump(t));
+const tierAtk = (t) => t < 5 ? [0, 3, 6, 8, 16][t] : 16 + Math.round(0.25 * (t - 4)) + 2 * lvJump(t);
+const armourOf = (t) => t < 5 ? [3, 5, 8, 12, 17][t] : 17 + Math.round(0.3 * (t - 4));
+const breathOf = (t) => t < 5 ? [15, 24, 36, 46, 75][t] : 75 + 3 * (t - 4);
 const goldFor = (floor, t) => 10 * floor * (1 + t) + (floor === FLOORS ? 25 * (1 + t) : 0);
 function twistText(key, t) {
   if (ENEMIES[key].twist === "armour") return "Armoured: attacks deal " + armourOf(t) + " less. Spells ignore armour.";
@@ -190,7 +224,8 @@ const SHIELD_ICON = itemSVG("off0");
 
 /* ---------------- module ---------------- */
 // ctx: { getS, save, render, toast, logEvent, addXp, addGold, addChest, drawHero(el), dayStreak,
-//        tickets(), spendTicket(), nextTicketIn(), ticketMax, gearBonus(), level(), earnCharm(k), hasCharm(k) }
+//        tickets(), spendTicket(), nextTicketIn(), ticketMax, gearBonus(), level(), earnReward(n), hasReward(n),
+//        relicBonus(), dungeonCount() }
 export function setupDungeon(ctx) {
   const $ = (s) => document.querySelector(s);
   const D = () => {
@@ -217,11 +252,11 @@ export function setupDungeon(ctx) {
   };
 
   function makeEnemy(floor, t) {
-    const f = DUNGEONS[t].floors[floor - 1], key = f.key;
+    const f = ALL_DUNGEONS[t].floors[floor - 1], key = f.key;
     // tuned by simulation so each dungeon is a fair fight around its unlock level with matching gear
-    const e = ENEMIES[key], scale = (1 + 0.15 * (floor - 1)) * TIER_HP[t];
+    const e = ENEMIES[key], scale = (1 + 0.15 * (floor - 1)) * tierHp(t);
     const boss = floor === FLOORS;
-    const bump = (boss ? 0 : Math.floor((floor - 1) / 2)) + TIER_ATK[t];
+    const bump = (boss ? 0 : Math.floor((floor - 1) / 2)) + tierAtk(t);
     const hp = Math.round(e.hp * scale);
     return { key, name: f.name, fx: f.fx || "", boss, hp, maxHp: hp, atk: [e.atk[0] + bump, e.atk[1] + bump], poison: 0, charge: 0 };
   }
@@ -232,8 +267,8 @@ export function setupDungeon(ctx) {
   }
   function startFloor(run) {
     run.enemy = makeEnemy(run.floor, run.tier || 0);
-    // Slime Charm: +20 max HP (and 20 HP) while you're up against slimes
-    const base = run.baseMax || run.maxHp, want = base + (charmOn(run) && run.charm === "slime" ? 20 : 0);
+    // a relic helm adds 30% max HP (and the HP itself) while you're up against its kind of monster
+    const base = run.baseMax || run.maxHp, want = base + Math.round(base * fightStats(run).hpBonus);
     if (want > run.maxHp) run.hp += want - run.maxHp;
     run.maxHp = want; run.hp = Math.min(run.hp, run.maxHp);
     run.turn = 1; run.state = "fight";
@@ -244,12 +279,12 @@ export function setupDungeon(ctx) {
   function enter(t) {
     const S = ctx.getS();
     if (S.run) { openBattle(); return; }
-    const dg = DUNGEONS[t];
-    if (!isOpen(D(), t)) { ctx.toast("Clear the " + DUNGEONS[t - 1].name + " to open the " + dg.name); return; }
+    const dg = ALL_DUNGEONS[t];
+    if (t >= ctx.dungeonCount() || !isOpen(D(), t)) { ctx.toast("Clear the " + ALL_DUNGEONS[t - 1].name + " to open the " + dg.name); return; }
     if (!ctx.spendTicket()) { ctx.toast("No tickets left. Next one in " + fmtWait(ctx.nextTicketIn())); return; }
     const h = hero(), d = D();
     d.runs++;
-    S.run = { tier: t, floor: 1, hp: h.maxHp, maxHp: h.maxHp, atk: h.atk, sp: h.sp, crit: h.crit, def: h.def, blockBonus: h.block, dodge: h.dodge, charm: h.charm, baseMax: h.maxHp,
+    S.run = { tier: t, floor: 1, hp: h.maxHp, maxHp: h.maxHp, atk: h.atk, sp: h.sp, crit: h.crit, def: h.def, blockBonus: h.block, dodge: h.dodge, charm: h.charm, baseMax: h.maxHp, vs: ctx.relicBonus(),
       spell: h.spell, charge: 0, xp: 0, gold: 0 };
     startFloor(S.run);
     ctx.logEvent("Entered the " + dg.name);
@@ -259,10 +294,10 @@ export function setupDungeon(ctx) {
     const S = ctx.getS(), run = S.run, d = D();
     if (!run) return;
     const reached = outcome === "clear" ? FLOORS : run.floor - 1;
-    const t = run.tier || 0, name = DUNGEONS[t].name;
+    const t = run.tier || 0, name = ALL_DUNGEONS[t].name, id = ALL_DUNGEONS[t].id;
     d.best = Math.max(d.best, reached);
-    d.bestBy = d.bestBy || {}; d.bestBy[DUNGEONS[t].id] = Math.max(d.bestBy[DUNGEONS[t].id] || 0, reached);
-    if (outcome === "clear") { d.clears++; d.clearsBy = d.clearsBy || {}; d.clearsBy[DUNGEONS[t].id] = (d.clearsBy[DUNGEONS[t].id] || 0) + 1; }
+    d.bestBy = d.bestBy || {}; d.bestBy[id] = Math.max(d.bestBy[id] || 0, reached);
+    if (outcome === "clear") { d.clears++; d.clearsBy = d.clearsBy || {}; d.clearsBy[id] = (d.clearsBy[id] || 0) + 1; }
     ctx.logEvent(outcome === "clear" ? "Cleared the " + name + "! (+" + run.gold + " gold, +1 chest)" : outcome === "fled" ? "Fled the " + name + " on floor " + run.floor : "Defeated in the " + name + " on floor " + run.floor + " (+" + run.gold + " gold)");
     S.run = null;
     ctx.save(); ctx.render(); closeBattle();
@@ -277,17 +312,18 @@ export function setupDungeon(ctx) {
     if (!r || r.state !== "fight" || busy) return;
     const en = r.enemy, E = ENEMIES[en.key], t = r.tier || 0, name = enemyName(en);
     const sp = spellOf(r);
-    if (kind === "spell" && r.charge < sp.charge) { ctx.toast(sp.name + " needs " + (sp.charge - r.charge) + " more " + (sp.charge - r.charge === 1 ? "attack" : "attacks") + " to charge"); return; }
+    const cost = fightStats(r, sp).cost;
+    if (kind === "spell" && r.charge < cost) { ctx.toast(sp.name + " needs " + (cost - r.charge) + " more " + (cost - r.charge === 1 ? "attack" : "attacks") + " to charge"); return; }
     busy = true;
     let msg = "", shielding = false;
     if (kind === "attack") {
       const dodged = E.twist === "dodge" && Math.random() < 0.25;
-      const crit = !dodged && Math.random() * 100 < r.crit;
+      const crit = !dodged && Math.random() * 100 < fightStats(r).crit;
       await play(crit ? "crit" : "attack", dodged);
-      r.charge = Math.min(sp.charge, r.charge + 1);
+      r.charge = Math.min(cost, r.charge + 1);
       if (dodged) { pop("enemy", "Dodged!", "block"); msg = "The " + name + " dodges your attack."; }
       else {
-        let dmg = r.atk + rnd(-1, 1);
+        let dmg = Math.round((r.atk + rnd(-1, 1)) * fightStats(r).dmgMul);
         if (crit) dmg *= 2;
         if (E.twist === "armour") dmg = Math.max(1, dmg - armourOf(t));
         en.hp = Math.max(0, en.hp - dmg);
@@ -301,7 +337,7 @@ export function setupDungeon(ctx) {
         if (E.twist === "nopoison") { pop("enemy", "Immune", "block"); msg = "Poison does nothing to the " + name + "."; }
         else { const n = Math.round(poisonStacks(r.sp) * fightStats(r).spellMul); en.poison += n; pop("enemy", "+" + n + " poison", "poison"); msg = "Poison Cloud! The " + name + " has " + en.poison + " poison."; }
       } else {
-        const crit = Math.random() * 100 < r.crit;
+        const crit = Math.random() * 100 < fightStats(r).crit;
         await play("fireball");
         const dmg = Math.round(fireDmg(r.sp) * fightStats(r).spellMul) * (crit ? 2 : 1);
         en.hp = Math.max(0, en.hp - dmg);
@@ -337,7 +373,7 @@ export function setupDungeon(ctx) {
       dmg = Math.max(0, Math.round(dmg * fightStats(r).shieldTake) - (r.blockBonus || 0));
       line = dmg ? "You block most of it and take " + dmg + "." : "Your shield blocks it all!";
     } else {
-      dmg = Math.max(1, dmg - fs.def);
+      dmg = Math.max(1, Math.round(dmg * fs.taken) - fs.def);
       line = "You take " + dmg + ".";
     }
     r.hp = Math.max(0, r.hp - dmg); shieldUp = false;
@@ -353,7 +389,7 @@ export function setupDungeon(ctx) {
     const t = r.tier || 0, gold = goldFor(r.floor, t);
     r.gold = (r.gold || 0) + gold;
     ctx.addGold(gold);
-    if (r.floor === FLOORS) { ctx.addChest(); ctx.earnCharm(CHARM_OF[t]); }
+    if (r.floor === FLOORS) { ctx.addChest(); ctx.earnReward(t); }
     r.goldGain = gold;
     r.state = r.floor === FLOORS ? "cleared" : "won";
     ctx.logEvent("Defeated the " + enemyName(r.enemy) + " on floor " + r.floor + " (+" + gold + " gold)");
@@ -440,11 +476,11 @@ export function setupDungeon(ctx) {
   function paint() {
     const r = run(), box = $("#dungeon");
     if (!r) { closeBattle(); return; }
-    const en = r.enemy, t = r.tier || 0, dg = DUNGEONS[t], E = ENEMIES[en.key];
-    const sp = spellOf(r), ready = r.charge >= sp.charge;
+    const en = r.enemy, t = r.tier || 0, dg = ALL_DUNGEONS[t], E = ENEMIES[en.key];
+    const sp = spellOf(r), cost = fightStats(r, sp).cost, ready = r.charge >= cost;
     // how charged the monster's special is, shown only as a glow: 0 none, 1 faint, 2 strong, 3 about to fire
     const lvl = en.charge >= E.charge ? 3 : Math.min(2, Math.floor((en.charge / E.charge) * 3));
-    const pips = Array.from({ length: sp.charge }, (_, k) => `<i class="${k < r.charge ? "on" : ""}"></i>`).join("");
+    const pips = Array.from({ length: cost }, (_, k) => `<i class="${k < r.charge ? "on" : ""}"></i>`).join("");
     box.innerHTML = `
       <div class="darena dfield" style="--sky1:${dg.bg.split(",")[0]};--sky2:${dg.bg.split(",")[1]}">
         <div class="dtop">
@@ -461,22 +497,22 @@ export function setupDungeon(ctx) {
         <div class="dpad you"></div>
         <div class="dunit you" id="dHero">${r.dodge ? '<div class="holo l"></div><div class="holo r"></div>' : ""}<div class="dhero"></div></div>
         <div class="dinfo you">
-          <div class="dinfo-name"><b>You</b><small class="num">Lv ${ctx.level()}</small>${fightStats(r).on ? `<span class="dcharm" title="Charm active">✦ ${CHARMS[r.charm].name}</span>` : ""}</div>
+          <div class="dinfo-name"><b>You</b><small class="num">Lv ${ctx.level()}</small>${fightStats(r).on || fightStats(r).relic ? `<span class="dcharm" title="Bonus active">✦ ${fightStats(r).on ? "Charm" : ""}${fightStats(r).on && fightStats(r).relic ? " + " : ""}${fightStats(r).relic ? "Relic" : ""}</span>` : ""}</div>
           ${bar(r.hp, r.maxHp, "hp")}
         </div>
       </div>
       <div class="dpanel">
         <div class="dbox"><p class="dmsg" aria-live="polite"></p><p class="dtwist">${twistText(en.key, t)}</p></div>
         <div class="dacts">
-          <button class="dact shd" id="dShield" type="button"><span class="dact-ic">${SHIELD_ICON}</span><b>Shield</b><small>Block ${fightStats(r).on === "golem" ? "90%" : "¾"}${r.blockBonus ? " +" + r.blockBonus : ""}</small></button>
+          <button class="dact shd" id="dShield" type="button"><span class="dact-ic">${SHIELD_ICON}</span><b>Shield</b><small>Block ${fightStats(r).shieldTake < 0.25 ? "95%" : "¾"}${r.blockBonus ? " +" + r.blockBonus : ""}</small></button>
           <button class="dact spl${ready ? " ready" : ""}" id="dSpell" type="button"${ready ? "" : ' aria-disabled="true"'}><span class="dact-ic">${sp.icon}</span><b></b><span class="pips">${pips}</span></button>
-          <button class="dact atk" id="dAttack" type="button"><span class="dact-ic">${SWORD_ICON}</span><b>Attack</b><small class="num">${r.atk - 1}–${r.atk + 1} dmg · ${r.crit}% crit</small></button>
+          <button class="dact atk" id="dAttack" type="button"><span class="dact-ic">${SWORD_ICON}</span><b>Attack</b><small class="num">${Math.round((r.atk - 1) * fightStats(r).dmgMul)}–${Math.round((r.atk + 1) * fightStats(r).dmgMul)} dmg · ${fightStats(r).crit}% crit</small></button>
         </div>
       </div>
       ${r.state !== "fight" ? resultCard(r).replace('class="dresult"', 'class="dresult' + (resultShown ? "" : " late") + '"') : ""}`;
     box.querySelector(".dmsg").textContent = r.msg || "Attack to charge your spell. Shield when the monster is about to strike hard.";
     box.querySelector("#dSpell b").textContent = sp.name;
-    box.querySelector("#dSpell").setAttribute("aria-label", sp.name + (ready ? ", ready" : ", charging " + r.charge + " of " + sp.charge));
+    box.querySelector("#dSpell").setAttribute("aria-label", sp.name + (ready ? ", ready" : ", charging " + Math.min(r.charge, cost) + " of " + cost));
     ctx.drawHero(box.querySelector(".dhero"), { back: true, guard: shieldUp && busy });
     box.querySelectorAll("#dHero .holo").forEach((el) => ctx.drawHero(el, { back: true }));
     box.querySelector("#dAttack").onclick = () => act("attack");
@@ -497,7 +533,7 @@ export function setupDungeon(ctx) {
   }
   function resultCard(r) {
     if (r.state === "won") return `<div class="dresult"><div class="win"><div class="title-tag">FLOOR CLEARED</div><h1>Victory!</h1><p class="gain"><span class="g-gold">+${r.goldGain} gold</span></p><button class="btn gold big" id="dResult">Next floor</button></div></div>`;
-    if (r.state === "cleared") return `<div class="dresult"><div class="win"><div class="title-tag">DUNGEON CLEARED</div><h1>Champion!</h1><p>You beat all ${FLOORS} floors of the ${DUNGEONS[r.tier || 0].name}.</p><p class="gain"><span class="g-gold">+${r.gold} gold</span></p><p class="g-chest">+1 free chest. Open it in the Shop.</p><button class="btn gold big" id="dResult">Claim and leave</button></div></div>`;
+    if (r.state === "cleared") return `<div class="dresult"><div class="win"><div class="title-tag">DUNGEON CLEARED</div><h1>Champion!</h1><p>You beat all ${FLOORS} floors of the ${ALL_DUNGEONS[r.tier || 0].name}.</p><p class="gain"><span class="g-gold">+${r.gold} gold</span></p><p class="g-chest">+1 free chest. Open it in the Shop.</p><button class="btn gold big" id="dResult">Claim and leave</button></div></div>`;
     return `<div class="dresult"><div class="win"><div class="title-tag">DEFEATED</div><h1>Knocked out</h1><p>You fell on floor ${r.floor}. You keep the ${r.gold || 0} gold you earned.</p><button class="btn big" id="dResult">Leave dungeon</button></div></div>`;
   }
 
@@ -519,9 +555,9 @@ export function setupDungeon(ctx) {
     $("#dRecord").textContent = "Runs " + d.runs + " · Clears " + d.clears + " · Best floor " + d.best + " / " + FLOORS;
     const cont = $("#dContinue");
     cont.hidden = !S.run;
-    if (S.run) cont.querySelector("span").textContent = DUNGEONS[S.run.tier || 0].name + ", floor " + S.run.floor;
+    if (S.run) cont.querySelector("span").textContent = ALL_DUNGEONS[S.run.tier || 0].name + ", floor " + S.run.floor;
     const lv = ctx.level(), list = $("#dList"); list.innerHTML = "";
-    DUNGEONS.forEach((dg, i) => {
+    ALL_DUNGEONS.slice(0, ctx.dungeonCount()).forEach((dg, i) => {
       const locked = !isOpen(d, i), best = (d.bestBy || {})[dg.id] || (i === 0 ? d.best : 0), clears = (d.clearsBy || {})[dg.id] || (i === 0 && !d.clearsBy ? d.clears : 0);
       const li = document.createElement("li"); li.className = "dcard" + (locked ? " locked" : "");
       li.style.background = "linear-gradient(135deg," + dg.bg + ")";
@@ -530,13 +566,13 @@ export function setupDungeon(ctx) {
         <div class="dcard-info"><b></b><small class="num"></small><small class="num dgold"></small></div>
         <button class="btn${locked ? " ghost" : ""}" type="button"></button>`;
       li.querySelector("b").textContent = dg.name;
-      li.querySelectorAll("small")[0].textContent = locked ? "Clear the " + DUNGEONS[i - 1].name + " to open" : ("Boss: " + boss.name + " · best floor " + best + "/" + FLOORS + (clears ? " · cleared " + clears + "×" : ""));
-      const charmKey = CHARM_OF[i], hasCharm = ctx.hasCharm(charmKey);
-      li.querySelectorAll("small")[1].textContent = (hasCharm ? "" : CHARMS[charmKey].name + " · ") + "Up to " + Array.from({ length: FLOORS }, (_, f) => goldFor(f + 1, i)).reduce((a, b) => a + b, 0) + " gold + chest";
+      li.querySelectorAll("small")[0].textContent = locked ? "Clear the " + ALL_DUNGEONS[i - 1].name + " to open" : ("Boss: " + boss.name + " · best floor " + best + "/" + FLOORS + (clears ? " · cleared " + clears + "×" : ""));
+      const rw = rewardFor(i), hasRw = ctx.hasReward(i);
+      li.querySelectorAll("small")[1].textContent = (hasRw ? "" : rw.name + " · ") + "Up to " + Array.from({ length: FLOORS }, (_, f) => goldFor(f + 1, i)).reduce((a, b) => a + b, 0) + " gold + chest";
       const b = li.querySelector("button");
       b.textContent = locked ? "Locked" : "Enter";
       b.disabled = locked || !!S.run || t < 1;
-      b.setAttribute("aria-label", locked ? dg.name + " opens when you clear the " + DUNGEONS[i - 1].name : "Enter " + dg.name + " for 1 ticket");
+      b.setAttribute("aria-label", locked ? dg.name + " opens when you clear the " + ALL_DUNGEONS[i - 1].name : "Enter " + dg.name + " for 1 ticket");
       b.onclick = () => enter(i);
       list.appendChild(li);
     });

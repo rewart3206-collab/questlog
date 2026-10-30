@@ -562,6 +562,15 @@ input::placeholder{color:#7f8ccc}
 @keyframes flapA{0%,100%{transform:rotate(0)}50%{transform:rotate(-7deg)}}
 .gear-icon .wing,.dcard-art .wing{animation:none}
 @media (prefers-reduced-motion:reduce){.wing{animation:none}}
+
+/* prestige */
+.prest{display:inline-grid;place-items:center;padding:2px 9px;margin-left:-4px;border-radius:10px;background:linear-gradient(#ff9a5a,#d0402a);color:#fff;border:3px solid var(--deep);font-family:var(--display);font-size:16px;text-shadow:var(--stroke);box-shadow:0 3px 0 var(--deep)}
+.prestige-box{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;margin-top:10px;padding:12px;border-radius:14px;
+  background:linear-gradient(135deg,#ff9a5a33,#b46cff33);border:2px solid #ffcf4a;box-shadow:0 0 18px #ffcf4a55}
+.prestige-box b{font-family:var(--display);font-weight:400;font-size:18px;color:var(--gold);text-shadow:var(--stroke)}
+.prestige-box p{margin:2px 0 0;font-size:13px;font-weight:700}
+.prest-list{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700}
+.prest-list b{color:var(--gold)}
 </style>
 </head>
 <body>
@@ -604,7 +613,7 @@ input::placeholder{color:#7f8ccc}
     <div class="sun"></div>
     <div class="mtn" style="left:-20px;border-bottom:110px solid #6a4fd6"></div><div class="mtn" style="left:90px;border-bottom:80px solid #8a6af0"></div><div class="mtn" style="right:-30px;border-bottom:120px solid #5a3fc0"></div>
     <div class="castle"></div><div class="ground"></div>
-    <div class="plate"><span class="lvl num" id="lvl">LV 1</span><h1 class="hero-name" id="hname">Adventurer</h1><span class="title-tag" id="htitle">Novice</span></div>
+    <div class="plate"><span class="lvl num" id="lvl">LV 1</span><span class="prest num" id="prest" hidden>★ 1</span><h1 class="hero-name" id="hname">Adventurer</h1><span class="title-tag" id="htitle">Novice</span></div>
     <span class="sync" id="sync">Saved</span>
     <div id="sprite" class="sprite"></div>
     <div class="xpwrap"><div class="bar" role="progressbar" aria-label="Experience" id="xpbar"><i style="width:0"></i><span class="bar-text num" id="xptext">0 / 100 XP</span></div></div>
@@ -688,6 +697,7 @@ input::placeholder{color:#7f8ccc}
       <div class="spread"><h2>Dungeon</h2><span class="pill dtk"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7 Q3 5 5 5 L19 5 Q21 5 21 7 L21 9.5 Q19 10 19 12 Q19 14 21 14.5 L21 17 Q21 19 19 19 L5 19 Q3 19 3 17 L3 14.5 Q5 14 5 12 Q5 10 3 9.5 Z" fill="#ffcf4a" stroke="#1c1430" stroke-width="2" stroke-linejoin="round"/><path d="M9 8 L9 16" stroke="#1c1430" stroke-width="1.6" stroke-dasharray="2 2"/><path d="M14 9.5 l1 2 2.2.3-1.6 1.5.4 2.2-2-1.1-2 1.1.4-2.2-1.6-1.5 2.2-.3z" fill="#e2384a"/></svg></span><b class="num" id="dTickets">0</b><small>tickets</small></span></div>
       <p class="note" style="margin-top:10px">You get a new ticket every 4 hours and can hold up to 6. A ticket gets you one run of five floors. Every floor you beat pays gold, and beating the boss on floor 5 earns a free chest. Your first clear of each dungeon also earns its charm and opens the next dungeon. Each dungeon needs better gear than the last.</p>
       <p class="clear" id="dToday" style="margin:8px 0 0"></p>
+      <div class="prestige-box" id="prestigeBox" hidden><div><b>Prestige ready</b><p></p></div><button class="btn gold" type="button" id="prestigeBtn">Prestige</button></div>
       <div class="dcontinue" id="dContinue" hidden><div><b>Run in progress</b><span></span></div><button class="btn gold" type="button">Continue</button></div>
       <ul class="dlist" id="dList"></ul>
       <p class="note num" id="dRecord" style="margin-top:10px;text-align:center"></p>
